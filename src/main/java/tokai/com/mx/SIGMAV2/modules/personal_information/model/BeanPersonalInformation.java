@@ -1,6 +1,5 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.model;
 
-import jakarta.annotation.Generated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -38,6 +37,7 @@ public class BeanPersonalInformation {
     @Column(name ="image", nullable = true)
     private byte[] image;
 
+    
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
     private BeanUser user;

@@ -52,8 +52,6 @@ public class BeanUser {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @Column(name="username", nullable = false, unique = true)
-    private String username;
 
 
 

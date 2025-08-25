@@ -14,12 +14,10 @@ public interface UserRepository {
 
     BeanUser save(BeanUser user);
 
-    Object clone() throws CloneNotSupportedException;
 
     @Override
     boolean equals(Object obj);
 
-    void finalize() throws Throwable;
 
     @Override
     int hashCode();
@@ -27,11 +25,14 @@ public interface UserRepository {
     @Override
     String toString();
 
+    
+
+
+
+ 
     Optional<BeanUser> findByEmail(String email);
-    
-
+    Optional<BeanUser> findByUsername(String username);
     boolean existsByEmail(String email);
-
-
-    
+    boolean existsByUsername(String username);
+    void incrementAttempts(String username);
 }
