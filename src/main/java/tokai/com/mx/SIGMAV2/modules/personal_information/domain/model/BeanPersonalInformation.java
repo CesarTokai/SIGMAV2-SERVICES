@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.personal_information.model;
+package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

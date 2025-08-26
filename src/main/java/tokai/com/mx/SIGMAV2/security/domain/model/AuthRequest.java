@@ -1,11 +1,16 @@
-package tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto;
+package tokai.com.mx.SIGMAV2.security.domain.model;
 
-public class UserRequest {
-    private String email;
+public class AuthRequest {
+       private String email;
     private String password;
-    private String role;
 
-    // Getters and Setters
+    public AuthRequest() {}
+
+    public AuthRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -21,15 +26,5 @@ public class UserRequest {
     public void setPassword(String password) {
         this.password = password;
     }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-
     
 }

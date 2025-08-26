@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.shared.security;
+package tokai.com.mx.SIGMAV2.security;
 import java.security.SecureRandom;
 
 public class SecurityCode {

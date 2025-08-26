@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.shared.security;
+package tokai.com.mx.SIGMAV2.security;
 
 
 import org.springframework.security.core.context.SecurityContextHolder;

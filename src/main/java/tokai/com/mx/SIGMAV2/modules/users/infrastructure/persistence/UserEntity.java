@@ -36,6 +36,8 @@ private LocalDateTime lastTryAt;
 private String verificationCode;
 private LocalDateTime createdAt;
 private LocalDateTime updatedAt;
+
+
 public Long getUserId() {
     return userId;
 }

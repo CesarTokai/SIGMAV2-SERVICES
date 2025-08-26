@@ -4,15 +4,12 @@ package tokai.com.mx.SIGMAV2.modules.request_recovery_password.application.servi
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.mail.Session;
 
 import java.time.LocalDate;
 import java.util.*;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import tokai.com.mx.SIGMAV2.shared.security.SessionInformation;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.RequestToResolveRequestDTO;
@@ -23,8 +20,9 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanR
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 import tokai.com.mx.SIGMAV2.modules.users.port.out.UserRepository;
+import tokai.com.mx.SIGMAV2.security.SecurityCode;
+import tokai.com.mx.SIGMAV2.security.SessionInformation;
 import tokai.com.mx.SIGMAV2.shared.exception.CustomException;
-import tokai.com.mx.SIGMAV2.shared.security.SecurityCode;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 
 

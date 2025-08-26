@@ -1,38 +1,25 @@
 
 package tokai.com.mx.SIGMAV2.modules.users.port.out;
 
-
 import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
-
 @Repository
 public interface UserRepository {
 
     BeanUser save(BeanUser user);
 
-
-    @Override
-    boolean equals(Object obj);
-
-
-    @Override
-    int hashCode();
-
-    @Override
-    String toString();
-
-    
-
-
-
- 
     Optional<BeanUser> findByEmail(String email);
-    Optional<BeanUser> findByUsername(String username);
+
     boolean existsByEmail(String email);
-    boolean existsByUsername(String username);
-    void incrementAttempts(String username);
+
+    void deleteByEmail(String email);
+
+    Optional<BeanUser> verifyByEmailAndCode(String email, String code);
+
+    void incrementAttempts(String email);
+
 }

@@ -1,6 +1,5 @@
 
 package tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 import java.time.LocalDateTime;
 
@@ -27,10 +26,7 @@ public class UserResponse {
     private LocalDateTime lastTryAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    public static Object fromDomain(BeanUser user) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'fromDomain'");
-    }
+  
 
     
 }

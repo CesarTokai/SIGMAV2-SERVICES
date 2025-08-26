@@ -1,9 +1,10 @@
-package tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto;
+package tokai.com.mx.SIGMAV2.security.infrastructure.dto;
 
-public class UserRequest {
+public class ResponseAuthDTO {
     private String email;
-    private String password;
+    private String token;
     private String role;
+
 
     // Getters and Setters
     public String getEmail() {
@@ -14,12 +15,12 @@ public class UserRequest {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getToken() {
+        return token;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setToken(String token) {
+        this.token = token;
     }
 
     public String getRole() {
@@ -31,5 +32,4 @@ public class UserRequest {
     }
 
 
-    
 }
