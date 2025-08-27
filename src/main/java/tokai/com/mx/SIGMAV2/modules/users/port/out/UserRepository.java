@@ -2,12 +2,11 @@
 package tokai.com.mx.SIGMAV2.modules.users.port.out;
 
 import java.util.Optional;
-
-import org.springframework.stereotype.Repository;
-
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
-@Repository
+// ❌ Esta interfaz está DEPRECATED - Usar tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository
+// Esta interfaz se mantiene temporalmente para compatibilidad, pero debe eliminarse
+@Deprecated
 public interface UserRepository {
 
     BeanUser save(BeanUser user);

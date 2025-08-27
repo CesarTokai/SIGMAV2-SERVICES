@@ -5,10 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import tokai.com.mx.SIGMAV2.modules.users.application.service.UserServiceImpl;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
-import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserResponse;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserDomainResponse;
+import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.VerifyUserRequest;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,18 +21,18 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@RequestBody UserRequest request) {
         log.info("Recibida solicitud de registro para email: {}", request.getEmail());
         
-        BeanUser user = userService.register(request);
+        User user = userService.register(request);
         
-        UserResponse userResponse = new UserResponse(
+        UserDomainResponse userResponse = new UserDomainResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getRole(),
+                user.getRole().name(),
                 user.isStatus(),
                 user.isVerified(),
                 user.getAttempts(),
@@ -65,7 +66,7 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> getByEmail(@PathVariable String email) {
         log.info("Buscando usuario: {}", email);
         
-        Optional<BeanUser> userOpt = userService.findByUsername(email);
+        Optional<User> userOpt = userService.findByUsername(email);
         
         if (userOpt.isEmpty()) {
             Map<String, Object> response = new HashMap<>();
@@ -75,11 +76,11 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         
-        BeanUser user = userOpt.get();
-        UserResponse userResponse = new UserResponse(
+        User user = userOpt.get();
+        UserDomainResponse userResponse = new UserDomainResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getRole(),
+                user.getRole().name(),
                 user.isStatus(),
                 user.isVerified(),
                 user.getAttempts(),
@@ -110,17 +111,17 @@ public class UserController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, Object>> verify(@RequestParam String email, @RequestParam String code) {
-        log.info("Verificando usuario: {}", email);
+    public ResponseEntity<Map<String, Object>> verify(@RequestBody VerifyUserRequest request) {
+        log.info("Verificando usuario: {}", request.getEmail());
         
-        Optional<BeanUser> userOpt = userService.verifyByUsernameAndCode(email, code);
+        Optional<User> userOpt = userService.verifyByUsernameAndCode(request.getEmail(), request.getCode());
         
-        BeanUser user = userOpt.get(); // El servicio ya maneja el caso de Optional vacío con excepción
+        User user = userOpt.get(); // El servicio ya maneja el caso de Optional vacío con excepción
         
-        UserResponse userResponse = new UserResponse(
+        UserDomainResponse userResponse = new UserDomainResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getRole(),
+                user.getRole().name(),
                 user.isStatus(),
                 user.isVerified(),
                 user.getAttempts(),

@@ -15,7 +15,7 @@ public class PersonalInformationRepositoryAdapter implements PersonalInformation
 
     @Override
     public BeanPersonalInformation findByUserId(Long userId) {
-        return jpaRepo.findByUser_Id(userId);
+        return jpaRepo.findByUser_UserId(userId);
     }
 
     @Override

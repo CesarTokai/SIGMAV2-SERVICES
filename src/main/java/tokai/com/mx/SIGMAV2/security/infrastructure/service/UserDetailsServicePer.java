@@ -18,7 +18,8 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanR
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanRequestStatus;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.port.out.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
+import tokai.com.mx.SIGMAV2.security.infrastructure.adapter.SecurityUserAdapter;
 import tokai.com.mx.SIGMAV2.security.SecurityCode;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestAuthDTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestResetPasswordStep1DTO;
@@ -40,21 +41,25 @@ public class UserDetailsServicePer implements UserDetailsService {
     final JwtUtils jwtUtils;
     final MailSenderImpl mailService;
     final IRequestRecoveryPassword recoveryPasswordRepository;
+    final SecurityUserAdapter securityUserAdapter;
 
-    public UserDetailsServicePer(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils, MailSenderImpl mailService, IRequestRecoveryPassword recoveryPasswordRepository) {
+    public UserDetailsServicePer(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils, MailSenderImpl mailService, IRequestRecoveryPassword recoveryPasswordRepository, SecurityUserAdapter securityUserAdapter) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.mailService = mailService;
         this.recoveryPasswordRepository = recoveryPasswordRepository;
+        this.securityUserAdapter = securityUserAdapter;
     }
 
 
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String email) {
-    BeanUser user = userRepository.findByEmail(email)
+    tokai.com.mx.SIGMAV2.modules.users.domain.model.User domainUser = userRepository.findByEmail(email)
         .orElseThrow(() -> new CustomException("User or password incorrect"));
+    
+    BeanUser user = securityUserAdapter.toLegacyUser(domainUser);
 
     List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
     authorityList.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().toString()));
@@ -79,7 +84,8 @@ public class UserDetailsServicePer implements UserDetailsService {
         if (userDetails == null)
             throw new CustomException("User or password incorrect");
 
-        BeanUser user2 = userRepository.findByEmail(authRequest.getEmail()).orElseThrow(() -> new CustomException("User or password incorrect"));
+        tokai.com.mx.SIGMAV2.modules.users.domain.model.User domainUser2 = userRepository.findByEmail(authRequest.getEmail()).orElseThrow(() -> new CustomException("User or password incorrect"));
+        BeanUser user2 = securityUserAdapter.toLegacyUser(domainUser2);
 
         // Check if account is not verified
         if (!user2.isVerified()) {
@@ -95,7 +101,8 @@ public class UserDetailsServicePer implements UserDetailsService {
                 throw new CustomException("User is blocked");
             } else {
                 user2.setStatus(true);
-                userRepository.save(user2);
+                tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
+                userRepository.save(updatedDomain);
             }
         }
 
@@ -108,7 +115,8 @@ public class UserDetailsServicePer implements UserDetailsService {
                 user2.setAttempts(0);
             }
             user2.setLastTryAt(java.time.LocalDateTime.now());
-            userRepository.save(user2);
+            tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
+            userRepository.save(updatedDomain);
             throw new CustomException("User or password incorrect");
         }
 
@@ -125,44 +133,50 @@ public class UserDetailsServicePer implements UserDetailsService {
 
         String accessToken = jwtUtils.createToken(authentication);
 
-    ResponseAuthDTO response = new ResponseAuthDTO();
-    response.setEmail(user2.getEmail());
-    response.setToken(accessToken);
-    return response;
+        ResponseAuthDTO response = new ResponseAuthDTO();
+        response.setEmail(user2.getEmail());
+        response.setToken(accessToken);
+        response.setRole(user2.getRole().toString());
+        return response;
     }
 
     @Transactional
     public Object findUserToResetPassword(RequestResetPasswordStep1DTO payload) {
-        Optional<BeanUser> user = userRepository.findByEmail(payload.Email());
+        Optional<tokai.com.mx.SIGMAV2.modules.users.domain.model.User> domainUserOpt = userRepository.findByEmail(payload.Email());
 
-        if (user.isEmpty())
+        if (domainUserOpt.isEmpty())
             return true;
 
-    String code = SecurityCode.generate();
-    mailService.send(user.get().getEmail(), "Reset password", "Your code is: " + code);
+        BeanUser user = securityUserAdapter.toLegacyUser(domainUserOpt.get());
 
-        user.get().setVerificationCode(code);
-        userRepository.save(user.get());
+    String code = SecurityCode.generate();
+    mailService.send(user.getEmail(), "Reset password", "Your code is: " + code);
+
+        user.setVerificationCode(code);
+        tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user);
+        userRepository.save(updatedDomain);
 
         return true;
     }
 
     @Transactional
     public Object compareCodeToResetPassword(RequestResetPasswordStep2DTO payload) {
-        Optional<BeanUser> user = userRepository.findByEmail(payload.Email());
+        Optional<tokai.com.mx.SIGMAV2.modules.users.domain.model.User> domainUserOpt = userRepository.findByEmail(payload.Email());
 
-        if (user.isEmpty())
+        if (domainUserOpt.isEmpty())
             throw new CustomException("Something went wrong");
 
-        if (!user.get().getVerificationCode().equals(payload.verificationCode()))
+        BeanUser user = securityUserAdapter.toLegacyUser(domainUserOpt.get());
+
+        if (!user.getVerificationCode().equals(payload.verificationCode()))
             throw new CustomException("Verification code is incorrect");
 
-        int count = recoveryPasswordRepository.countAllByUserAndStatus(user.get(), BeanRequestStatus.PENDING);
+        int count = recoveryPasswordRepository.countAllByUserAndStatus(user, BeanRequestStatus.PENDING);
         if (count > 0)
             throw new CustomException("You have a pending request");
 
         BeanRequestRecoveryPassword request = new BeanRequestRecoveryPassword();
-        request.setUser(user.get());
+        request.setUser(user);
         request.setStatus(BeanRequestStatus.PENDING);
         request.setDate(java.time.LocalDate.now());
 

@@ -1,24 +1,31 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import jakarta.persistence.*;
 
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @Entity
-@Table(name = "personal_information")
+@Table(
+    name = "personal_information",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_personal_information_user",
+        columnNames = "user_id"
+    )
+)
+
+
 public class BeanPersonalInformation {
 
     @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "personal_information_id")
     private Long personalInformationId;
 
 
@@ -38,9 +45,13 @@ public class BeanPersonalInformation {
     private byte[] image;
 
     
-    @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private BeanUser user;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "fk_personal_info_user")
+    )
+    private UserEntity user;
     
 }
 
