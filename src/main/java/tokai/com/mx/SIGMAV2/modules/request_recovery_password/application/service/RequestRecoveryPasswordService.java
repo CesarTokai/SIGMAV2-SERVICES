@@ -1,9 +1,9 @@
 
 package tokai.com.mx.SIGMAV2.modules.request_recovery_password.application.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.time.LocalDate;
 import java.util.*;
@@ -23,66 +23,101 @@ import tokai.com.mx.SIGMAV2.modules.users.port.out.UserRepository;
 import tokai.com.mx.SIGMAV2.security.SecurityCode;
 import tokai.com.mx.SIGMAV2.security.SessionInformation;
 import tokai.com.mx.SIGMAV2.shared.exception.CustomException;
+import tokai.com.mx.SIGMAV2.shared.exception.UserNotFoundException;
+import tokai.com.mx.SIGMAV2.shared.exception.UnauthorizedAccessException;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 
-
+@Slf4j
 @Service
 public class RequestRecoveryPasswordService {
     final IRequestRecoveryPassword requestRecoveryPasswordRepository;
     final MailSenderImpl mailSenderImpl;
     final UserRepository userRepository;
     final PasswordEncoder passwordEncoder;
-    final SessionInformation sessionInformation;
-    final RequestRecoveryPasswordService recoveryPasswordService;
 
     public RequestRecoveryPasswordService(
         IRequestRecoveryPassword requestRecoveryPasswordRepository,
         MailSenderImpl mailService,
         UserRepository userRepository,
-        PasswordEncoder passwordEncoder,
-        SessionInformation sessionInformation,
-        RequestRecoveryPasswordService recoveryPasswordService
+        PasswordEncoder passwordEncoder
     ) {
         this.requestRecoveryPasswordRepository = requestRecoveryPasswordRepository;
         this.mailSenderImpl = mailService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.sessionInformation = sessionInformation;
-        this.recoveryPasswordService = recoveryPasswordService;
     }
 
     @Transactional
     public Page<ResponsePageRequestRecoveryDTO> findRequest(Pageable pageable){
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
+        
+        log.info("Buscando solicitudes de recuperación para usuario: {} con rol: {}", email, role);
 
+        // Validar que el usuario existe
         Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty())
-            throw new CustomException("Something went wrong");
+        if(user.isEmpty()) {
+            log.error("Usuario no encontrado en sesión: {}", email);
+            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
+        }
 
-        if(role.equals("ADMINISTRADOR")){
-            return requestRecoveryPasswordRepository.getRequestByRole(ERole.ALMACENISTA, BeanRequestStatus.PENDING, pageable);
+        // Validar rol y autorización
+        if(role == null || role.trim().isEmpty()) {
+            log.error("Rol no definido para usuario: {}", email);
+            throw new UnauthorizedAccessException("Rol de usuario no definido");
         }
-        if(role.equals("ALMACENISTA")){
-            return requestRecoveryPasswordRepository.getRequestByRole(ERole.AUXILIAR, BeanRequestStatus.PENDING, pageable);
+
+        try {
+            // Determinar solicitudes según jerarquía de roles
+            switch(role.toUpperCase()) {
+                case "ADMINISTRADOR":
+                    return requestRecoveryPasswordRepository.getRequestByRole(
+                        ERole.ALMACENISTA, BeanRequestStatus.PENDING, pageable);
+                case "ALMACENISTA":
+                    return requestRecoveryPasswordRepository.getRequestByRole(
+                        ERole.AUXILIAR, BeanRequestStatus.PENDING, pageable);
+                case "AUXILIAR":
+                    return requestRecoveryPasswordRepository.getRequestByRole(
+                        ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING, pageable);
+                default:
+                    log.warn("Rol sin permisos para ver solicitudes: {}", role);
+                    throw new UnauthorizedAccessException(
+                        "No tienes permisos para ver solicitudes de recuperación de contraseña");
+            }
+        } catch (Exception e) {
+            log.error("Error al buscar solicitudes: {}", e.getMessage(), e);
+            throw new CustomException("Error interno al buscar solicitudes de recuperación");
         }
-        if(role.equals("AUXILIAR")){
-            return requestRecoveryPasswordRepository.getRequestByRole(ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING, pageable);
-        }
-        return Page.empty();
     }
 
     @Transactional
     public Object completeRequest(RequestToResolveRequestDTO payload){
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
+        
+        log.info("Completando solicitud de recuperación por usuario: {}", email);
 
+        // Validaciones de entrada
+        if(payload == null) {
+            throw new IllegalArgumentException("Los datos de la solicitud son obligatorios");
+        }
+        
+        if(payload.getRequestId() == null) {
+            throw new IllegalArgumentException("El ID de la solicitud es obligatorio");
+        }
+
+        // Validar que el usuario existe
         Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty())
-            throw new CustomException("Something went wrong");
+        if(user.isEmpty()) {
+            log.error("Usuario no encontrado en sesión: {}", email);
+            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
+        }
 
-        if(payload.getRequestId() == null)
-            throw new CustomException("Something went wrong");
+        // Validar autorización
+        if(role == null || role.trim().isEmpty()) {
+            log.error("Rol no definido para usuario: {}", email);
+            throw new UnauthorizedAccessException("Rol de usuario no definido");
+        }
 
         Optional<BeanRequestRecoveryPassword> request = requestRecoveryPasswordRepository.findById(payload.getRequestId());
         if(request.isEmpty())

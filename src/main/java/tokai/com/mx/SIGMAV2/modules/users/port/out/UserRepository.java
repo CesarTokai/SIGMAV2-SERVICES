@@ -13,6 +13,8 @@ public interface UserRepository {
     BeanUser save(BeanUser user);
 
     Optional<BeanUser> findByEmail(String email);
+    
+    Optional<BeanUser> findById(Long id);
 
     boolean existsByEmail(String email);
 

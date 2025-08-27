@@ -34,7 +34,13 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
         || path.startsWith("/v3/api-docs")
         || path.startsWith("/swagger-resources")
         || path.startsWith("/webjars")
-        || path.equals("/swagger-ui.html");
+        || path.equals("/swagger-ui.html")
+        // Endpoints públicos de usuario:
+        || path.equals("/api/sigmav2/users/register")
+        || path.equals("/api/sigmav2/users/verify")
+        || path.equals("/api/sigmav2/users/exists")
+        // Endpoints de autenticación:
+        || path.startsWith("/api/sigmav2/auth/");
 }
     @Override
     protected void doFilterInternal(@NotNull HttpServletRequest request,

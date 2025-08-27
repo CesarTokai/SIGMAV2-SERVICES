@@ -17,21 +17,8 @@ import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecoveryPassword, Long> {
     int countAllByUserAndStatus(BeanUser user, BeanRequestStatus status);
 
-    @Query("SELECT new mx.edu.utez.sweetdelivery_services.models.request_recovery_password.controller.dto.ResponsePageRequestRecoveryDTO(" +
-            "r.requestId, r.status, r.date, r.user.username, r.user.email, r.user.role) " +
-            "FROM BeanRequestRecoveryPassword r " +
-            "WHERE r.user.company.companyId = :idCompany " +
-            "AND r.user.role = :role " +
-            "AND r.status = :status " +
-            "ORDER BY r.date ASC")
-    Page<ResponsePageRequestRecoveryDTO> findAllByCompanyAndRole(
-            @Param("idCompany") Long idCompany,
-            @Param("role") ERole role,
-            @Param("status") BeanRequestStatus status,
-            Pageable pageable);
-
-    @Query("SELECT new mx.edu.utez.sweetdelivery_services.models.request_recovery_password.controller.dto.ResponsePageRequestRecoveryDTO(" +
-            "r.requestId, r.status, r.date, r.user.username, r.user.email, r.user.role) " +
+    @Query("SELECT new tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.ResponsePageRequestRecoveryDTO(" +
+            "r.requestId, r.status, r.date, r.user.email, r.user.email, r.user.role) " +
             "FROM BeanRequestRecoveryPassword r " +
             "WHERE r.user.role = :role " +
             "AND r.status = :status " +
@@ -40,5 +27,4 @@ public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecov
             @Param("role") ERole role,
             @Param("status") BeanRequestStatus status,
             Pageable pageable);
-
 }

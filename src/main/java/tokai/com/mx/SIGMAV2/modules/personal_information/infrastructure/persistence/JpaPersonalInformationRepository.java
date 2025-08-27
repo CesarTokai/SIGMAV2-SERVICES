@@ -6,6 +6,6 @@ import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPerson
 
 @Repository
 public interface JpaPersonalInformationRepository extends JpaRepository<BeanPersonalInformation, Long> {
-    BeanPersonalInformation findByUser_UserId(Long userId);
+    BeanPersonalInformation findByUser_Id(Long userId);
     boolean existsById(Long id);
 }

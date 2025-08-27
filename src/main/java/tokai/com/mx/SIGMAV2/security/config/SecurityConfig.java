@@ -16,9 +16,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtTokeValidator;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -32,46 +37,56 @@ public class SecurityConfig {
     }
 
     // configuration of security filter chain
-   @Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-    return httpSecurity
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-.requestMatchers(
-    "/swagger-ui/**",
-    "/swagger-ui.html",
-    "/v3/api-docs/**",
-    "/swagger-resources/**",
-    "/webjars/**"
-).permitAll()                // .anyRequest().authenticated() // Desactivado temporalmente para pruebas
-            )
-            .addFilterBefore(new JwtTokeValidator(jwtUtils), BasicAuthenticationFilter.class)
-            .build();
-}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/sigmav2/users/register",
+                                "/api/sigmav2/users/verify",
+                                "/api/sigmav2/users/exists",
+                                "/api/sigmav2/auth/**")
+                        .permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(new JwtTokeValidator(jwtUtils), BasicAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     // definition of authenticationManager
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-
     // configuration authentication provider
     @Bean
-    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService){
+    @SuppressWarnings("deprecation")
+    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-
-        // give components to make a provider with user and password
         provider.setPasswordEncoder(passwordEncoder());
         provider.setUserDetailsService(userDetailsService);
-
         return provider;
     }
 
-
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }

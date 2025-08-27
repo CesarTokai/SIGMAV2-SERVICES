@@ -19,8 +19,8 @@ import lombok.NoArgsConstructor;
 public class BeanUser {
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    @Column(name = "user_id" , updatable = false, nullable = false)
-    private Long userId;
+    @Column(name = "user_id", updatable = false, nullable = false)
+    private Long id;
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
@@ -51,12 +51,5 @@ public class BeanUser {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
-
-
-
-
-
-
-    
 }
 

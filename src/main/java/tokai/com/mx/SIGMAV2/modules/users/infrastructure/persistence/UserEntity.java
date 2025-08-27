@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users_backup")
 public class UserEntity {
 @Id
 @GeneratedValue(strategy = GenerationType.IDENTITY)

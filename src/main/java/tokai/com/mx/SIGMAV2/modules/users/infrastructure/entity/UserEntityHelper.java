@@ -8,7 +8,7 @@ public class UserEntityHelper {
 public UserEntity toEntity(BeanUser user) {
 if (user == null) return null;
 UserEntity entity = new UserEntity();
-entity.setUserId(user.getUserId());
+entity.setUserId(user.getId());
 entity.setEmail(user.getEmail());
 entity.setPasswordHash(user.getPasswordHash());
 entity.setRole(user.getRole());
