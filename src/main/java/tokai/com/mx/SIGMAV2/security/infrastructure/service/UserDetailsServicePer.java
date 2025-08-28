@@ -133,11 +133,10 @@ public class UserDetailsServicePer implements UserDetailsService {
 
         String accessToken = jwtUtils.createToken(authentication);
 
-        ResponseAuthDTO response = new ResponseAuthDTO();
-        response.setEmail(user2.getEmail());
-        response.setToken(accessToken);
-        response.setRole(user2.getRole().toString());
-        return response;
+    ResponseAuthDTO response = new ResponseAuthDTO();
+    response.setEmail(user2.getEmail());
+    response.setToken(accessToken);
+    return response;
     }
 
     @Transactional

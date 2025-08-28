@@ -6,14 +6,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.validation.Valid;
+import java.util.Map;
+import java.util.HashMap;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.application.service.RequestRecoveryPasswordService;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.RequestToResolveRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.VerifyEmailDTO;
@@ -22,7 +23,6 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto
 @CrossOrigin(origins = {"*"})
 @RestController
 @RequestMapping("/api/sigmav2/request-recovery-password")
-@PreAuthorize("denyAll()")
 public class RequestRecoveryPasswordController {
     final RequestRecoveryPasswordService requestRecoveryPasswordService;
 
@@ -32,7 +32,7 @@ public class RequestRecoveryPasswordController {
 
     @GetMapping("/getPage")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
-    public ResponseEntity<Page<?>> findRequest(Pageable pageable){
+    public ResponseEntity<?> findRequest(Pageable pageable){
         return new ResponseEntity<>(
                 this.requestRecoveryPasswordService.findRequest(pageable),
                 HttpStatus.OK
@@ -60,21 +60,35 @@ public class RequestRecoveryPasswordController {
     @PostMapping("/verifyUser")
     @PreAuthorize("permitAll()")
     public ResponseEntity<?> verifyUser(@RequestBody @Valid VerifyEmailDTO payload) {
-        boolean userExists = requestRecoveryPasswordService.verifyUser(payload.email());
-        return userExists
-                ? ResponseEntity.ok("Usuario válido.")
-                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("El usuario no existe.");
+        boolean success = requestRecoveryPasswordService.verifyUser(payload.email());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+        
+        if (success) {
+            response.put("message", "Usuario verificado exitosamente");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("message", "Usuario no encontrado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
-
 
     @PostMapping("/createRequest")
     @PreAuthorize("permitAll()")
     public ResponseEntity<?> createPasswordRecoveryRequest(@RequestBody @Valid VerifyEmailDTO payload) {
-        boolean result = requestRecoveryPasswordService.createRequest(payload.email());
-        if (result) {
-            return ResponseEntity.status(HttpStatus.CREATED).body("Solicitud registrada exitosamente.");
+        boolean success = requestRecoveryPasswordService.createRequest(payload.email());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+        
+        if (success) {
+            response.put("message", "Solicitud de recuperación creada exitosamente");
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } else {
+            response.put("message", "Error al crear la solicitud de recuperación");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No se pudo procesar la solicitud.");
     }
 
 

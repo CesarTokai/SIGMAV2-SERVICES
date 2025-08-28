@@ -3,9 +3,7 @@ package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import jakarta.persistence.*;
-
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
 
 @NoArgsConstructor

@@ -55,4 +55,9 @@ public interface UserService {
      * Elimina un usuario por username (alias para email)
      */
     void deleteByUsername(String email);
+    
+    /**
+     * Actualiza un usuario existente
+     */
+    User update(User user);
 }

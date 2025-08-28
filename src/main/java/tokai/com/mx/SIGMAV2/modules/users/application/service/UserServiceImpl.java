@@ -296,6 +296,30 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * Actualiza un usuario existente
+     */
+    @Override
+    @Transactional
+    public User update(User user) {
+        log.info("Actualizando usuario con ID: {}", user.getId());
+        
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("El usuario y su ID son obligatorios");
+        }
+        
+        try {
+            user.setUpdatedAt(LocalDateTime.now());
+            User updatedUser = userRepository.save(user);
+            log.info("Usuario actualizado exitosamente: {}", user.getEmail());
+            return updatedUser;
+            
+        } catch (Exception e) {
+            log.error("Error al actualizar usuario {}: {}", user.getEmail(), e.getMessage(), e);
+            throw new CustomException("Error interno al actualizar el usuario. Intente nuevamente.");
+        }
+    }
+
+    /**
      * Genera un código de verificación de 6 dígitos.
      */
     private String generateVerificationCode() {
