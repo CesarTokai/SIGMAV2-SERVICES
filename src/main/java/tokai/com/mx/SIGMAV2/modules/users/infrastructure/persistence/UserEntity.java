@@ -2,6 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -12,29 +13,42 @@ import jakarta.persistence.Table;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 
 @Entity
-@Table(name = "users_backup")
+@Table(name = "users")
 public class UserEntity {
 @Id
 @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Column(name = "user_id")
 private Long userId;
 
-
+@Column(name = "email")
 private String email;
+
+@Column(name = "password_hash")
 private String passwordHash;
 
-
 @Enumerated(EnumType.STRING)
+@Column(name = "role")
 private ERole role;
 
-
+@Column(name = "status")
 private boolean status;
+
+@Column(name = "is_verified")
 private boolean isVerified;
+
+@Column(name = "attempts")
 private int attempts;
 
-
+@Column(name = "last_try_at")
 private LocalDateTime lastTryAt;
+
+@Column(name = "verification_code")
 private String verificationCode;
+
+@Column(name = "created_at")
 private LocalDateTime createdAt;
+
+@Column(name = "updated_at")
 private LocalDateTime updatedAt;
 
 

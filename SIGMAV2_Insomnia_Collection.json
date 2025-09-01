@@ -1,0 +1,515 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-08-28T18:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_01_register",
+      "parentId": "fld_auth",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/register",
+      "name": "1. Registrar Usuario",
+      "description": "Registra un nuevo usuario en el sistema",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"USUARIO\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000010000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_02_verify",
+      "parentId": "fld_auth",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/verify",
+      "name": "2. Verificar Usuario",
+      "description": "Verifica un usuario con el código enviado por email",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@example.com\",\n  \"code\": \"123456\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000009000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_03_login",
+      "parentId": "fld_auth",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/auth/login",
+      "name": "3. Iniciar Sesión",
+      "description": "Obtiene el token JWT para autenticación",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000008000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_04_create_personal_info",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information",
+      "name": "1. Crear/Actualizar Información Personal",
+      "description": "Crea o actualiza la información personal del usuario autenticado",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Juan Carlos\",\n  \"firstLastName\": \"Pérez\",\n  \"secondLastName\": \"González\",\n  \"phoneNumber\": \"5512345678\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000007000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_05_update_personal_info",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information",
+      "name": "2. Actualizar Información Personal",
+      "description": "Actualiza la información personal existente",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Juan Carlos\",\n  \"firstLastName\": \"Pérez\",\n  \"secondLastName\": \"González\",\n  \"phoneNumber\": \"5587654321\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000006000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_06_get_my_personal_info",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information",
+      "name": "3. Obtener Mi Información Personal",
+      "description": "Obtiene la información personal del usuario autenticado",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000005000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_07_get_user_personal_info",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information/user/6",
+      "name": "4. Obtener Información Personal de Usuario (Admin/Almacenista)",
+      "description": "Obtiene la información personal de otro usuario por ID",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.adminToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000004000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_08_upload_image",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information/upload-image",
+      "name": "5. Subir Imagen de Perfil",
+      "description": "Sube una imagen de perfil para el usuario",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "image",
+            "value": "",
+            "description": "Selecciona un archivo de imagen",
+            "type": "file"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000003000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_09_assign_role",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information/assign-role",
+      "name": "6. Asignar Rol (Solo Admin)",
+      "description": "Asigna un rol a un usuario (solo administradores)",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": 6,\n  \"role\": \"ALMACENISTA\",\n  \"reason\": \"Promoción por buen desempeño\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.adminToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000002000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_10_check_personal_info_exists",
+      "parentId": "fld_personal_info",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/personal-information/exists",
+      "name": "7. Verificar si Existe Información Personal",
+      "description": "Verifica si el usuario tiene información personal registrada",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692000001000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_11_get_my_complete_info",
+      "parentId": "fld_user_complete",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/me/complete",
+      "name": "1. Mi Información Completa",
+      "description": "Obtiene información completa del usuario autenticado (usuario + información personal)",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwtToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691999999000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_12_get_user_complete_by_email",
+      "parentId": "fld_user_complete",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/complete/email/test@example.com",
+      "name": "2. Usuario Completo por Email (Admin/Almacenista)",
+      "description": "Obtiene información completa de un usuario por email",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.adminToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691999998000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_13_get_user_complete_by_id",
+      "parentId": "fld_user_complete",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/complete/id/6",
+      "name": "3. Usuario Completo por ID (Admin/Almacenista)",
+      "description": "Obtiene información completa de un usuario por ID",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.adminToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691999997000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_14_search_user_by_email",
+      "parentId": "fld_user_complete",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "url": "{{ _.baseUrl }}/api/sigmav2/users/search",
+      "name": "4. Buscar Usuario por Email (Solo Admin)",
+      "description": "Busca un usuario por email (solo administradores)",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "name": "email",
+          "value": "test@example.com",
+          "description": "Email del usuario a buscar"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.adminToken }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691999996000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_main",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "name": "🔐 Autenticación",
+      "description": "APIs de registro, verificación y login",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692000000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_personal_info",
+      "parentId": "wrk_main",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "name": "👤 Información Personal",
+      "description": "APIs para gestionar información personal de usuarios",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691999999000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_user_complete",
+      "parentId": "wrk_main",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "name": "🔍 Consultas Completas",
+      "description": "APIs para consultar usuarios con información personal completa",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691999998000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_main",
+      "parentId": null,
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "name": "SIGMAV2 APIs",
+      "description": "Colección completa de APIs para el sistema SIGMAV2",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_main",
+      "modified": 1692000000000,
+      "created": 1692000000000,
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:8080",
+        "jwtToken": "",
+        "adminToken": ""
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "baseUrl",
+          "jwtToken", 
+          "adminToken"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1692000000000,
+      "_type": "environment"
+    }
+  ]
+}

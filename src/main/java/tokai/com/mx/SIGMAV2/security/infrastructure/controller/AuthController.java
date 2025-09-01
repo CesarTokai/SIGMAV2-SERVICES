@@ -30,7 +30,7 @@ public class AuthController {
         return "hola mundo";
     }
 
-    @PostMapping("/")
+    @PostMapping("/login")
     public ResponseEntity<ResponseAuthDTO> login(@RequestBody @Valid RequestAuthDTO authRequest){
         return new ResponseEntity<>(
                 this.userDetailsServicePer.login(authRequest),

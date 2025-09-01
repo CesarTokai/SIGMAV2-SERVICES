@@ -46,8 +46,9 @@ public class BeanPersonalInformation {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
         name = "user_id",
+        referencedColumnName = "user_id",
         nullable = false,
-        foreignKey = @ForeignKey(name = "fk_personal_info_user")
+        foreignKey = @ForeignKey(name = "fk_pi_user")
     )
     private UserEntity user;
     

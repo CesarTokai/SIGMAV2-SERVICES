@@ -2,11 +2,12 @@ package tokai.com.mx.SIGMAV2.security.infrastructure.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.exceptions.*;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
 import tokai.com.mx.SIGMAV2.shared.exception.CustomException;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class JwtUtils {
     @Value("${security.jwt.key.private}")
     private String privateKey;
@@ -61,8 +63,39 @@ public class JwtUtils {
                     .build()
                     .verify(token);
 
-        }catch (JWTVerificationException e){
-            throw  new CustomException("invalid token");
+        } catch (TokenExpiredException e) {
+            log.warn("Token expirado: {}", e.getMessage());
+            throw new CustomException("TOKEN_EXPIRED");
+        } catch (SignatureVerificationException e) {
+            log.warn("Firma del token inválida: {}", e.getMessage());
+            throw new CustomException("TOKEN_INVALID_SIGNATURE");
+        } catch (AlgorithmMismatchException e) {
+            log.warn("Algoritmo del token no coincide: {}", e.getMessage());
+            throw new CustomException("TOKEN_ALGORITHM_MISMATCH");
+        } catch (InvalidClaimException e) {
+            log.warn("Claim del token inválido: {}", e.getMessage());
+            throw new CustomException("TOKEN_INVALID_CLAIM");
+        } catch (JWTDecodeException e) {
+            log.warn("Token malformado: {}", e.getMessage());
+            throw new CustomException("TOKEN_MALFORMED");
+        } catch (JWTVerificationException e) {
+            log.warn("Error de verificación JWT: {}", e.getMessage());
+            throw new CustomException("TOKEN_INVALID");
+        } catch (Exception e) {
+            log.error("Error inesperado validando token: {}", e.getMessage());
+            throw new CustomException("TOKEN_ERROR");
+        }
+    }
+
+    /**
+     * Valida token y retorna boolean (para casos donde no necesitas el DecodedJWT)
+     */
+    public boolean isTokenValid(String token) {
+        try {
+            validateToken(token);
+            return true;
+        } catch (CustomException e) {
+            return false;
         }
     }
 
@@ -72,5 +105,32 @@ public class JwtUtils {
 
     public Map<String, Claim> extractClaims(DecodedJWT decodedJWT){
         return decodedJWT.getClaims();
+    }
+
+    /**
+     * Extrae username directamente del token (método helper)
+     */
+    public String getUsernameFromToken(String token) {
+        try {
+            DecodedJWT decodedJWT = validateToken(token);
+            return extractUsername(decodedJWT);
+        } catch (CustomException e) {
+            log.warn("No se pudo extraer username del token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Extrae rol directamente del token (método helper)
+     */
+    public String getRoleFromToken(String token) {
+        try {
+            DecodedJWT decodedJWT = validateToken(token);
+            Claim authoritiesClaim = decodedJWT.getClaim("authorities");
+            return authoritiesClaim != null ? authoritiesClaim.asString() : null;
+        } catch (CustomException e) {
+            log.warn("No se pudo extraer rol del token: {}", e.getMessage());
+            return null;
+        }
     }
 }
