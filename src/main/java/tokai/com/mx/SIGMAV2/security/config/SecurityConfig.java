@@ -20,7 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtTokeValidator;
+import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtAuthenticationFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 
 import java.util.Arrays;
@@ -52,7 +52,7 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtTokeValidator(jwtUtils), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
 

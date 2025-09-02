@@ -2,44 +2,94 @@ package tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper;
 
 import org.springframework.stereotype.Component;
 
-
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 
 @Component
 public class UserMapper {
 
-    public BeanUser toDomain(UserEntity entity) {
-        if (entity == null) return null;
-        return new BeanUser(
-                entity.getUserId(),
-                entity.getEmail(),
-                entity.getPasswordHash(),
-                entity.getRole(),
-                entity.isStatus(),
-                entity.isVerified(),
-                entity.getAttempts(),
-                entity.getLastTryAt(),
-                entity.getVerificationCode(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
+    /**
+     * Convierte de BeanUser (infraestructura) a User (dominio)
+     */
+    public User toDomain(BeanUser beanUser) {
+        if (beanUser == null) return null;
+        
+        return new User(
+                beanUser.getId(),
+                beanUser.getEmail(),
+                beanUser.getPasswordHash(),
+                mapToRole(beanUser.getRole()),
+                beanUser.isStatus(),
+                beanUser.isVerified(),
+                beanUser.getAttempts(),
+                beanUser.getLastTryAt(),
+                beanUser.getVerificationCode(),
+                beanUser.getCreatedAt(),
+                beanUser.getUpdatedAt()
         );
     }
 
-    public UserEntity toEntity(BeanUser user) {
+    /**
+     * Convierte de User (dominio) a BeanUser (infraestructura)
+     */
+    public BeanUser toBean(User user) {
         if (user == null) return null;
-        UserEntity entity = new UserEntity();
-        entity.setUserId(user.getId());
-        entity.setEmail(user.getEmail());
-        entity.setPasswordHash(user.getPasswordHash());
-        entity.setRole(user.getRole());
-        entity.setStatus(user.isStatus());
-        entity.setVerified(user.isVerified());
-        entity.setAttempts(user.getAttempts());
-        entity.setLastTryAt(user.getLastTryAt());
-        entity.setVerificationCode(user.getVerificationCode());
-        entity.setCreatedAt(user.getCreatedAt());
-        entity.setUpdatedAt(user.getUpdatedAt());
-        return entity;
+        
+        BeanUser beanUser = new BeanUser();
+        beanUser.setId(user.getId());
+        beanUser.setEmail(user.getEmail());
+        beanUser.setPasswordHash(user.getPasswordHash());
+        beanUser.setRole(mapToERole(user.getRole()));
+        beanUser.setStatus(user.isStatus());
+        beanUser.setVerified(user.isVerified());
+        beanUser.setAttempts(user.getAttempts());
+        beanUser.setLastTryAt(user.getLastTryAt());
+        beanUser.setVerificationCode(user.getVerificationCode());
+        beanUser.setCreatedAt(user.getCreatedAt());
+        beanUser.setUpdatedAt(user.getUpdatedAt());
+        
+        return beanUser;
+    }
+
+    /**
+     * Mapea ERole (infraestructura) a Role (dominio)
+     */
+    private Role mapToRole(ERole eRole) {
+        if (eRole == null) return null;
+        
+        switch (eRole) {
+            case ADMINISTRADOR:
+                return Role.ADMINISTRADOR;
+            case ALMACENISTA:
+                return Role.ALMACENISTA;
+            case AUXILIAR:
+                return Role.AUXILIAR;
+            case AUXILIAR_DE_CONTEO:
+                return Role.AUXILIAR_DE_CONTEO;
+            default:
+                throw new IllegalArgumentException("ERole no soportado: " + eRole);
+        }
+    }
+
+    /**
+     * Mapea Role (dominio) a ERole (infraestructura)
+     */
+    private ERole mapToERole(Role role) {
+        if (role == null) return null;
+        
+        switch (role) {
+            case ADMINISTRADOR:
+                return ERole.ADMINISTRADOR;
+            case ALMACENISTA:
+                return ERole.ALMACENISTA;
+            case AUXILIAR:
+                return ERole.AUXILIAR;
+            case AUXILIAR_DE_CONTEO:
+                return ERole.AUXILIAR_DE_CONTEO;
+            default:
+                throw new IllegalArgumentException("Role no soportado: " + role);
+        }
     }
 }

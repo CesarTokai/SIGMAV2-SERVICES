@@ -325,4 +325,233 @@ public class UserServiceImpl implements UserService {
     private String generateVerificationCode() {
         return String.valueOf((int) (Math.random() * 900000 + 100000));
     }
+
+    /**
+     * Reenvía código de verificación a un usuario no verificado
+     */
+    @Override
+    @Transactional
+    public void resendVerificationCode(String email) {
+        log.info("Reenviando código de verificación para usuario: {}", email);
+        
+        // Validar email
+        ValidationUtils.validateEmail(email);
+        String normalizedEmail = email.toLowerCase().trim();
+        
+        // Buscar usuario
+        Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
+        if (optionalUser.isEmpty()) {
+            log.warn("Intento de reenvío de código para usuario inexistente: {}", normalizedEmail);
+            throw new UserNotFoundException("Usuario no encontrado: " + email);
+        }
+        
+        User user = optionalUser.get();
+        
+        // Verificar si el usuario ya está verificado
+        if (user.isVerified()) {
+            log.warn("Intento de reenvío de código para usuario ya verificado: {}", normalizedEmail);
+            throw new UserAlreadyExistsException("El usuario ya está verificado");
+        }
+        
+        // Generar nuevo código de verificación
+        String newVerificationCode = generateVerificationCode();
+        
+        try {
+            // Actualizar el código en la base de datos
+            user.setVerificationCode(newVerificationCode);
+            user.setUpdatedAt(LocalDateTime.now());
+            User updatedUser = userRepository.save(user);
+            
+            // Enviar nuevo código por correo
+            String subject = "SIGMAV2 - Nuevo Código de Verificación";
+            String message = String.format(
+                "Hola,\\n\\n" +
+                "Has solicitado un nuevo código de verificación para tu cuenta en SIGMAV2.\\n\\n" +
+                "Tu nuevo código de verificación es: %s\\n\\n" +
+                "Por favor, ingresa este código para activar tu cuenta.\\n\\n" +
+                "Este código tiene una validez de 24 horas.\\n\\n" +
+                "Si no solicitaste este reenvío, puedes ignorar este correo.\\n\\n" +
+                "Saludos,\\n" +
+                "Equipo SIGMAV2",
+                newVerificationCode
+            );
+            
+            mailSender.send(updatedUser.getEmail(), subject, message);
+            log.info("Nuevo código de verificación enviado exitosamente a: {}", updatedUser.getEmail());
+            
+        } catch (Exception e) {
+            log.error("Error al reenviar código de verificación a {}: {}", normalizedEmail, e.getMessage(), e);
+            throw new CustomException("Error interno al reenviar el código de verificación. Intente nuevamente.");
+        }
+    }
+
+    // ============ MÉTODOS ADMINISTRATIVOS FALTANTES ============
+    
+    /**
+     * Obtiene todos los usuarios con paginación
+     */
+    @Override
+    public org.springframework.data.domain.Page<User> findAllUsers(org.springframework.data.domain.Pageable pageable) {
+        log.info("Obteniendo usuarios con paginación: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+        return userRepository.findAll(pageable);
+    }
+    
+    /**
+     * Busca usuarios por criterios
+     */
+    @Override
+    public org.springframework.data.domain.Page<User> searchUsers(String email, String role, Boolean verified, Boolean status, org.springframework.data.domain.Pageable pageable) {
+        log.info("Buscando usuarios por criterios: email={}, role={}, verified={}, status={}", 
+                email, role, verified, status);
+        
+        Role roleEnum = null;
+        if (role != null && !role.trim().isEmpty()) {
+            try {
+                roleEnum = Role.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidRoleException("Rol inválido: " + role);
+            }
+        }
+        
+        return userRepository.findByCriteria(email, roleEnum, verified, status, pageable);
+    }
+    
+    /**
+     * Cuenta usuarios por estado de verificación
+     */
+    @Override
+    public long countByVerified(boolean verified) {
+        return userRepository.countByVerified(verified);
+    }
+    
+    /**
+     * Cuenta usuarios por status
+     */
+    @Override
+    public long countByStatus(boolean status) {
+        return userRepository.countByStatus(status);
+    }
+    
+    /**
+     * Obtiene usuarios no verificados hace más de X días
+     */
+    @Override
+    public java.util.List<User> findUnverifiedUsersOlderThan(int days) {
+        log.info("Buscando usuarios no verificados hace más de {} días", days);
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(days);
+        return userRepository.findUnverifiedUsersOlderThan(cutoffDate);
+    }
+    
+    /**
+     * Actualiza el estado de verificación de un usuario (solo admin)
+     */
+    @Override
+    @Transactional
+    public User updateVerificationStatus(Long userId, boolean verified) {
+        log.info("Actualizando estado de verificación del usuario ID: {} a {}", userId, verified);
+        
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+        
+        User user = optionalUser.get();
+        
+        if (verified) {
+            user.markAsVerified();
+            log.info("Usuario ID: {} marcado como verificado por administrador", userId);
+        } else {
+            user.setVerified(false);
+            user.setUpdatedAt(LocalDateTime.now());
+            log.info("Usuario ID: {} marcado como no verificado por administrador", userId);
+        }
+        
+        return userRepository.save(user);
+    }
+    
+    /**
+     * Resetea los intentos de verificación de un usuario
+     */
+    @Override
+    @Transactional
+    public User resetUserAttempts(Long userId) {
+        log.info("Reseteando intentos del usuario ID: {}", userId);
+        
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+        
+        User user = optionalUser.get();
+        user.setAttempts(0);
+        user.setLastTryAt(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        User updatedUser = userRepository.save(user);
+        log.info("Intentos reseteados para usuario ID: {}", userId);
+        
+        return updatedUser;
+    }
+    
+    /**
+     * Bloquea o desbloquea una cuenta de usuario
+     */
+    @Override
+    @Transactional
+    public User toggleUserStatus(Long userId) {
+        log.info("Cambiando estado del usuario ID: {}", userId);
+        
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+        
+        User user = optionalUser.get();
+        boolean newStatus = !user.isStatus();
+        user.setStatus(newStatus);
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        User updatedUser = userRepository.save(user);
+        log.info("Estado del usuario ID: {} cambiado a {}", userId, newStatus ? "ACTIVO" : "INACTIVO");
+        
+        return updatedUser;
+    }
+    
+    /**
+     * Fuerza la verificación de un usuario sin código
+     */
+    @Override
+    @Transactional
+    public User forceVerifyUser(Long userId) {
+        log.info("Forzando verificación del usuario ID: {}", userId);
+        
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+        
+        User user = optionalUser.get();
+        user.markAsVerified();
+        user.setAttempts(0); // Resetear intentos también
+        
+        User updatedUser = userRepository.save(user);
+        log.info("Usuario ID: {} verificado forzosamente por administrador", userId);
+        
+        return updatedUser;
+    }
+    
+    /**
+     * Elimina usuarios no verificados antiguos
+     */
+    @Override
+    @Transactional
+    public int cleanupUnverifiedUsers(int daysOld) {
+        log.info("Iniciando limpieza de usuarios no verificados hace más de {} días", daysOld);
+        
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(daysOld);
+        int deletedCount = userRepository.deleteUnverifiedUsersOlderThan(cutoffDate);
+        
+        log.info("Limpieza completada: {} usuarios no verificados eliminados", deletedCount);
+        return deletedCount;
+    }
 }

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
+import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.ResendVerificationCodeRequest;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserDomainResponse;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.VerifyUserRequest;
@@ -136,5 +137,34 @@ public class UserController {
         response.put("data", userResponse);
         
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Endpoint para reenviar código de verificación
+     */
+    @PostMapping("/resend-verification-code")
+    public ResponseEntity<Map<String, Object>> resendVerificationCode(@RequestBody ResendVerificationCodeRequest request) {
+        log.info("Solicitando reenvío de código de verificación para: {}", request.getEmail());
+        
+        try {
+            userService.resendVerificationCode(request.getEmail());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Código de verificación reenviado exitosamente. Revisa tu correo electrónico.");
+            response.put("email", request.getEmail());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error al reenviar código de verificación para {}: {}", request.getEmail(), e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            response.put("email", request.getEmail());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }

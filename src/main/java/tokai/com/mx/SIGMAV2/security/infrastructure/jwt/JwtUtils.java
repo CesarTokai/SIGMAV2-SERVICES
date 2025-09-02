@@ -7,6 +7,10 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
 import tokai.com.mx.SIGMAV2.shared.exception.CustomException;
+import tokai.com.mx.SIGMAV2.security.infrastructure.exception.JwtException;
+import tokai.com.mx.SIGMAV2.security.infrastructure.exception.TokenExpiredException;
+import tokai.com.mx.SIGMAV2.security.infrastructure.exception.TokenInvalidException;
+import tokai.com.mx.SIGMAV2.security.infrastructure.exception.TokenMalformedException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -63,27 +67,28 @@ public class JwtUtils {
                     .build()
                     .verify(token);
 
-        } catch (TokenExpiredException e) {
+        } catch (com.auth0.jwt.exceptions.TokenExpiredException e) {
             log.warn("Token expirado: {}", e.getMessage());
-            throw new CustomException("TOKEN_EXPIRED");
+            java.time.LocalDateTime expiredAt = e.getExpiredOn().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            throw new TokenExpiredException(e.getMessage(), expiredAt);
         } catch (SignatureVerificationException e) {
             log.warn("Firma del token inválida: {}", e.getMessage());
-            throw new CustomException("TOKEN_INVALID_SIGNATURE");
+            throw new TokenInvalidException("Firma del token inválida", "El token ha sido modificado o no fue generado por este servidor");
         } catch (AlgorithmMismatchException e) {
             log.warn("Algoritmo del token no coincide: {}", e.getMessage());
-            throw new CustomException("TOKEN_ALGORITHM_MISMATCH");
+            throw new TokenInvalidException("Algoritmo del token no coincide", "El algoritmo usado para firmar el token no es válido");
         } catch (InvalidClaimException e) {
             log.warn("Claim del token inválido: {}", e.getMessage());
-            throw new CustomException("TOKEN_INVALID_CLAIM");
+            throw new TokenInvalidException("Claim del token inválido", "Los claims del token no son válidos");
         } catch (JWTDecodeException e) {
             log.warn("Token malformado: {}", e.getMessage());
-            throw new CustomException("TOKEN_MALFORMED");
+            throw new TokenMalformedException("Token malformado", "El formato del token no es válido");
         } catch (JWTVerificationException e) {
             log.warn("Error de verificación JWT: {}", e.getMessage());
-            throw new CustomException("TOKEN_INVALID");
+            throw new TokenInvalidException("Error de verificación JWT", "No se pudo verificar la autenticidad del token");
         } catch (Exception e) {
             log.error("Error inesperado validando token: {}", e.getMessage());
-            throw new CustomException("TOKEN_ERROR");
+            throw new TokenInvalidException("Error inesperado validando token", "Ha ocurrido un error interno al validar el token");
         }
     }
 
@@ -94,6 +99,8 @@ public class JwtUtils {
         try {
             validateToken(token);
             return true;
+        } catch (JwtException e) {
+            return false;
         } catch (CustomException e) {
             return false;
         }
@@ -114,6 +121,9 @@ public class JwtUtils {
         try {
             DecodedJWT decodedJWT = validateToken(token);
             return extractUsername(decodedJWT);
+        } catch (JwtException e) {
+            log.warn("No se pudo extraer username del token: {}", e.getMessage());
+            return null;
         } catch (CustomException e) {
             log.warn("No se pudo extraer username del token: {}", e.getMessage());
             return null;
@@ -128,6 +138,9 @@ public class JwtUtils {
             DecodedJWT decodedJWT = validateToken(token);
             Claim authoritiesClaim = decodedJWT.getClaim("authorities");
             return authoritiesClaim != null ? authoritiesClaim.asString() : null;
+        } catch (JwtException e) {
+            log.warn("No se pudo extraer rol del token: {}", e.getMessage());
+            return null;
         } catch (CustomException e) {
             log.warn("No se pudo extraer rol del token: {}", e.getMessage());
             return null;

@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import tokai.com.mx.SIGMAV2.security.infrastructure.exception.*;
+import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -12,6 +14,80 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // ===== MANEJADORES DE EXCEPCIONES JWT =====
+    
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenExpiredException(
+            TokenExpiredException ex, WebRequest request) {
+        
+        ApiResponse<Object> response = ApiResponse.<Object>builder()
+                .success(false)
+                .error(ApiResponse.ErrorDetails.builder()
+                        .code(ex.getErrorCode())
+                        .message(ex.getMessage())
+                        .details(ex.getDetails())
+                        .expiredAt(ex.getExpiredAt())
+                        .build())
+                .timestamp(LocalDateTime.now())
+                .build();
+        
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TokenInvalidException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenInvalidException(
+            TokenInvalidException ex, WebRequest request) {
+        
+        ApiResponse<Object> response = ApiResponse.error(
+            ex.getErrorCode(),
+            ex.getMessage(),
+            ex.getDetails()
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TokenMissingException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenMissingException(
+            TokenMissingException ex, WebRequest request) {
+        
+        ApiResponse<Object> response = ApiResponse.error(
+            ex.getErrorCode(),
+            ex.getMessage(),
+            ex.getDetails()
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(TokenMalformedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenMalformedException(
+            TokenMalformedException ex, WebRequest request) {
+        
+        ApiResponse<Object> response = ApiResponse.error(
+            ex.getErrorCode(),
+            ex.getMessage(),
+            ex.getDetails()
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ApiResponse<Object>> handleJwtException(
+            JwtException ex, WebRequest request) {
+        
+        ApiResponse<Object> response = ApiResponse.error(
+            ex.getErrorCode(),
+            ex.getMessage(),
+            ex.getDetails()
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    // ===== MANEJADORES DE EXCEPCIONES EXISTENTES =====
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleUserNotFoundException(
