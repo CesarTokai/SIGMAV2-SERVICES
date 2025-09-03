@@ -65,20 +65,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Obtener token del header
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
             
+            log.warn("=== JWT FILTER DEBUG ===");
+            log.warn("Authorization header recibido: [{}]", authHeader);
+            log.warn("Request URI: {}", request.getRequestURI());
+            
             if (authHeader == null || authHeader.trim().isEmpty()) {
+                log.warn("Header Authorization faltante o vacío");
                 sendErrorResponse(response, new TokenMissingException());
                 return;
             }
 
             if (!authHeader.startsWith("Bearer ")) {
+                log.warn("Header Authorization no comienza con 'Bearer ': [{}]", authHeader);
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }
 
             // Extraer token (remover "Bearer ")
             String token = authHeader.substring(7);
+            log.warn("Token extraído (longitud: {}): [{}...]", 
+                     token.length(), token.length() > 30 ? token.substring(0, 30) : token);
             
             if (token.trim().isEmpty()) {
+                log.warn("Token vacío después de extraer 'Bearer '");
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }

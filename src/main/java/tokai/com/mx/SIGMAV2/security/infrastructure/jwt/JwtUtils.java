@@ -100,8 +100,13 @@ public class JwtUtils {
             validateToken(token);
             return true;
         } catch (JwtException e) {
+            log.error("JwtException en isTokenValid: {}", e.getMessage());
             return false;
         } catch (CustomException e) {
+            log.error("CustomException en isTokenValid: {}", e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("Exception inesperada en isTokenValid: {}", e.getMessage());
             return false;
         }
     }
