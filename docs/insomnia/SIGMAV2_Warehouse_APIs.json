@@ -1,0 +1,460 @@
+{
+  "type": "export",
+  "format": 4,
+  "name": "SIGMAV2 - Warehouse APIs",
+  "description": "Colección completa de APIs para el módulo de almacenes de SIGMAV2",
+  "timestamp": "2025-01-09T00:00:00.000Z",
+  "resources": [
+    {
+      "_type": "environment",
+      "_id": "env_warehouse_base",
+      "name": "Warehouse Environment",
+      "data": {
+        "baseUrl": "http://localhost:8080",
+        "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "adminUserId": "10",
+        "testUserId": "15",
+        "testWarehouseId": "1"
+      }
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_warehouse_crud",
+      "name": "🏪 CRUD Almacenes",
+      "description": "Operaciones CRUD para almacenes"
+    },
+    {
+      "_type": "request",
+      "_id": "req_list_warehouses",
+      "parentId": "grp_warehouse_crud",
+      "name": "1. Listar Almacenes",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "parameters": [
+        {
+          "name": "page",
+          "value": "0",
+          "description": "Número de página (0-based)"
+        },
+        {
+          "name": "size",
+          "value": "25",
+          "description": "Tamaño de página (10/25/50/100)"
+        },
+        {
+          "name": "sortBy",
+          "value": "warehouseKey",
+          "description": "Campo para ordenar"
+        },
+        {
+          "name": "sortDir",
+          "value": "asc",
+          "description": "Dirección de orden (asc/desc)"
+        },
+        {
+          "name": "search",
+          "value": "",
+          "description": "Texto de búsqueda (opcional)"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Lista todos los almacenes con paginación y búsqueda. Administradores ven todos, otros solo sus almacenes asignados."
+    },
+    {
+      "_type": "request",
+      "_id": "req_get_warehouse",
+      "parentId": "grp_warehouse_crud",
+      "name": "2. Obtener Almacén por ID",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/{{ _.testWarehouseId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Obtiene un almacén específico por ID. Valida acceso si no es administrador."
+    },
+    {
+      "_type": "request",
+      "_id": "req_create_warehouse",
+      "parentId": "grp_warehouse_crud",
+      "name": "3. Crear Almacén (Solo Admin)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"warehouseKey\": \"ALM004\",\n  \"nameWarehouse\": \"Almacén de Prueba\",\n  \"observations\": \"Almacén creado para pruebas\"\n}"
+      },
+      "description": "Crea un nuevo almacén. Solo administradores pueden crear almacenes."
+    },
+    {
+      "_type": "request",
+      "_id": "req_update_warehouse",
+      "parentId": "grp_warehouse_crud",
+      "name": "4. Actualizar Almacén (Solo Admin)",
+      "method": "PUT",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/{{ _.testWarehouseId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nameWarehouse\": \"Almacén Actualizado\",\n  \"observations\": \"Observaciones actualizadas\"\n}"
+      },
+      "description": "Actualiza un almacén existente. La clave (warehouseKey) NO es editable."
+    },
+    {
+      "_type": "request",
+      "_id": "req_delete_warehouse",
+      "parentId": "grp_warehouse_crud",
+      "name": "5. Eliminar Almacén (Solo Admin)",
+      "method": "DELETE",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/{{ _.testWarehouseId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Elimina un almacén (soft delete). Falla si tiene dependencias (inventario, etiquetas)."
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_warehouse_assignments",
+      "name": "👥 Asignaciones Usuario-Almacén",
+      "description": "Gestión de asignaciones entre usuarios y almacenes"
+    },
+    {
+      "_type": "request",
+      "_id": "req_get_user_warehouses",
+      "parentId": "grp_warehouse_assignments",
+      "name": "1. Ver Almacenes de Usuario",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/users/{{ _.testUserId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Obtiene todos los almacenes asignados a un usuario específico."
+    },
+    {
+      "_type": "request",
+      "_id": "req_assign_warehouses",
+      "parentId": "grp_warehouse_assignments",
+      "name": "2. Asignar Almacenes (Solo Admin)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/users/{{ _.testUserId }}/assign",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"warehouseIds\": [1, 2, 3],\n  \"reason\": \"Asignación inicial del usuario\"\n}"
+      },
+      "description": "Asigna múltiples almacenes a un usuario. No duplica asignaciones existentes."
+    },
+    {
+      "_type": "request",
+      "_id": "req_revoke_warehouse",
+      "parentId": "grp_warehouse_assignments",
+      "name": "3. Revocar Almacén (Solo Admin)",
+      "method": "DELETE",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/users/{{ _.testUserId }}/warehouses/{{ _.testWarehouseId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Revoca el acceso de un usuario a un almacén específico. No permite revocar el último almacén."
+    },
+    {
+      "_type": "request",
+      "_id": "req_my_warehouses",
+      "parentId": "grp_warehouse_assignments",
+      "name": "4. Mis Almacenes Asignados",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/my-warehouses",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Obtiene los almacenes asignados al usuario autenticado."
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_warehouse_search",
+      "name": "🔍 Búsquedas y Filtros",
+      "description": "Ejemplos de búsquedas y filtros avanzados"
+    },
+    {
+      "_type": "request",
+      "_id": "req_search_warehouses",
+      "parentId": "grp_warehouse_search",
+      "name": "1. Búsqueda por Texto",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "parameters": [
+        {
+          "name": "search",
+          "value": "principal",
+          "description": "Busca en clave y nombre"
+        },
+        {
+          "name": "page",
+          "value": "0"
+        },
+        {
+          "name": "size",
+          "value": "10"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Busca almacenes por texto en clave o nombre."
+    },
+    {
+      "_type": "request",
+      "_id": "req_warehouses_paginated",
+      "parentId": "grp_warehouse_search",
+      "name": "2. Paginación Avanzada",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "parameters": [
+        {
+          "name": "page",
+          "value": "1",
+          "description": "Segunda página"
+        },
+        {
+          "name": "size",
+          "value": "5",
+          "description": "5 elementos por página"
+        },
+        {
+          "name": "sortBy",
+          "value": "nameWarehouse",
+          "description": "Ordenar por nombre"
+        },
+        {
+          "name": "sortDir",
+          "value": "desc",
+          "description": "Orden descendente"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Ejemplo de paginación con orden personalizado."
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_warehouse_validation",
+      "name": "⚠️ Casos de Error",
+      "description": "Ejemplos de validaciones y errores"
+    },
+    {
+      "_type": "request",
+      "_id": "req_create_invalid_warehouse",
+      "parentId": "grp_warehouse_validation",
+      "name": "1. Crear Almacén Inválido",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"warehouseKey\": \"alm invalid\",\n  \"nameWarehouse\": \"\",\n  \"observations\": \"Esta clave tiene espacios y minúsculas (inválida)\"\n}"
+      },
+      "description": "Ejemplo de validación: clave con espacios y minúsculas, nombre vacío."
+    },
+    {
+      "_type": "request",
+      "_id": "req_create_duplicate_warehouse",
+      "parentId": "grp_warehouse_validation",
+      "name": "2. Crear Almacén Duplicado",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"warehouseKey\": \"ALM001\",\n  \"nameWarehouse\": \"Almacén Principal\",\n  \"observations\": \"Intentando duplicar clave y nombre\"\n}"
+      },
+      "description": "Ejemplo de error: clave y nombre ya existen."
+    },
+    {
+      "_type": "request",
+      "_id": "req_access_denied_warehouse",
+      "parentId": "grp_warehouse_validation",
+      "name": "3. Acceso Denegado",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/999",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Ejemplo de acceso denegado a almacén no asignado (para usuarios no-admin)."
+    },
+    {
+      "_type": "request",
+      "_id": "req_assign_invalid_warehouses",
+      "parentId": "grp_warehouse_validation",
+      "name": "4. Asignar Almacenes Inexistentes",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/users/{{ _.testUserId }}/assign",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"warehouseIds\": [999, 1000],\n  \"reason\": \"Intentando asignar almacenes que no existen\"\n}"
+      },
+      "description": "Ejemplo de error: almacenes no encontrados."
+    },
+    {
+      "_type": "request",
+      "_id": "req_revoke_last_warehouse",
+      "parentId": "grp_warehouse_validation",
+      "name": "5. Revocar Último Almacén",
+      "method": "DELETE",
+      "url": "{{ _.baseUrl }}/api/sigmav2/warehouses/users/{{ _.testUserId }}/warehouses/{{ _.testWarehouseId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.authToken }}"
+        }
+      ],
+      "description": "Ejemplo de error: no se puede revocar el último almacén del usuario."
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_warehouse_auth",
+      "name": "🔐 Autenticación",
+      "description": "Login para obtener tokens de diferentes roles"
+    },
+    {
+      "_type": "request",
+      "_id": "req_login_admin",
+      "parentId": "grp_warehouse_auth",
+      "name": "1. Login Administrador",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@tokai.com.mx\",\n  \"password\": \"AdminPass123!\"\n}"
+      },
+      "description": "Login como administrador para acceso completo."
+    },
+    {
+      "_type": "request",
+      "_id": "req_login_almacenista",
+      "parentId": "grp_warehouse_auth",
+      "name": "2. Login Almacenista",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"almacenista@tokai.com.mx\",\n  \"password\": \"AlmacenistaPass123!\"\n}"
+      },
+      "description": "Login como almacenista para acceso operativo."
+    },
+    {
+      "_type": "request",
+      "_id": "req_login_auxiliar",
+      "parentId": "grp_warehouse_auth",
+      "name": "3. Login Auxiliar",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/sigmav2/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"auxiliar@tokai.com.mx\",\n  \"password\": \"AuxiliarPass123!\"\n}"
+      },
+      "description": "Login como auxiliar para acceso limitado."
+    }
+  ]
+}
