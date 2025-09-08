@@ -10,10 +10,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.PersonalInformationService;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.ImageService;
 import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.PersonalInformationRequest;
 import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.UpdatePersonalInformationRequest;
 import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.PersonalInformationResponse;
 import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.AssignRoleRequest;
+import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.ImageResponse;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
@@ -32,6 +34,7 @@ public class PersonalInformationController {
 
     private final PersonalInformationService personalInformationService;
     private final UserService userService;
+    private final ImageService imageService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
@@ -91,7 +94,7 @@ public class PersonalInformationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
         }
         
-        PersonalInformationResponse response = mapToResponse(personalInfoOpt.get());
+        PersonalInformationResponse response = mapToResponseWithImageInfo(personalInfoOpt.get(), userId);
         
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -116,7 +119,7 @@ public class PersonalInformationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
         }
         
-        PersonalInformationResponse response = mapToResponse(personalInfoOpt.get());
+        PersonalInformationResponse response = mapToResponseWithImageInfo(personalInfoOpt.get(), userId);
         
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -131,50 +134,162 @@ public class PersonalInformationController {
         log.info("Recibida solicitud para subir imagen de perfil");
         
         try {
-            // Validar archivo
-            if (file.isEmpty()) {
-                Map<String, Object> result = new HashMap<>();
-                result.put("success", false);
-                result.put("message", "No se seleccionó ningún archivo");
-                return ResponseEntity.badRequest().body(result);
-            }
-            
-            // Validar tipo de archivo
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                Map<String, Object> result = new HashMap<>();
-                result.put("success", false);
-                result.put("message", "El archivo debe ser una imagen");
-                return ResponseEntity.badRequest().body(result);
-            }
-            
-            // Validar tamaño (máximo 5MB)
-            if (file.getSize() > 5 * 1024 * 1024) {
-                Map<String, Object> result = new HashMap<>();
-                result.put("success", false);
-                result.put("message", "La imagen no puede ser mayor a 5MB");
-                return ResponseEntity.badRequest().body(result);
-            }
-            
-            // Obtener el usuario autenticado
             Long userId = getCurrentUserId();
-            
-            PersonalInformation personalInfo = personalInformationService.updateImage(userId, file.getBytes());
-            
-            PersonalInformationResponse response = mapToResponse(personalInfo);
+            ImageResponse imageResponse = imageService.uploadImage(userId, file);
             
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
-            result.put("message", "Imagen de perfil actualizada exitosamente");
-            result.put("data", response);
+            result.put("message", "Imagen de perfil subida exitosamente");
+            result.put("data", imageResponse);
             
             return ResponseEntity.ok(result);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación al subir imagen: {}", e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
+            
+        } catch (IllegalStateException e) {
+            log.warn("Error de estado al subir imagen: {}", e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(result);
             
         } catch (Exception e) {
             log.error("Error al procesar la imagen: {}", e.getMessage(), e);
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
-            result.put("message", "Error al procesar la imagen");
+            result.put("message", "Error interno al procesar la imagen");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    @PutMapping("/update-image")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
+    public ResponseEntity<Map<String, Object>> updateImage(@RequestParam("image") MultipartFile file) {
+        log.info("Recibida solicitud para actualizar imagen de perfil");
+        
+        try {
+            Long userId = getCurrentUserId();
+            ImageResponse imageResponse = imageService.updateImage(userId, file);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "Imagen de perfil actualizada exitosamente");
+            result.put("data", imageResponse);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación al actualizar imagen: {}", e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
+            
+        } catch (IllegalStateException e) {
+            log.warn("Error de estado al actualizar imagen: {}", e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+            
+        } catch (Exception e) {
+            log.error("Error al actualizar la imagen: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "Error interno al actualizar la imagen");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    @GetMapping("/image")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
+    public ResponseEntity<Map<String, Object>> getMyImage() {
+        log.info("Obteniendo información de imagen del usuario autenticado");
+        
+        try {
+            Long userId = getCurrentUserId();
+            Optional<ImageResponse> imageResponseOpt = imageService.getImageByUserId(userId);
+            
+            if (imageResponseOpt.isEmpty()) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", false);
+                result.put("message", "No se encontró imagen para este usuario");
+                result.put("hasImage", false);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("hasImage", true);
+            result.put("data", imageResponseOpt.get());
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("Error al obtener imagen: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "Error interno al obtener la imagen");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    @DeleteMapping("/image")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
+    public ResponseEntity<Map<String, Object>> deleteMyImage() {
+        log.info("Eliminando imagen del usuario autenticado");
+        
+        try {
+            Long userId = getCurrentUserId();
+            imageService.deleteImageByUserId(userId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "Imagen eliminada exitosamente");
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (IllegalStateException e) {
+            log.warn("Error de estado al eliminar imagen: {}", e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+            
+        } catch (Exception e) {
+            log.error("Error al eliminar imagen: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "Error interno al eliminar la imagen");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    @GetMapping("/image/exists")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
+    public ResponseEntity<Map<String, Object>> checkImageExists() {
+        log.info("Verificando si existe imagen para el usuario autenticado");
+        
+        try {
+            Long userId = getCurrentUserId();
+            boolean hasImage = imageService.hasImage(userId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("hasImage", hasImage);
+            result.put("userId", userId);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("Error al verificar existencia de imagen: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "Error interno al verificar la imagen");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
     }
@@ -266,7 +381,28 @@ public class PersonalInformationController {
     }
 
     /**
-     * Mapea de modelo de dominio a DTO de respuesta
+     * Mapea de modelo de dominio a DTO de respuesta usando el servicio de imagen
+     */
+    private PersonalInformationResponse mapToResponseWithImageInfo(PersonalInformation personalInfo, Long userId) {
+        // Usar el servicio de imagen para verificar si tiene imagen
+        boolean hasImage = imageService.hasImage(userId);
+        
+        return new PersonalInformationResponse(
+                personalInfo.getId(),
+                personalInfo.getUserId(),
+                personalInfo.getName(),
+                personalInfo.getFirstLastName(),
+                personalInfo.getSecondLastName(),
+                personalInfo.getPhoneNumber(),
+                hasImage,
+                personalInfo.getFullName(),
+                personalInfo.getCreatedAt(),
+                personalInfo.getUpdatedAt()
+        );
+    }
+
+    /**
+     * Mapea de modelo de dominio a DTO de respuesta (método legacy para compatibilidad)
      */
     private PersonalInformationResponse mapToResponse(PersonalInformation personalInfo) {
         return new PersonalInformationResponse(
