@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication
 @EntityScan(basePackages = "tokai.com.mx.SIGMAV2.modules")
 @EnableJpaRepositories(basePackages = "tokai.com.mx.SIGMAV2.modules")
-
 public class Sigmav2Application {
 
 	public static void main(String[] args) {
