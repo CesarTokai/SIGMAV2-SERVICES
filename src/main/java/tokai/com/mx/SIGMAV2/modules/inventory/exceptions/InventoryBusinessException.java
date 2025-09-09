@@ -2,22 +2,22 @@ package tokai.com.mx.SIGMAV2.modules.inventory.exceptions;
 
 import org.springframework.http.HttpStatus;
 
-public class InventoryException extends RuntimeException {
+public class InventoryBusinessException extends RuntimeException {
     
     private final String errorCode;
     private final HttpStatus httpStatus;
     
-    public InventoryException(String message, String errorCode, HttpStatus httpStatus) {
+    public InventoryBusinessException(String message, String errorCode, HttpStatus httpStatus) {
         super(message);
         this.errorCode = errorCode;
         this.httpStatus = httpStatus;
     }
     
-    public InventoryException(String message, String errorCode) {
+    public InventoryBusinessException(String message, String errorCode) {
         this(message, errorCode, HttpStatus.BAD_REQUEST);
     }
     
-    public InventoryException(String message) {
+    public InventoryBusinessException(String message) {
         this(message, "INVENTORY_ERROR", HttpStatus.BAD_REQUEST);
     }
     
@@ -30,8 +30,8 @@ public class InventoryException extends RuntimeException {
     }
     
     // Métodos estáticos para crear excepciones comunes
-    public static InventoryException periodNotFound(Long periodId) {
-        return new InventoryException(
+    public static InventoryBusinessException periodNotFound(Long periodId) {
+        return new InventoryBusinessException(
             "Periodo no encontrado con ID: " + periodId + 
             ". Verifique que el periodo exista en el sistema.",
             "PERIOD_NOT_FOUND",
@@ -39,8 +39,8 @@ public class InventoryException extends RuntimeException {
         );
     }
     
-    public static InventoryException warehouseNotFound(Long warehouseId) {
-        return new InventoryException(
+    public static InventoryBusinessException warehouseNotFound(Long warehouseId) {
+        return new InventoryBusinessException(
             "Almacén no encontrado con ID: " + warehouseId + 
             ". Verifique que el almacén exista en el sistema.",
             "WAREHOUSE_NOT_FOUND",
@@ -48,8 +48,8 @@ public class InventoryException extends RuntimeException {
         );
     }
     
-    public static InventoryException productNotFound(String productCode) {
-        return new InventoryException(
+    public static InventoryBusinessException productNotFound(String productCode) {
+        return new InventoryBusinessException(
             "Producto no encontrado con código: " + productCode + 
             ". Verifique que el producto exista en el catálogo.",
             "PRODUCT_NOT_FOUND",
@@ -57,8 +57,8 @@ public class InventoryException extends RuntimeException {
         );
     }
     
-    public static InventoryException invalidFileFormat(String filename) {
-        return new InventoryException(
+    public static InventoryBusinessException invalidFileFormat(String filename) {
+        return new InventoryBusinessException(
             "Formato de archivo no válido: " + filename + 
             ". Solo se permiten archivos CSV, XLS o XLSX.",
             "INVALID_FILE_FORMAT",
@@ -66,24 +66,24 @@ public class InventoryException extends RuntimeException {
         );
     }
     
-    public static InventoryException emptyFile() {
-        return new InventoryException(
+    public static InventoryBusinessException emptyFile() {
+        return new InventoryBusinessException(
             "El archivo está vacío o no contiene datos válidos para importar.",
             "EMPTY_FILE",
             HttpStatus.BAD_REQUEST
         );
     }
     
-    public static InventoryException validationErrors(String details) {
-        return new InventoryException(
+    public static InventoryBusinessException validationErrors(String details) {
+        return new InventoryBusinessException(
             "Errores de validación en el archivo: " + details,
             "VALIDATION_ERRORS",
             HttpStatus.BAD_REQUEST
         );
     }
     
-    public static InventoryException duplicateImport(String checksum) {
-        return new InventoryException(
+    public static InventoryBusinessException duplicateImport(String checksum) {
+        return new InventoryBusinessException(
             "Ya existe una importación idéntica. Use mode=REPLACE para sobrescribir.",
             "DUPLICATE_IMPORT",
             HttpStatus.CONFLICT

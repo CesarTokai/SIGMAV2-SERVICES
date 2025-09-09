@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 @Repository
-public interface PeriodRepository extends JpaRepository<Period, Long> {
+public interface InventoryPeriodRepository extends JpaRepository<Period, Long> {
     
     Optional<Period> findByPeriod(LocalDate period);
     

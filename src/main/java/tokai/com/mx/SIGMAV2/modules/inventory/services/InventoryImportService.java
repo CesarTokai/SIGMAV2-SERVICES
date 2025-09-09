@@ -1,6 +1,5 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,13 +8,13 @@ import tokai.com.mx.SIGMAV2.modules.inventory.dto.ImportLogEntryDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.dto.ImportResultDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.dto.InventoryImportRowDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.*;
+import tokai.com.mx.SIGMAV2.modules.inventory.exceptions.InventoryException;
 import tokai.com.mx.SIGMAV2.modules.inventory.repositories.*;
 
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class InventoryImportService {
@@ -27,13 +26,13 @@ public class InventoryImportService {
     private ImportLogService importLogService;
     
     @Autowired
-    private ProductRepository productRepository;
+    private InventoryProductRepository productRepository;
     
     @Autowired
-    private WarehouseRepository warehouseRepository;
+    private InventoryWarehouseRepository warehouseRepository;
     
     @Autowired
-    private PeriodRepository periodRepository;
+    private InventoryPeriodRepository periodRepository;
     
     @Autowired
     private InventoryStockRepository inventoryStockRepository;
@@ -56,7 +55,7 @@ public class InventoryImportService {
         // 1. Validar periodo obligatorio
         Optional<Period> periodOpt = periodRepository.findById(idPeriod);
         if (periodOpt.isEmpty()) {
-            throw new IllegalArgumentException("Periodo no encontrado: " + idPeriod);
+            throw InventoryException.periodNotFound(idPeriod);
         }
         Period period = periodOpt.get();
         
@@ -65,7 +64,7 @@ public class InventoryImportService {
         if (idWarehouse != null) {
             Optional<Warehouse> warehouseOpt = warehouseRepository.findById(idWarehouse);
             if (warehouseOpt.isEmpty()) {
-                throw new IllegalArgumentException("Almacén no encontrado: " + idWarehouse);
+                throw InventoryException.warehouseNotFound(idWarehouse);
             }
             warehouse = warehouseOpt.get();
         }
@@ -83,8 +82,7 @@ public class InventoryImportService {
             .findByPeriodAndWarehouseAndChecksum(idPeriod, idWarehouse, checksum);
         
         if (existingJob.isPresent() && mode != ImportMode.REPLACE) {
-            throw new IllegalArgumentException("Ya existe una importación idéntica para este periodo y almacén. " +
-                "Use mode=REPLACE para sobrescribir.");
+            throw InventoryException.duplicateImport(checksum);
         }
         
         importJob.setStatus(InventoryImportJob.JobStatus.RUNNING);

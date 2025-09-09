@@ -11,7 +11,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.entities.Product;
 import java.util.Optional;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {
+public interface InventoryProductRepository extends JpaRepository<Product, Long> {
     
     Optional<Product> findByCveArt(String cveArt);
     

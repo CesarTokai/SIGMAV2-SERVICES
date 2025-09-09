@@ -7,7 +7,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.entities.Warehouse;
 import java.util.Optional;
 
 @Repository
-public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
+public interface InventoryWarehouseRepository extends JpaRepository<Warehouse, Long> {
     
     Optional<Warehouse> findByWarehouseKey(String warehouseKey);
     

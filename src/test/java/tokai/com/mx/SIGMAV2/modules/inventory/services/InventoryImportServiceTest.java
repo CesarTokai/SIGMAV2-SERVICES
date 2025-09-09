@@ -12,9 +12,9 @@ import tokai.com.mx.SIGMAV2.modules.inventory.entities.Period;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.Product;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryStockRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.repositories.PeriodRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.repositories.ProductRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.repositories.WarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryPeriodRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryWarehouseRepository;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -30,13 +30,13 @@ class InventoryImportServiceTest {
     private FileParserService fileParserService;
     
     @Mock
-    private ProductRepository productRepository;
+    private InventoryProductRepository productRepository;
     
     @Mock
-    private WarehouseRepository warehouseRepository;
+    private InventoryWarehouseRepository warehouseRepository;
     
     @Mock
-    private PeriodRepository periodRepository;
+    private InventoryPeriodRepository periodRepository;
     
     @Mock
     private InventoryStockRepository inventoryStockRepository;

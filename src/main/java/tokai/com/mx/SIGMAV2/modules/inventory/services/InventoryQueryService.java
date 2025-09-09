@@ -9,7 +9,9 @@ import tokai.com.mx.SIGMAV2.modules.inventory.dto.InventoryDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.InventoryStock;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.Period;
 import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryStockRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.repositories.PeriodRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryPeriodRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryWarehouseRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +24,13 @@ public class InventoryQueryService {
     private InventoryStockRepository inventoryStockRepository;
     
     @Autowired
-    private PeriodRepository periodRepository;
+    private InventoryPeriodRepository periodRepository;
+    
+    @Autowired
+    private InventoryProductRepository productRepository;
+    
+    @Autowired
+    private InventoryWarehouseRepository warehouseRepository;
     
     public Page<InventoryDto> getInventory(Long idPeriod, Long idWarehouse, String query, Pageable pageable) {
         // Validar que el periodo existe
@@ -55,5 +63,18 @@ public class InventoryQueryService {
             stock.getWarehouse().getNameWarehouse(),
             period
         );
+    }
+    
+    // Métodos para health check
+    public long countPeriods() {
+        return periodRepository.count();
+    }
+    
+    public long countWarehouses() {
+        return warehouseRepository.count();
+    }
+    
+    public long countProducts() {
+        return productRepository.count();
     }
 }

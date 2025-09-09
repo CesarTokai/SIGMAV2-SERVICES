@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.inventory.dto.ImportResultDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.dto.InventoryDto;
 import tokai.com.mx.SIGMAV2.modules.inventory.entities.InventoryImportJob;
+import tokai.com.mx.SIGMAV2.modules.inventory.exceptions.InventoryException;
 import tokai.com.mx.SIGMAV2.modules.inventory.repositories.InventoryImportJobRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.services.InventoryImportService;
 import tokai.com.mx.SIGMAV2.modules.inventory.services.InventoryQueryService;
@@ -46,6 +47,16 @@ public class InventoryController {
             @RequestParam(value = "idWarehouse", required = false) Long idWarehouse,
             @RequestParam(value = "mode", defaultValue = "MERGE") String mode,
             @RequestParam(value = "idempotencyKey", required = false) String idempotencyKey) {
+        
+        // LOGS DE DEBUG - Para troubleshooting
+        System.out.println("=== INVENTORY IMPORT DEBUG ===");
+        System.out.println("File: " + (file != null ? file.getOriginalFilename() : "NULL"));
+        System.out.println("File size: " + (file != null ? file.getSize() : "NULL"));
+        System.out.println("idPeriod: " + idPeriod);
+        System.out.println("idWarehouse: " + idWarehouse);
+        System.out.println("mode: " + mode);
+        System.out.println("idempotencyKey: " + idempotencyKey);
+        System.out.println("==============================");
         
         try {
             // Validar archivo
@@ -157,6 +168,44 @@ public class InventoryController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(createErrorResponse("Error descargando log: " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> status = new HashMap<>();
+        
+        try {
+            // Verificar períodos disponibles
+            long periodsCount = inventoryQueryService.countPeriods();
+            status.put("periods", periodsCount > 0 ? "OK" : "NO_DATA");
+            status.put("periodsCount", periodsCount);
+            
+            // Verificar almacenes disponibles  
+            long warehousesCount = inventoryQueryService.countWarehouses();
+            status.put("warehouses", warehousesCount > 0 ? "OK" : "NO_DATA");
+            status.put("warehousesCount", warehousesCount);
+            
+            // Verificar productos disponibles
+            long productsCount = inventoryQueryService.countProducts();
+            status.put("products", productsCount > 0 ? "OK" : "NO_DATA");
+            status.put("productsCount", productsCount);
+            
+            response.put("success", true);
+            response.put("message", "Módulo de inventarios operativo");
+            response.put("status", status);
+            response.put("timestamp", System.currentTimeMillis());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "HEALTH_CHECK_FAILED");
+            response.put("message", "Error verificando estado del módulo: " + e.getMessage());
+            response.put("timestamp", System.currentTimeMillis());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
