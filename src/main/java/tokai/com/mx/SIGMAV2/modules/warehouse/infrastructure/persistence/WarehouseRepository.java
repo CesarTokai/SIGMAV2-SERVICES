@@ -5,47 +5,54 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-@Repository
 public interface WarehouseRepository extends JpaRepository<WarehouseEntity, Long> {
 
-    // Consultas básicas
-    Optional<WarehouseEntity> findByWarehouseKeyAndDeletedAtIsNull(String warehouseKey);
-    
-    Optional<WarehouseEntity> findByNameWarehouseAndDeletedAtIsNull(String nameWarehouse);
-    
-    List<WarehouseEntity> findAllByDeletedAtIsNull();
-    
+    @Query("SELECT w FROM WarehouseEntity w WHERE w.warehouseKey = :key AND w.deletedAt IS NULL")
+    Optional<WarehouseEntity> findByWarehouseKeyAndDeletedAtIsNull(@Param("key") String key);
+
+    @Query("SELECT w FROM WarehouseEntity w WHERE w.nameWarehouse = :name AND w.deletedAt IS NULL")
+    Optional<WarehouseEntity> findByNameWarehouseAndDeletedAtIsNull(@Param("name") String name);
+
+    @Query("SELECT w FROM WarehouseEntity w WHERE w.warehouseKey = :key AND w.id != :id AND w.deletedAt IS NULL")
+    boolean existsByWarehouseKeyAndIdNotAndDeletedAtIsNull(@Param("key") String key, @Param("id") Long id);
+
+    @Query("SELECT w FROM WarehouseEntity w WHERE w.nameWarehouse = :name AND w.id != :id AND w.deletedAt IS NULL")
+    boolean existsByNameWarehouseAndIdNotAndDeletedAtIsNull(@Param("name") String name, @Param("id") Long id);
+
+    @Query("SELECT w FROM WarehouseEntity w WHERE w.deletedAt IS NULL")
     Page<WarehouseEntity> findAllByDeletedAtIsNull(Pageable pageable);
-    
-    // Búsqueda con filtros
-    @Query("SELECT w FROM WarehouseEntity w WHERE w.deletedAt IS NULL " +
-           "AND (:search IS NULL OR w.warehouseKey LIKE %:search% OR w.nameWarehouse LIKE %:search%)")
+
+    @Query("SELECT w FROM WarehouseEntity w WHERE " +
+           "(LOWER(w.warehouseKey) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(w.nameWarehouse) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND w.deletedAt IS NULL")
     Page<WarehouseEntity> findAllWithSearch(@Param("search") String search, Pageable pageable);
-    
-    // Validaciones de unicidad
-    boolean existsByWarehouseKeyAndIdNotAndDeletedAtIsNull(String warehouseKey, Long id);
-    
-    boolean existsByNameWarehouseAndIdNotAndDeletedAtIsNull(String nameWarehouse, Long id);
-    
-    // Verificar dependencias antes de eliminar (comentado temporalmente)
-    // TODO: Implementar cuando existan las tablas reales
-    /*
-    @Query("SELECT COUNT(i) FROM InventoryStockEntity i WHERE i.warehouse.id = :warehouseId")
-    long countInventoryStockByWarehouseId(@Param("warehouseId") Long warehouseId);
-    
-    @Query("SELECT COUNT(l) FROM LabelRequestEntity l WHERE l.warehouse.id = :warehouseId")
-    long countLabelRequestsByWarehouseId(@Param("warehouseId") Long warehouseId);
-    */
-    
-    // Almacenes por usuario
-    @Query("SELECT uw.warehouse FROM UserWarehouseEntity uw WHERE uw.userId = :userId AND uw.warehouse.deletedAt IS NULL")
-    List<WarehouseEntity> findWarehousesByUserId(@Param("userId") Long userId);
-    
-    @Query("SELECT uw.warehouse FROM UserWarehouseEntity uw WHERE uw.userId = :userId AND uw.warehouse.deletedAt IS NULL")
-    Page<WarehouseEntity> findWarehousesByUserId(@Param("userId") Long userId, Pageable pageable);
+
+
+
+    @Query("SELECT DISTINCT w FROM WarehouseEntity w " +
+            "JOIN UserWarehouseEntity uw ON w.id = uw.warehouse.id " +
+            "WHERE uw.userId = :userId AND w.deletedAt IS NULL")
+    List<WarehouseEntity> findActiveWarehousesByUserIdList(@Param("userId") Long userId);
+
+
+    @Query("SELECT DISTINCT w FROM WarehouseEntity w " +
+            "JOIN UserWarehouseEntity uw ON w.id = uw.warehouse.id " +
+            "WHERE uw.userId = :userId AND w.deletedAt IS NULL")
+    Page<WarehouseEntity> findActiveWarehousesByUserIdPage(@Param("userId") Long userId, Pageable pageable);
+
+
+    @Query("SELECT w FROM WarehouseEntity w JOIN UserWarehouseEntity uw ON w.id = uw.warehouse.id WHERE uw.userId = :userId")
+    Page<WarehouseEntity> findAllWarehousesByUserIdIncludingDeleted(@Param("userId") Long userId, Pageable pageable);
+
+    // Optimized existence check to avoid loading all warehouses
+    @Query("SELECT COUNT(w) > 0 FROM WarehouseEntity w JOIN UserWarehouseEntity uw ON w.id = uw.warehouse.id WHERE uw.userId = :userId AND w.id = :warehouseId")
+    boolean hasAccessToWarehouse(@Param("userId") Long userId, @Param("warehouseId") Long warehouseId);
+
+/// ///////////////////////////////////////////////////////////
+
 }

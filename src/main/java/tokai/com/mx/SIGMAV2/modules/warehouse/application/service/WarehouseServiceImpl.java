@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.WarehouseService;
@@ -27,7 +30,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final JpaUserRepository userRepository;
 
     @Override
-    public Warehouse create(WarehouseCreateDTO dto, Long createdBy) {
+    public Warehouse createWarehouse(WarehouseCreateDTO dto, Long createdBy) {
         log.info("Creando almacén con clave: {}", dto.getWarehouseKey());
         
         // Normalizar clave a mayúsculas
@@ -61,7 +64,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
-    public Warehouse update(Long id, WarehouseUpdateDTO dto, Long updatedBy) {
+    public Warehouse updateWarehouse(Long id, WarehouseUpdateDTO dto, Long updatedBy) {
         log.info("Actualizando almacén ID: {}", id);
         
         WarehouseEntity entity = warehouseRepository.findById(id)
@@ -71,16 +74,13 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new IllegalArgumentException("No se puede actualizar un almacén eliminado");
         }
         
-        // Validar unicidad del nombre (excluyendo el actual)
         if (warehouseRepository.existsByNameWarehouseAndIdNotAndDeletedAtIsNull(dto.getNameWarehouse().trim(), id)) {
             throw new IllegalArgumentException("El nombre de almacén ya existe: " + dto.getNameWarehouse());
         }
         
-        // Buscar usuario actualizador
         userRepository.findById(updatedBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario actualizador no encontrado"));
         
-        // Actualizar campos editables (la clave NO es editable según reglas)
         entity.setNameWarehouse(dto.getNameWarehouse().trim());
         entity.setObservations(dto.getObservations() != null ? dto.getObservations().trim() : null);
         entity.setUpdatedBy(updatedBy);
@@ -92,7 +92,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
-    public void delete(Long id, Long deletedBy) {
+    public void deleteWarehouse(Long id, Long deletedBy) {
         log.info("Eliminando almacén ID: {}", id);
         
         WarehouseEntity entity = warehouseRepository.findById(id)
@@ -102,16 +102,13 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new IllegalArgumentException("El almacén ya está eliminado");
         }
         
-        // Verificar dependencias
         if (hasDependencies(id)) {
             throw new IllegalStateException("No se puede eliminar, almacén en uso");
         }
         
-        // Buscar usuario eliminador
         userRepository.findById(deletedBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario eliminador no encontrado"));
         
-        // Soft delete
         entity.markAsDeleted(deletedBy);
         warehouseRepository.save(entity);
         
@@ -120,33 +117,47 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Warehouse> findById(Long id) {
-        return warehouseRepository.findById(id)
-                .filter(entity -> !entity.isDeleted())
-                .map(this::mapToWarehouse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Warehouse> findByWarehouseKey(String warehouseKey) {
-        return warehouseRepository.findByWarehouseKeyAndDeletedAtIsNull(warehouseKey.toUpperCase())
-                .map(this::mapToWarehouse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Warehouse> findAll() {
-        return warehouseRepository.findAllByDeletedAtIsNull().stream()
+    public List<Warehouse> findAllWarehouses() {
+        return warehouseRepository.findAllByDeletedAtIsNull(Pageable.unpaged())
+                .getContent()
+                .stream()
                 .map(this::mapToWarehouse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Warehouse> findAll(Pageable pageable) {
-        return warehouseRepository.findAllByDeletedAtIsNull(pageable)
+    public Optional<Warehouse> findByIdWarehouse(Long id) {
+        return warehouseRepository.findById(id)
+                .filter(entity -> !entity.isDeleted())
                 .map(this::mapToWarehouse);
     }
+
+    @Override
+    public Optional<Warehouse> findByWarehouseKey(String warehouseKey) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Page<Warehouse> findAllWarehouses(Pageable pageable) {
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Warehouse> findWarehousesByUserId(Long userId) {
+        return warehouseRepository.findActiveWarehousesByUserIdList(userId).stream()
+                .map(this::mapToWarehouse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Warehouse> findWarehousesByUserId(Long userId, Pageable pageable) {
+        return warehouseRepository.findActiveWarehousesByUserIdPage(userId, pageable)
+                .map(this::mapToWarehouse);
+    }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -195,28 +206,30 @@ public class WarehouseServiceImpl implements WarehouseService {
         */
     }
 
-    @Override
+
+
+
     @Transactional(readOnly = true)
-    public List<Warehouse> findWarehousesByUserId(Long userId) {
-        return warehouseRepository.findWarehousesByUserId(userId).stream()
+    public List<Warehouse> findActiveWarehousesByUserId(Long userId) {
+        return warehouseRepository.findActiveWarehousesByUserIdList(userId).stream()
                 .map(this::mapToWarehouse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Warehouse> findWarehousesByUserId(Long userId, Pageable pageable) {
-        return warehouseRepository.findWarehousesByUserId(userId, pageable)
+    public Page<Warehouse> findActiveWarehousesByUserId(Long userId, Pageable pageable) {
+        return warehouseRepository.findActiveWarehousesByUserIdPage(userId, pageable)
                 .map(this::mapToWarehouse);
     }
 
-    @Override
     @Transactional(readOnly = true)
     public boolean hasUserAccessToWarehouse(Long userId, Long warehouseId) {
         return userWarehouseRepository.existsByUserIdAndWarehouseIdAndWarehouseDeletedAtIsNull(userId, warehouseId);
     }
 
     private Warehouse mapToWarehouse(WarehouseEntity entity) {
+        if (entity == null) return null;
         return Warehouse.builder()
                 .id(entity.getId())
                 .warehouseKey(entity.getWarehouseKey())
@@ -229,6 +242,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .updatedBy(entity.getUpdatedBy())
                 .deletedBy(entity.getDeletedBy())
                 .assignedUsersCount(userWarehouseRepository.countUsersByWarehouseId(entity.getId()))
+                .deleted(entity.isDeleted())
                 .build();
     }
 }

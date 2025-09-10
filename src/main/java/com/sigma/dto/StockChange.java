@@ -5,8 +5,6 @@ import lombok.Data;
 @Data
 public class StockChange {
     private Long productId;
-    private Long warehouseId;
-    private Double quantity;
-    private String reason;
+    private Integer quantity;
+    private String unit;
 }
-

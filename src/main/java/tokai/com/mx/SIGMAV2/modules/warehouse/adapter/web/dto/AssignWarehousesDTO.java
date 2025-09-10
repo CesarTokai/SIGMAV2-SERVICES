@@ -1,21 +1,13 @@
 package tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto;
 
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.List;
+import java.util.Set;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class AssignWarehousesDTO {
-
-    @NotNull(message = "La lista de almacenes es obligatoria")
-    @NotEmpty(message = "Debe asignar al menos un almacén")
-    private List<Long> warehouseIds;
-
-    private String reason; // Razón de la asignación (opcional)
+    @NotEmpty(message = "Debe especificar al menos un almacén")
+    @Size(max = 50, message = "No puede asignar más de 50 almacenes a la vez")
+    private Set<Long> warehouseIds;
 }

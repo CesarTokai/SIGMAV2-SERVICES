@@ -66,7 +66,7 @@ public class WarehouseController {
             if (hasRole("ADMINISTRADOR")) {
                 warehouses = (search != null && !search.trim().isEmpty()) 
                     ? warehouseService.findAllWithSearch(search.trim(), pageable)
-                    : warehouseService.findAll(pageable);
+                    : warehouseService.findAllWarehouses(pageable);
             } else {
                 // Filtrar por almacenes asignados al usuario
                 warehouses = warehouseService.findWarehousesByUserId(currentUserId, pageable);
@@ -107,7 +107,7 @@ public class WarehouseController {
         try {
             Long currentUserId = getCurrentUserId();
             
-            Warehouse warehouse = warehouseService.findById(id)
+            Warehouse warehouse = warehouseService.findByIdWarehouse(id)
                     .orElseThrow(() -> new WarehouseNotFoundException(id));
             
             // Verificar acceso si no es administrador
@@ -142,7 +142,7 @@ public class WarehouseController {
         try {
             Long currentUserId = getCurrentUserId();
             
-            Warehouse warehouse = warehouseService.create(dto, currentUserId);
+            Warehouse warehouse = warehouseService.createWarehouse(dto, currentUserId);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -182,7 +182,7 @@ public class WarehouseController {
         try {
             Long currentUserId = getCurrentUserId();
             
-            Warehouse warehouse = warehouseService.update(id, dto, currentUserId);
+            Warehouse warehouse = warehouseService.updateWarehouse(id, dto, currentUserId);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -212,7 +212,7 @@ public class WarehouseController {
         try {
             Long currentUserId = getCurrentUserId();
             
-            warehouseService.delete(id, currentUserId);
+            warehouseService.deleteWarehouse(id, currentUserId);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -371,18 +371,15 @@ public class WarehouseController {
     }
 
     private WarehouseResponseDTO mapToResponseDTO(Warehouse warehouse) {
-        return WarehouseResponseDTO.builder()
-                .id(warehouse.getId())
-                .warehouseKey(warehouse.getWarehouseKey())
-                .nameWarehouse(warehouse.getNameWarehouse())
-                .observations(warehouse.getObservations())
-                .createdAt(warehouse.getCreatedAt())
-                .updatedAt(warehouse.getUpdatedAt())
-                .createdByEmail(warehouse.getCreatedByEmail())
-                .updatedByEmail(warehouse.getUpdatedByEmail())
-                .assignedUsersCount(warehouse.getAssignedUsersCount())
-                .build();
+        WarehouseResponseDTO dto = new WarehouseResponseDTO();
+        dto.setId(warehouse.getId());
+        dto.setWarehouseKey(warehouse.getWarehouseKey());
+        dto.setNameWarehouse(warehouse.getNameWarehouse());
+        dto.setCreatedAt(warehouse.getCreatedAt());
+        dto.setUpdatedAt(warehouse.getUpdatedAt());
+        return dto;
     }
+
 
     private ResponseEntity<Map<String, Object>> handleError(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
