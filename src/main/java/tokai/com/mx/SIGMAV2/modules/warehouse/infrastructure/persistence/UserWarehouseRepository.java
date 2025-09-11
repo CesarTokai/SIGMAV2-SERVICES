@@ -42,4 +42,7 @@ public interface UserWarehouseRepository extends JpaRepository<UserWarehouseEnti
     Optional<UserWarehouseEntity> findByUserIdAndWarehouseId(
             @Param("userId") Long userId,
             @Param("warehouseId") Long warehouseId);
+
+    @Query("SELECT COUNT(w) > 0 FROM WarehouseEntity w WHERE LOWER(w.nameWarehouse) = LOWER(:name) AND w.id != :id AND w.deletedAt IS NULL")
+    boolean existsByNameExcludingId(@Param("name") String name, @Param("id") Long id);
 }

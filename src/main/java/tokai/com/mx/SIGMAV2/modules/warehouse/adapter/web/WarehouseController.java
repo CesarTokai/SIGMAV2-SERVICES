@@ -201,6 +201,7 @@ public class WarehouseController {
         }
     }
 
+
     /**
      * Eliminar almacén (Solo ADMINISTRADOR)
      */
@@ -208,20 +209,23 @@ public class WarehouseController {
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<Map<String, Object>> deleteWarehouse(@PathVariable Long id) {
         log.info("Eliminando almacén ID: {}", id);
-        
+
         try {
             Long currentUserId = getCurrentUserId();
-            
+
             warehouseService.deleteWarehouse(id, currentUserId);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Almacén eliminado exitosamente");
-            
+
             return ResponseEntity.ok(response);
-            
+
         } catch (IllegalStateException e) {
             return handleError("No se puede eliminar, almacén en uso", HttpStatus.CONFLICT);
+        } catch (IllegalArgumentException e) {
+            // Capturar específicamente el caso de almacén ya eliminado
+            return handleError(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (WarehouseNotFoundException e) {
             return handleError("Almacén no encontrado", HttpStatus.NOT_FOUND);
         } catch (Exception e) {
@@ -375,8 +379,15 @@ public class WarehouseController {
         dto.setId(warehouse.getId());
         dto.setWarehouseKey(warehouse.getWarehouseKey());
         dto.setNameWarehouse(warehouse.getNameWarehouse());
+        dto.setObservations(warehouse.getObservations());
         dto.setCreatedAt(warehouse.getCreatedAt());
         dto.setUpdatedAt(warehouse.getUpdatedAt());
+        dto.setDeletedAt(warehouse.getDeletedAt());
+        dto.setDeleted(warehouse.isDeleted());
+        // Conteo de usuarios asignados (convertir null a 0)
+        Integer count = warehouse.getAssignedUsersCount() == null ? 0 : warehouse.getAssignedUsersCount().intValue();
+        dto.setAssignedUsersCount(count);
+        // Los correos del creador/actualizador no están disponibles aquí; se dejan nulos por ahora.
         return dto;
     }
 

@@ -2,13 +2,11 @@ package tokai.com.mx.SIGMAV2.modules.warehouse.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.WarehouseService;
@@ -18,6 +16,8 @@ import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepo
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Service
@@ -32,30 +32,41 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public Warehouse createWarehouse(WarehouseCreateDTO dto, Long createdBy) {
         log.info("Creando almacén con clave: {}", dto.getWarehouseKey());
-        
-        // Normalizar clave a mayúsculas
+        // Normalizar clave a mayúsculas y nombre sin espacios sobrantes
         String normalizedKey = dto.getWarehouseKey().toUpperCase().trim();
+        String normalizedName = StringUtils.trimToEmpty(dto.getNameWarehouse());
         
-        // Validar unicidad
-        if (warehouseRepository.existsByWarehouseKeyAndIdNotAndDeletedAtIsNull(normalizedKey, 0L)) {
+        // Validar unicidad de clave
+        boolean keyExists = warehouseRepository.existsByWarehouseKeyAndIdNotAndDeletedAtIsNull(normalizedKey, 0L);
+        if (keyExists) {
             throw new IllegalArgumentException("La clave de almacén ya existe: " + normalizedKey);
         }
-        
-        if (warehouseRepository.existsByNameWarehouseAndIdNotAndDeletedAtIsNull(dto.getNameWarehouse().trim(), 0L)) {
-            throw new IllegalArgumentException("El nombre de almacén ya existe: " + dto.getNameWarehouse());
+
+        // Validar unicidad de nombre (modo robusto)
+        List<WarehouseEntity> existingByName = warehouseRepository.findAllByNameWarehouseAndDeletedAtIsNull(normalizedName);
+        boolean nameExists = existingByName.stream().anyMatch(w -> w.getId() != null && !w.getId().equals(0L));
+        if (nameExists) {
+            throw new IllegalArgumentException("El nombre de almacén ya existe: " + normalizedName);
         }
-        
+
         // Validar que el usuario existe
         userRepository.findById(createdBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario creador no encontrado"));
         
+        // Antes de crear, resolver posibles choques con registros eliminados (índices únicos en BD)
+        ensureDeletedConflictsRenamed(normalizedName, normalizedKey, null);
+
         // Crear entidad
         WarehouseEntity entity = new WarehouseEntity();
         entity.setWarehouseKey(normalizedKey);
-        entity.setNameWarehouse(dto.getNameWarehouse().trim());
+        entity.setNameWarehouse(normalizedName);
         entity.setObservations(dto.getObservations() != null ? dto.getObservations().trim() : null);
         entity.setCreatedBy(createdBy);
         entity.setUpdatedBy(createdBy);
+        // Establecer timestamps manualmente para garantizar valores no nulos sin depender de auditoría global
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         
         WarehouseEntity saved = warehouseRepository.save(entity);
         
@@ -63,55 +74,80 @@ public class WarehouseServiceImpl implements WarehouseService {
         return mapToWarehouse(saved);
     }
 
+
     @Override
     public Warehouse updateWarehouse(Long id, WarehouseUpdateDTO dto, Long updatedBy) {
         log.info("Actualizando almacén ID: {}", id);
-        
+
         WarehouseEntity entity = warehouseRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Almacén no encontrado"));
-        
+
         if (entity.isDeleted()) {
             throw new IllegalArgumentException("No se puede actualizar un almacén eliminado");
         }
-        
-        if (warehouseRepository.existsByNameWarehouseAndIdNotAndDeletedAtIsNull(dto.getNameWarehouse().trim(), id)) {
-            throw new IllegalArgumentException("El nombre de almacén ya existe: " + dto.getNameWarehouse());
+
+        if (dto == null) {
+            throw new IllegalArgumentException("El DTO de actualización no puede ser nulo");
         }
-        
+
+        // Normalizar el nombre: recortar espacios; comparación y validación serán case-insensitive
+        String normalizedName = StringUtils.trimToEmpty(dto.getNameWarehouse());
+
+        // Verificar si el nombre ha cambiado antes de validar (ignorar mayúsculas/minúsculas y espacios)
+        String currentName = StringUtils.trimToEmpty(entity.getNameWarehouse());
+        if (!normalizedName.equalsIgnoreCase(currentName)) {
+            // Verificar si existe otro almacén activo con el mismo nombre (case-insensitive) excluyendo el propio ID
+            boolean nameExists = warehouseRepository.existsByNameWarehouseAndIdNotAndDeletedAtIsNull(normalizedName, id);
+            if (nameExists) {
+                throw new IllegalArgumentException("El nombre de almacén ya existe: " + normalizedName);
+            }
+        }
+
         userRepository.findById(updatedBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario actualizador no encontrado"));
-        
-        entity.setNameWarehouse(dto.getNameWarehouse().trim());
+
+        // Resolver conflictos con registros eliminados que compartan el mismo nombre ANTES de modificar el entity,
+        // para evitar auto-flush de JPA que podría violar la restricción única.
+        ensureDeletedConflictsRenamed(normalizedName, null, id);
+
+        // Ahora sí, aplicar los cambios al entity
+        entity.setNameWarehouse(normalizedName);
         entity.setObservations(dto.getObservations() != null ? dto.getObservations().trim() : null);
         entity.setUpdatedBy(updatedBy);
-        
+        entity.setUpdatedAt(LocalDateTime.now());
+
         WarehouseEntity saved = warehouseRepository.save(entity);
-        
+
         log.info("Almacén actualizado exitosamente: ID={}", id);
         return mapToWarehouse(saved);
     }
 
+
     @Override
     public void deleteWarehouse(Long id, Long deletedBy) {
         log.info("Eliminando almacén ID: {}", id);
-        
+
         WarehouseEntity entity = warehouseRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Almacén no encontrado"));
-        
+
         if (entity.isDeleted()) {
+            log.warn("Intento de eliminar un almacén ya eliminado: ID={}", id);
             throw new IllegalArgumentException("El almacén ya está eliminado");
         }
-        
+
         if (hasDependencies(id)) {
             throw new IllegalStateException("No se puede eliminar, almacén en uso");
         }
-        
+
         userRepository.findById(deletedBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario eliminador no encontrado"));
-        
+
         entity.markAsDeleted(deletedBy);
+        // Al archivar (soft-delete), renombrar para liberar restricciones únicas en BD
+        entity.setNameWarehouse(archiveLabel(entity.getNameWarehouse(), entity.getId()));
+        entity.setWarehouseKey(archiveKey(entity.getWarehouseKey(), entity.getId()));
         warehouseRepository.save(entity);
-        
+
         log.info("Almacén eliminado exitosamente: ID={}", id);
     }
 
@@ -226,6 +262,49 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional(readOnly = true)
     public boolean hasUserAccessToWarehouse(Long userId, Long warehouseId) {
         return userWarehouseRepository.existsByUserIdAndWarehouseIdAndWarehouseDeletedAtIsNull(userId, warehouseId);
+    }
+
+    private void ensureDeletedConflictsRenamed(String nameOrNull, String keyOrNull, Long currentId) {
+        // Renombrar registros eliminados que choquen con el nombre o clave solicitados
+        // para no violar índices únicos en BD al crear/actualizar.
+        if (nameOrNull != null && !nameOrNull.isBlank()) {
+            List<WarehouseEntity> conflictsByName = warehouseRepository.findDeletedByNameIgnoreCase(nameOrNull);
+            if (!conflictsByName.isEmpty()) {
+                for (WarehouseEntity w : conflictsByName) {
+                    if (currentId != null && w.getId() != null && w.getId().equals(currentId)) continue;
+                    w.setNameWarehouse(archiveLabel(w.getNameWarehouse(), w.getId()));
+                }
+                warehouseRepository.saveAll(conflictsByName);
+            }
+        }
+        if (keyOrNull != null && !keyOrNull.isBlank()) {
+            List<WarehouseEntity> conflictsByKey = warehouseRepository.findDeletedByKeyIgnoreCase(keyOrNull);
+            if (!conflictsByKey.isEmpty()) {
+                for (WarehouseEntity w : conflictsByKey) {
+                    if (currentId != null && w.getId() != null && w.getId().equals(currentId)) continue;
+                    w.setWarehouseKey(archiveKey(w.getWarehouseKey(), w.getId()));
+                }
+                warehouseRepository.saveAll(conflictsByKey);
+            }
+        }
+    }
+
+    private String archiveLabel(String original, Long id) {
+        String base = original == null ? "" : original.trim();
+        String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String suffix = " [DEL-" + ts + (id != null ? ("-" + id) : "") + "]";
+        return base + suffix;
+    }
+
+    private String archiveKey(String original, Long id) {
+        String base = original == null ? "" : original.trim();
+        String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String suffix = "_DEL_" + ts + (id != null ? ("_" + id) : "");
+        int maxLen = 50; // column length
+        if (base.length() + suffix.length() > maxLen) {
+            base = base.substring(0, Math.max(0, maxLen - suffix.length()));
+        }
+        return base + suffix;
     }
 
     private Warehouse mapToWarehouse(WarehouseEntity entity) {
