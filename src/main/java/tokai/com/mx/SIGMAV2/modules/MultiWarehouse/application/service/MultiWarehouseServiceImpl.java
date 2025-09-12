@@ -8,16 +8,22 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseExistence;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseImportLog;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.infrastructure.persistence.MultiWarehouseRepository;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.infrastructure.persistence.imports.MultiWarehouseImportLogRepository;
+import tokai.com.mx.SIGMAV2.modules.periods.application.port.output.PeriodRepository;
+import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +31,7 @@ import java.util.stream.Collectors;
 public class MultiWarehouseServiceImpl implements MultiWarehouseService {
     private final MultiWarehouseRepository multiWarehouseRepository;
     private final MultiWarehouseImportLogRepository importLogRepository;
+    private final PeriodRepository periodRepository;
 
     @Override
     public Page<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search, Pageable pageable) {
@@ -35,6 +42,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> importFile(MultipartFile file, String period) {
         if (period == null || period.isBlank()) {
             return ResponseEntity.badRequest().body("Periodo* es obligatorio");
@@ -42,6 +50,20 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("Archivo multialmacen.xlsx* es obligatorio");
         }
+
+        // Validar estado del periodo: rechazar si CLOSED o LOCKED
+        LocalDate periodDate = parsePeriod(period);
+        if (periodDate == null) {
+            return ResponseEntity.badRequest().body("Formato de periodo inválido. Use MM-yyyy o yyyy-MM");
+        }
+        Optional<Period> perOpt = periodRepository.findByDate(periodDate);
+        if (perOpt.isPresent()) {
+            Period.PeriodState st = perOpt.get().getState();
+            if (st == Period.PeriodState.CLOSED || st == Period.PeriodState.LOCKED) {
+                return ResponseEntity.status(409).body("El periodo está " + st + ", no se permite importar");
+            }
+        }
+
         // Persist import log entry
         MultiWarehouseImportLog log = new MultiWarehouseImportLog();
         log.setFileName(file.getOriginalFilename());
@@ -69,8 +91,11 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         } catch (Exception ex) {
             savedLog.setStatus("ERROR");
             savedLog.setMessage("Error en importación: " + ex.getMessage());
+            // Propagar excepción no comprobada para activar rollback transaccional
+            throw new RuntimeException(ex);
+        } finally {
+            importLogRepository.save(savedLog);
         }
-        importLogRepository.save(savedLog);
         return ResponseEntity.ok(savedLog);
     }
 
@@ -247,25 +272,45 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
     private String get(String[] arr, int idx) { return (arr != null && idx >=0 && idx < arr.length) ? arr[idx] : null; }
 
     private java.math.BigDecimal parseDecimal(String s) {
-        if (s == null || s.trim().isEmpty()) return java.math.BigDecimal.ZERO;
-        try { return new java.math.BigDecimal(s.replace(",", "").trim()); } catch (Exception ex) { return java.math.BigDecimal.ZERO; }
+        if (s == null || s.trim().isEmpty()) return null;
+        try { return new java.math.BigDecimal(s.trim()); } catch (NumberFormatException e) { return null; }
     }
 
     private String getCellString(org.apache.poi.ss.usermodel.Cell cell) {
         if (cell == null) return null;
         switch (cell.getCellType()) {
             case STRING: return cell.getStringCellValue();
-            case NUMERIC: return java.math.BigDecimal.valueOf(cell.getNumericCellValue()).toPlainString();
+            case NUMERIC: return String.valueOf(cell.getNumericCellValue());
             case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
             default: return null;
         }
     }
 
     private String normalizeStatus(String st) {
-        if (st == null) return "A";
-        String v = st.trim().toUpperCase();
-        if (v.startsWith("B")) return "B"; // Baja
-        return "A"; // Alta por defecto
+        if (st == null) return null;
+        String s = st.trim().toUpperCase();
+        if (s.startsWith("B")) return "B"; // Baja
+        if (s.startsWith("A")) return "A"; // Alta/Activa
+        return s;
     }
+
+    private LocalDate parsePeriod(String period) {
+        // Acepta MM-yyyy o yyyy-MM
+        String p = period.trim();
+        try {
+            if (p.matches("\\d{2}-\\d{4}")) {
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM-yyyy");
+                java.time.YearMonth ym = java.time.YearMonth.parse(p, fmt);
+                return ym.atDay(1);
+            }
+            if (p.matches("\\d{4}-\\d{2}")) {
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+                java.time.YearMonth ym = java.time.YearMonth.parse(p, fmt);
+                return ym.atDay(1);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
 }
 

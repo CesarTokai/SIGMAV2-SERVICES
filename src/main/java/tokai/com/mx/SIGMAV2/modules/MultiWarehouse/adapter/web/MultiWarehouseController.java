@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseSearchDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseWizardStepDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.application.service.MultiWarehouseService;
@@ -23,11 +24,13 @@ public class MultiWarehouseController {
         return multiWarehouseService.findExistences(search, pageable);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/import")
     public ResponseEntity<?> importMultiWarehouse(@RequestParam("file") MultipartFile file, @RequestParam("period") String period) {
         return multiWarehouseService.importFile(file, period);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/wizard/step")
     public ResponseEntity<?> wizardStep(@RequestBody MultiWarehouseWizardStepDTO stepDTO) {
         return multiWarehouseService.processWizardStep(stepDTO);

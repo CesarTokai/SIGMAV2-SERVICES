@@ -2,6 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.input.rest;
 
 import org.springframework.data.web.config.SortHandlerMethodArgumentResolverCustomizer;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryOperationsPort;
@@ -19,11 +20,14 @@ public class InventoryController {
         this.inventoryOperations = inventoryOperations;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/import")
     public ResponseEntity<String> importInventory(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("type") String type) {
-        inventoryOperations.importInventory(file, type);
+            @RequestParam("type") String type,
+            @RequestParam("period") String period,
+            @RequestParam(value = "warehouseId", required = false) Long warehouseId) {
+        inventoryOperations.importInventory(file, type, period, warehouseId);
         try (var inputStream = file.getInputStream()) {
             // Usando Apache POI para leer el contenido del Excel (solo la primera hoja y las primeras filas)
             org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(inputStream);

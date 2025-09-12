@@ -28,6 +28,11 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
     }
 
     @Override
+    public Optional<Period> findByDate(java.time.LocalDate date) {
+        return jpaPeriodRepository.findByDate(date.withDayOfMonth(1)).map(this::toDomain);
+    }
+
+    @Override
     public Page<Period> findAll(Pageable pageable) {
         return jpaPeriodRepository.findAll(pageable).map(this::toDomain);
     }

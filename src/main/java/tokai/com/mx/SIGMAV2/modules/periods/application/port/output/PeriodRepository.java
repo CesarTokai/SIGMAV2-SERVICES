@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface PeriodRepository {
     Period save(Period period);
     Optional<Period> findById(Long id);
+    Optional<Period> findByDate(LocalDate date);
     Page<Period> findAll(Pageable pageable);
     void deleteById(Long id);
     boolean existsByDate(LocalDate date);
