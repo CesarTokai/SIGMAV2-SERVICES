@@ -42,15 +42,36 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("Archivo multialmacen.xlsx* es obligatorio");
         }
-        // Persist simple import log entry
+        // Persist import log entry
         MultiWarehouseImportLog log = new MultiWarehouseImportLog();
         log.setFileName(file.getOriginalFilename());
         log.setPeriod(period);
         log.setImportDate(LocalDateTime.now());
-        log.setStatus("SUCCESS");
+        log.setStatus("STARTED");
         log.setMessage("Importación iniciada");
-        MultiWarehouseImportLog saved = importLogRepository.save(log);
-        return ResponseEntity.ok(saved);
+        MultiWarehouseImportLog savedLog = importLogRepository.save(log);
+
+        int processed = 0;
+        try {
+            String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+            List<MultiWarehouseExistence> toPersist;
+            if (filename.endsWith(".csv")) {
+                toPersist = parseCsv(file);
+            } else {
+                toPersist = parseXlsx(file);
+            }
+            if (!toPersist.isEmpty()) {
+                multiWarehouseRepository.saveAll(toPersist);
+            }
+            processed = toPersist.size();
+            savedLog.setStatus("SUCCESS");
+            savedLog.setMessage("Importación completada. Registros: " + processed);
+        } catch (Exception ex) {
+            savedLog.setStatus("ERROR");
+            savedLog.setMessage("Error en importación: " + ex.getMessage());
+        }
+        importLogRepository.save(savedLog);
+        return ResponseEntity.ok(savedLog);
     }
 
     @Override
@@ -125,6 +146,126 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         return importLogRepository.findById(id)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Helpers
+    private List<MultiWarehouseExistence> parseCsv(MultipartFile file) throws Exception {
+        List<MultiWarehouseExistence> list = new java.util.ArrayList<>();
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(file.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            String headerLine = br.readLine();
+            if (headerLine == null) return list;
+            String[] headers = headerLine.split(",");
+            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre"});
+            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code"});
+            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
+            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad"});
+            int iEstado = indexOf(headers, new String[]{"estado","status"});
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                String[] cols = splitCsv(line);
+                MultiWarehouseExistence e = new MultiWarehouseExistence();
+                e.setWarehouseName(get(cols, iAlmacen));
+                e.setProductCode(get(cols, iProducto));
+                e.setProductName(get(cols, iDesc));
+                e.setStock(parseDecimal(get(cols, iExist)));
+                String st = get(cols, iEstado);
+                e.setStatus(normalizeStatus(st));
+                list.add(e);
+            }
+        }
+        return list;
+    }
+
+    private List<MultiWarehouseExistence> parseXlsx(MultipartFile file) throws Exception {
+        List<MultiWarehouseExistence> list = new java.util.ArrayList<>();
+        try (java.io.InputStream is = file.getInputStream()) {
+            org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(is);
+            org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(0);
+            java.util.Iterator<org.apache.poi.ss.usermodel.Row> it = sheet.iterator();
+            if (!it.hasNext()) { wb.close(); return list; }
+            org.apache.poi.ss.usermodel.Row header = it.next();
+            int cols = header.getLastCellNum();
+            String[] headers = new String[cols];
+            for (int i=0;i<cols;i++) headers[i] = getCellString(header.getCell(i));
+            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre"});
+            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code"});
+            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
+            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad"});
+            int iEstado = indexOf(headers, new String[]{"estado","status"});
+            while (it.hasNext()) {
+                org.apache.poi.ss.usermodel.Row row = it.next();
+                MultiWarehouseExistence e = new MultiWarehouseExistence();
+                e.setWarehouseName(getCellString(row.getCell(iAlmacen)));
+                e.setProductCode(getCellString(row.getCell(iProducto)));
+                e.setProductName(getCellString(row.getCell(iDesc)));
+                e.setStock(parseDecimal(getCellString(row.getCell(iExist))));
+                e.setStatus(normalizeStatus(getCellString(row.getCell(iEstado))));
+                list.add(e);
+            }
+            wb.close();
+        }
+        return list;
+    }
+
+    private int indexOf(String[] headers, String[] candidates) {
+        if (headers == null) return -1;
+        for (int i=0;i<headers.length;i++) {
+            String h = headers[i] == null ? "" : headers[i].trim().toLowerCase();
+            for (String c : candidates) {
+                if (h.equals(c)) return i;
+            }
+        }
+        return -1;
+    }
+
+    private String[] splitCsv(String line) {
+        // Basic CSV split, supports simple quoted values
+        java.util.List<String> out = new java.util.ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i=0;i<line.length();i++) {
+            char ch = line.charAt(i);
+            if (ch == '"') {
+                if (inQuotes && i+1 < line.length() && line.charAt(i+1) == '"') {
+                    sb.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch == ',' && !inQuotes) {
+                out.add(sb.toString());
+                sb.setLength(0);
+            } else {
+                sb.append(ch);
+            }
+        }
+        out.add(sb.toString());
+        return out.toArray(new String[0]);
+    }
+
+    private String get(String[] arr, int idx) { return (arr != null && idx >=0 && idx < arr.length) ? arr[idx] : null; }
+
+    private java.math.BigDecimal parseDecimal(String s) {
+        if (s == null || s.trim().isEmpty()) return java.math.BigDecimal.ZERO;
+        try { return new java.math.BigDecimal(s.replace(",", "").trim()); } catch (Exception ex) { return java.math.BigDecimal.ZERO; }
+    }
+
+    private String getCellString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) return null;
+        switch (cell.getCellType()) {
+            case STRING: return cell.getStringCellValue();
+            case NUMERIC: return java.math.BigDecimal.valueOf(cell.getNumericCellValue()).toPlainString();
+            case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
+            default: return null;
+        }
+    }
+
+    private String normalizeStatus(String st) {
+        if (st == null) return "A";
+        String v = st.trim().toUpperCase();
+        if (v.startsWith("B")) return "B"; // Baja
+        return "A"; // Alta por defecto
     }
 }
 
