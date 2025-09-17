@@ -24,13 +24,13 @@ public class MultiWarehouseController {
         return multiWarehouseService.findExistences(search, pageable);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/import")
     public ResponseEntity<?> importMultiWarehouse(@RequestParam("file") MultipartFile file, @RequestParam("period") String period) {
         return multiWarehouseService.importFile(file, period);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/wizard/step")
     public ResponseEntity<?> wizardStep(@RequestBody MultiWarehouseWizardStepDTO stepDTO) {
         return multiWarehouseService.processWizardStep(stepDTO);

@@ -11,6 +11,9 @@ import java.util.Optional;
 
 public interface WarehouseRepository extends JpaRepository<WarehouseEntity, Long> {
 
+    @Query("SELECT CASE WHEN COUNT(w) > 0 THEN true ELSE false END FROM WarehouseEntity w WHERE LOWER(w.warehouseKey) = LOWER(:key) AND w.deletedAt IS NULL")
+    boolean existsByWarehouseKeyAndDeletedAtIsNull(@Param("key") String key);
+
     @Query("SELECT w FROM WarehouseEntity w WHERE w.warehouseKey = :key AND w.deletedAt IS NULL")
     Optional<WarehouseEntity> findByWarehouseKeyAndDeletedAtIsNull(@Param("key") String key);
 

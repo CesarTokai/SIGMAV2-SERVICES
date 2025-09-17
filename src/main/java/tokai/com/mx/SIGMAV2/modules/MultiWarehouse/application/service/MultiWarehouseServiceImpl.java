@@ -38,6 +38,13 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         if (pageable == null) {
             pageable = PageRequest.of(0, 50);
         }
+        if (search != null && (search.getPeriodId() == null) && search.getPeriod() != null && !search.getPeriod().isBlank()) {
+            LocalDate date = parsePeriod(search.getPeriod());
+            if (date != null) {
+                Optional<Period> per = periodRepository.findByDate(date);
+                per.ifPresent(p -> search.setPeriodId(p.getId()));
+            }
+        }
         return multiWarehouseRepository.findExistences(search, pageable);
     }
 
@@ -82,9 +89,28 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             } else {
                 toPersist = parseXlsx(file);
             }
+
+            // Obtener el ID del periodo (si existe) o usar un valor predeterminado
+            Long periodId = perOpt.map(Period::getId).orElse(null);
+            if (periodId == null) {
+                throw new IllegalStateException("No se pudo determinar el ID del periodo para " + period);
+            }
+
+            // Obtener el ID máximo actual para generar IDs únicos
+            Long maxId = multiWarehouseRepository.findMaxId().orElse(0L);
+
+            // Asignar IDs manualmente a cada entidad y establecer el periodId
+            for (MultiWarehouseExistence existence : toPersist) {
+                existence.setId(++maxId);
+                existence.setPeriodId(periodId);
+            }
+
+
+
             if (!toPersist.isEmpty()) {
                 multiWarehouseRepository.saveAll(toPersist);
             }
+
             processed = toPersist.size();
             savedLog.setStatus("SUCCESS");
             savedLog.setMessage("Importación completada. Registros: " + processed);
@@ -180,11 +206,22 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             String headerLine = br.readLine();
             if (headerLine == null) return list;
             String[] headers = headerLine.split(",");
-            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre"});
-            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code"});
+            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre","cve_alm","CVE_ALM"});
+            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
             int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
-            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad"});
-            int iEstado = indexOf(headers, new String[]{"estado","status"});
+            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
+            int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
+
+            // Validar que se encontraron las columnas esenciales
+            if (iAlmacen < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
+                throw new IllegalArgumentException("El archivo CSV no contiene todas las columnas requeridas. " +
+                        "Columnas no encontradas: " +
+                        (iAlmacen < 0 ? "Almacén (CVE_ALM), " : "") +
+                        (iProducto < 0 ? "Producto (CVE_ART), " : "") +
+                        (iExist < 0 ? "Existencias (EXIST), " : "") +
+                        (iEstado < 0 ? "Estado (STATUS)" : ""));
+            }
+
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
@@ -192,7 +229,8 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 MultiWarehouseExistence e = new MultiWarehouseExistence();
                 e.setWarehouseName(get(cols, iAlmacen));
                 e.setProductCode(get(cols, iProducto));
-                e.setProductName(get(cols, iDesc));
+                // La descripción puede ser opcional, si no se encuentra usamos el código de producto
+                e.setProductName(iDesc >= 0 ? get(cols, iDesc) : get(cols, iProducto));
                 e.setStock(parseDecimal(get(cols, iExist)));
                 String st = get(cols, iEstado);
                 e.setStatus(normalizeStatus(st));
@@ -213,17 +251,29 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             int cols = header.getLastCellNum();
             String[] headers = new String[cols];
             for (int i=0;i<cols;i++) headers[i] = getCellString(header.getCell(i));
-            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre"});
-            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code"});
+            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre","cve_alm","CVE_ALM"});
+            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
             int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
-            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad"});
-            int iEstado = indexOf(headers, new String[]{"estado","status"});
+            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
+            int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
+
+            // Validar que se encontraron las columnas esenciales
+            if (iAlmacen < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
+                throw new IllegalArgumentException("El archivo Excel no contiene todas las columnas requeridas. " +
+                        "Columnas no encontradas: " +
+                        (iAlmacen < 0 ? "Almacén (CVE_ALM), " : "") +
+                        (iProducto < 0 ? "Producto (CVE_ART), " : "") +
+                        (iExist < 0 ? "Existencias (EXIST), " : "") +
+                        (iEstado < 0 ? "Estado (STATUS)" : ""));
+            }
+
             while (it.hasNext()) {
                 org.apache.poi.ss.usermodel.Row row = it.next();
                 MultiWarehouseExistence e = new MultiWarehouseExistence();
                 e.setWarehouseName(getCellString(row.getCell(iAlmacen)));
                 e.setProductCode(getCellString(row.getCell(iProducto)));
-                e.setProductName(getCellString(row.getCell(iDesc)));
+                // La descripción puede ser opcional, si no se encuentra usamos el código de producto
+                e.setProductName(iDesc >= 0 ? getCellString(row.getCell(iDesc)) : getCellString(row.getCell(iProducto)));
                 e.setStock(parseDecimal(getCellString(row.getCell(iExist))));
                 e.setStatus(normalizeStatus(getCellString(row.getCell(iEstado))));
                 list.add(e);
@@ -232,6 +282,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         }
         return list;
     }
+
 
     private int indexOf(String[] headers, String[] candidates) {
         if (headers == null) return -1;

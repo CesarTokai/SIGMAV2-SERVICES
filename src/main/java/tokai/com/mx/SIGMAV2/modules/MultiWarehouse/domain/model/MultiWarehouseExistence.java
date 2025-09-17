@@ -11,11 +11,12 @@ import java.math.BigDecimal;
         })
 @Data
 public class MultiWarehouseExistence {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, unique = true)
-    private Long id;
 
+    @Column(nullable = false)
+    private Long periodId;
+
+    @Id
+    private Long id;
     @Column(nullable = false)
     private Long warehouseId;
 
