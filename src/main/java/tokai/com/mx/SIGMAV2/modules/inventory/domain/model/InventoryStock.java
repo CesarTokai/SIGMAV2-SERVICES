@@ -13,51 +13,21 @@ public class InventoryStock {
 
     public enum Status { A, B }
 
-    public BigDecimal getExistQty() {
-        return existQty;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setExistQty(BigDecimal existQty) {
-        this.existQty = existQty;
-    }
+    public Product getProduct() { return product; }
+    public void setProduct(Product product) { this.product = product; }
 
-    public Long getId() {
-        return id;
-    }
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public BigDecimal getExistQty() { return existQty; }
+    public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
 
-    public Product getProduct() {
-        return product;
-    }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Warehouse getWarehouse() {
-        return warehouse;
-    }
-
-    public void setWarehouse(Warehouse warehouse) {
-        this.warehouse = warehouse;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

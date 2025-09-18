@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public class Product {
 
-
     private Long id;
     private String cveArt;
     private String descr;
@@ -14,52 +13,21 @@ public class Product {
 
     public enum Status { A, B }
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public String getCveArt() { return cveArt; }
+    public void setCveArt(String cveArt) { this.cveArt = cveArt; }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+    public String getDescr() { return descr; }
+    public void setDescr(String descr) { this.descr = descr; }
 
-    public String getCveArt() {
-        return cveArt;
-    }
+    public String getUniMed() { return uniMed; }
+    public void setUniMed(String uniMed) { this.uniMed = uniMed; }
 
-    public void setCveArt(String cveArt) {
-        this.cveArt = cveArt;
-    }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
-    public String getDescr() {
-        return descr;
-    }
-
-    public void setDescr(String descr) {
-        this.descr = descr;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public String getUniMed() {
-        return uniMed;
-    }
-
-    public void setUniMed(String uniMed) {
-        this.uniMed = uniMed;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

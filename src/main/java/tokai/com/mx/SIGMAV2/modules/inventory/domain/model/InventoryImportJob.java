@@ -4,62 +4,32 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class InventoryImportJob {
-
     private Long id;
-    private Product product;
-    private Warehouse warehouse;
-    private BigDecimal existQty;
-    private InventoryStock.Status status;
-    private LocalDateTime updatedAt;
+    private String fileName;
+    private String user;
+    private LocalDateTime startedAt;
+    private LocalDateTime finishedAt;
+    private int totalRecords;
+    private String status; // SUCCESS, ERROR, etc.
 
-    public enum Status { A, B }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
 
-    public BigDecimal getExistQty() {
-        return existQty;
-    }
+    public String getUser() { return user; }
+    public void setUser(String user) { this.user = user; }
 
-    public void setExistQty(BigDecimal existQty) {
-        this.existQty = existQty;
-    }
+    public LocalDateTime getStartedAt() { return startedAt; }
+    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
 
-    public Long getId() {
-        return id;
-    }
+    public LocalDateTime getFinishedAt() { return finishedAt; }
+    public void setFinishedAt(LocalDateTime finishedAt) { this.finishedAt = finishedAt; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public int getTotalRecords() { return totalRecords; }
+    public void setTotalRecords(int totalRecords) { this.totalRecords = totalRecords; }
 
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
-    public InventoryStock.Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(InventoryStock.Status status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Warehouse getWarehouse() {
-        return warehouse;
-    }
-
-    public void setWarehouse(Warehouse warehouse) {
-        this.warehouse = warehouse;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }
