@@ -42,79 +42,162 @@ public class InventoryImportService implements InventoryImportUseCase {
 
     @Override
     @Transactional
-    public InventoryImportJob importInventory(InventoryImportRequestDTO request) {
+    public InventoryImportResultDTO importInventory(InventoryImportRequestDTO request) {
+        final List<String> errors = new ArrayList<>();
+        String logFileUrl = null;
+        final ImportStats stats = new ImportStats();
 
-        MultipartFile file = request.getFile();
-        Long periodId = request.getPeriodId();
-        Long warehouseId = request.getWarehouseId();
-        String username = request.getUsername();
+        try {
+            // Validaciones iniciales
+            MultipartFile file = request.getFile();
+            if (file == null || file.isEmpty()) {
+                errors.add("El archivo está vacío");
+                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+            }
 
-        // 1. Validar periodo
-        Period period = periodRepository.findById(periodId)
-                .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
-        if (period.getState() == Period.State.CLOSED || period.getState() == Period.State.LOCKED) {
-            throw new IllegalStateException("No se puede importar en un periodo cerrado o bloqueado");
+            // Validar extensión del archivo
+            String fileName = file.getOriginalFilename();
+            if (fileName != null && !fileName.toLowerCase().endsWith(".xlsx")) {
+                errors.add("El archivo debe ser formato XLSX");
+                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+            }
+
+            Long periodId = request.getIdPeriod();
+            if (periodId == null) {
+                errors.add("El periodo es obligatorio");
+                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+            }
+
+            // 1. Validar periodo
+            Period period = periodRepository.findById(periodId)
+                    .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
+            if (period.getState() == Period.State.CLOSED || period.getState() == Period.State.LOCKED) {
+                errors.add("No se puede importar en un periodo cerrado o bloqueado");
+                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+            }
+
+            // 2. Validar almacén
+            Long warehouseId = request.getIdWarehouse();
+            Warehouse warehouse = warehouseId != null
+                    ? warehouseRepository.findById(warehouseId)
+                            .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
+                    : getDefaultWarehouse();
+
+            // 3. Parsear archivo
+            List<InventoryImportRow> rows = parseExcel(file);
+            if (rows.isEmpty()) {
+                errors.add("El archivo no contiene datos para importar");
+                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+            }
+            stats.totalRows = rows.size();
+
+            // 4. Procesar productos y snapshots
+            Set<Long> importedProductIds = new HashSet<>();
+            for (InventoryImportRow row : rows) {
+                // Validar datos requeridos
+                if (row.getCveArt() == null || row.getCveArt().trim().isEmpty()) {
+                    errors.add("Fila " + (importedProductIds.size() + 1) + ": CVE_ART es requerido");
+                    continue;
+                }
+
+                try {
+                    Product product = processProduct(row, stats);
+                    importedProductIds.add(product.getId());
+                    processSnapshot(product, warehouse, period, row.getExistQty(), stats);
+                } catch (Exception e) {
+                    errors.add("Error procesando " + row.getCveArt() + ": " + e.getMessage());
+                }
+            }
+
+            // 5. Marcar como baja los productos no incluidos
+            if (!importedProductIds.isEmpty()) {
+                stats.deactivated = snapshotRepository.markAsInactiveNotInImport(
+                    period.getId(),
+                    warehouse.getId(),
+                    new ArrayList<>(importedProductIds)
+                );
+            }
+
+            // 6. Registrar bitácora
+            InventoryImportJob job = new InventoryImportJob();
+            job.setFileName(file.getOriginalFilename());
+            job.setUser("SYSTEM"); // TODO: Obtener del contexto de seguridad
+            job.setStartedAt(LocalDateTime.now());
+            job.setFinishedAt(LocalDateTime.now());
+            job.setTotalRecords(stats.totalRows);
+            job.setStatus(errors.isEmpty() ? "SUCCESS" : "WARNING");
+            importJobRepository.save(job);
+
+            logFileUrl = generateLogFileUrl(job.getId());
+
+        } catch (Exception e) {
+            errors.add("Error al importar inventario: " + e.getMessage());
         }
 
-        // 2. Validar almacén (si no se envía, usar default)
-        Warehouse warehouse = warehouseId != null
-                ? warehouseRepository.findById(warehouseId).orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
-                : getDefaultWarehouse();
+        return new InventoryImportResultDTO(
+                stats.totalRows,
+                stats.inserted,
+                stats.updated,
+                stats.deactivated,
+                errors,
+                logFileUrl
+        );
+    }
 
-        // 3. Parsear archivo (aquí se asume un método parseExcel que retorna lista de DTOs)
-        List<InventoryImportRow> rows = parseExcel(file);
+    private Product processProduct(InventoryImportRow row, ImportStats stats) {
+        return productRepository.findByCveArt(row.getCveArt())
+                .map(existingProduct -> {
+                    // Actualizar datos si cambiaron
+                    boolean changed = false;
+                    if (!existingProduct.getDescr().equals(row.getDescr())) {
+                        existingProduct.setDescr(row.getDescr());
+                        changed = true;
+                    }
+                    if (!existingProduct.getUniMed().equals(row.getUniMed())) {
+                        existingProduct.setUniMed(row.getUniMed());
+                        changed = true;
+                    }
+                    if (changed) {
+                        return productRepository.save(existingProduct);
+                    }
+                    return existingProduct;
+                })
+                .orElseGet(() -> {
+                    Product p = new Product();
+                    p.setCveArt(row.getCveArt());
+                    p.setDescr(row.getDescr());
+                    p.setUniMed(row.getUniMed());
+                    p.setStatus(Product.Status.A);
+                    p.setCreatedAt(LocalDateTime.now());
+                    stats.incrementInserted();
+                    return productRepository.save(p);
+                });
+    }
 
-        // 4. Procesar productos y snapshots
-        Set<Long> importedProductIds = new HashSet<>();
-        int totalRecords = 0;
-        for (InventoryImportRow row : rows) {
-            // Alta/actualización de producto
-            Product product = productRepository.findByCveArt(row.getCveArt())
-                    .orElseGet(() -> {
-                        Product p = new Product();
-                        p.setCveArt(row.getCveArt());
-                        p.setDescr(row.getDescr());
-                        p.setUniMed(row.getUniMed());
-                        p.setStatus(Product.Status.A);
-                        p.setCreatedAt(LocalDateTime.now());
-                        return productRepository.save(p);
-                    });
-            importedProductIds.add(product.getId());
+    private void processSnapshot(Product product, Warehouse warehouse, Period period,
+                               BigDecimal existQty, ImportStats stats) {
+        InventorySnapshot snapshot = snapshotRepository
+                .findByProductWarehousePeriod(product.getId(), warehouse.getId(), period.getId())
+                .orElseGet(() -> {
+                    InventorySnapshot s = new InventorySnapshot();
+                    s.setProduct(product);
+                    s.setWarehouse(warehouse);
+                    s.setPeriod(period);
+                    s.setCreatedAt(LocalDateTime.now());
+                    return s;
+                });
 
-            // Alta/actualización de snapshot
-            InventorySnapshot snapshot = snapshotRepository
-                    .findByProductWarehousePeriod(product.getId(), warehouse.getId(), period.getId())
-                    .orElseGet(() -> {
-                        InventorySnapshot s = new InventorySnapshot();
-                        s.setProduct(product);
-                        s.setWarehouse(warehouse);
-                        s.setPeriod(period);
-                        s.setCreatedAt(LocalDateTime.now());
-                        return s;
-                    });
-            snapshot.setExistQty(row.getExistQty());
-            snapshotRepository.save(snapshot);
-
-            // (Opcional) Actualizar inventario stock
-            // ... (si aplica según reglas)
-
-            totalRecords++;
+        if (snapshot.getId() != null && !snapshot.getExistQty().equals(existQty)) {
+            stats.incrementUpdated();
         }
 
-        // 5. Marcar como baja los productos no incluidos en el archivo
-        snapshotRepository.markAsInactiveNotInImport(period.getId(), warehouse.getId(), new ArrayList<>(importedProductIds));
+        snapshot.setExistQty(existQty);
+        snapshotRepository.save(snapshot);
+    }
 
-        // 6. Registrar bitácora de importación
-        InventoryImportJob job = new InventoryImportJob();
-        job.setFileName(file.getOriginalFilename());
-        job.setUser(username);
-        job.setStartedAt(LocalDateTime.now());
-        job.setFinishedAt(LocalDateTime.now());
-        job.setTotalRecords(totalRecords);
-        job.setStatus("SUCCESS");
-        importJobRepository.save(job);
-
-        return job;
+    private String generateLogFileUrl(Long jobId) {
+        // Implementar lógica para generar URL del archivo de log
+        return "/api/inventory/import/logs/" + jobId;
     }
 
     private Warehouse getDefaultWarehouse() {
@@ -147,5 +230,21 @@ public class InventoryImportService implements InventoryImportUseCase {
         public void setUniMed(String uniMed) { this.uniMed = uniMed; }
         public BigDecimal getExistQty() { return existQty; }
         public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
+    }
+
+    // Clase auxiliar para manejar contadores
+    private static class ImportStats {
+        int totalRows = 0;
+        int inserted = 0;
+        int updated = 0;
+        int deactivated = 0;
+
+        void incrementInserted() {
+            inserted++;
+        }
+
+        void incrementUpdated() {
+            updated++;
+        }
     }
 }

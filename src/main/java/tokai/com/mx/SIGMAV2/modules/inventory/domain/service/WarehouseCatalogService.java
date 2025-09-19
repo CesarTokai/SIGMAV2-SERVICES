@@ -3,7 +3,6 @@ package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.WarehouseCatalogUseCase;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.WarehouseRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

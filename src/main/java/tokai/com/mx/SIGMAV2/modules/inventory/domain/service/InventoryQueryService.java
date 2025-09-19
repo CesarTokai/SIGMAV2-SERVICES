@@ -3,7 +3,6 @@ package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventorySnapshot;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryQueryUseCase;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventorySnapshotRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryStockRepository;
 
 import java.util.List;
