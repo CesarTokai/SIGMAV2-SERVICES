@@ -27,11 +27,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
+/**
+ * Controlador REST principal para la gestión avanzada de almacenes.
+ * Permite listar, crear, actualizar, eliminar y asignar almacenes a usuarios,
+ * aplicando lógica de negocio y validaciones de acceso.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/sigmav2/warehouses")
 @RequiredArgsConstructor
-public class WarehouseController {
+public class MainWarehouseController {
+
+
 
     private final WarehouseService warehouseService;
     private final UserWarehouseService userWarehouseService;

@@ -1,12 +1,12 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
-
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Period;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.PeriodManagementUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.PeriodRepository;
-
+import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagementUseCase;
+import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
+import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 public class PeriodManagementService implements PeriodManagementUseCase {
 
@@ -17,52 +17,65 @@ public class PeriodManagementService implements PeriodManagementUseCase {
     }
 
     @Override
-    public Period createPeriod(LocalDate periodDate, String comments) {
-        // Validar que no exista un periodo para esa fecha
-        periodRepository.findByPeriodDate(periodDate).ifPresent(p -> {
-            throw new IllegalArgumentException("Ya existe un periodo para la fecha indicada");
-        });
+    public Period findById(Long id) {
+        return periodRepository.findById(id).orElse(null);
+    }
 
-        Period period = new Period();
-        period.setPeriodDate(periodDate);
-        period.setComments(comments);
-        period.setState(Period.State.OPEN);
-        period.setCreatedAt(LocalDateTime.now());
+    @Override
+    public Period createPeriod(LocalDate date, String comments) {
+        if (periodRepository.findByDate(date).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un periodo para la fecha indicada");
+        }
+        // Usar el constructor adecuado o factory method según tu implementación
+        Period period = Period.create(date, comments);
         return periodRepository.save(period);
     }
 
     @Override
-    public void closePeriod(Long periodId, String username) {
-        Period period = periodRepository.findById(periodId)
-                .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
-
-        if (period.getState() != Period.State.OPEN) {
-            throw new IllegalStateException("Solo se puede cerrar un periodo abierto");
-        }
-
-        // Validar que no haya inventario o marbetes pendientes
-        if (periodRepository.hasInventoryOrLabels(periodId)) {
-            throw new IllegalStateException("No se puede cerrar el periodo: hay inventario o marbetes pendientes");
-        }
-
-        period.setState(Period.State.CLOSED);
-        period.setClosedBy(username);
-        period.setClosedAt(LocalDateTime.now());
-        periodRepository.update(period);
+    public Page<Period> findAll(Pageable pageable) {
+        return periodRepository.findAll(pageable);
     }
 
     @Override
-    public void lockPeriod(Long periodId, String username) {
-        Period period = periodRepository.findById(periodId)
+    public Period updateComments(Long id, String comments) {
+        Period period = periodRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
+        period.setComments(comments);
+        return periodRepository.save(period);
+    }
 
-        if (period.getState() != Period.State.CLOSED) {
+    @Override
+    public void deletePeriod(Long id) {
+        periodRepository.deleteById(id);
+    }
+
+    @Override
+    public Period closePeriod(Long id) {
+        Period period = periodRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
+        if (period.getState() != PeriodState.OPEN) {
+            throw new IllegalStateException("Solo se puede cerrar un periodo abierto");
+        }
+        if (periodRepository.hasDependencies(id)) {
+            throw new IllegalStateException("No se puede cerrar el periodo: tiene dependencias");
+        }
+        period.setState(PeriodState.CLOSED);
+        return periodRepository.save(period);
+    }
+
+    @Override
+    public Period lockPeriod(Long id) {
+        Period period = periodRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
+        if (period.getState() != PeriodState.CLOSED) {
             throw new IllegalStateException("Solo se puede bloquear un periodo cerrado");
         }
+        period.setState(PeriodState.LOCKED);
+        return periodRepository.save(period);
+    }
 
-        period.setState(Period.State.LOCKED);
-        period.setLockedBy(username);
-        period.setLockedAt(LocalDateTime.now());
-        periodRepository.update(period);
+    @Override
+    public boolean hasDependencies(Long id) {
+        return periodRepository.hasDependencies(id);
     }
 }

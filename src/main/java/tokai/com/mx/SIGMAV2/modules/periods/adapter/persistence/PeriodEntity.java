@@ -8,8 +8,8 @@ import java.time.LocalDate;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
 
 
-@Entity
-@Table(name = "periods")
+@Entity(name = "InventoryPeriodEntity")
+@Table(name = "period")
 @Data
 public class PeriodEntity {
     @Id

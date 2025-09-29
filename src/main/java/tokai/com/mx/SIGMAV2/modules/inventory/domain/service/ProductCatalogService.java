@@ -22,15 +22,7 @@ public class ProductCatalogService implements ProductCatalogUseCase {
         return productRepository.findAll();
     }
 
-    @Override
-    public Product createProduct(Product product) {
-        productRepository.findByCveArt(product.getCveArt()).ifPresent(p -> {
-            throw new IllegalArgumentException("Ya existe un producto con la clave proporcionada");
-        });
-        product.setStatus(Product.Status.A);
-        product.setCreatedAt(LocalDateTime.now());
-        return productRepository.save(product);
-    }
+
 
     @Override
     public List<Product> searchProducts(String descr) {

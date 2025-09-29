@@ -8,8 +8,9 @@ import org.springframework.data.domain.Pageable;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagementUseCase;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
+
 import java.time.LocalDate;
-import java.util.Optional;
+
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +35,9 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
     }
 
     @Override
-    public Optional<Period> findById(Long id) {
-        return periodRepository.findById(id);
+    public Period findById(Long id) {
+        return periodRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Periodo no encontrado"));
     }
 
     @Override

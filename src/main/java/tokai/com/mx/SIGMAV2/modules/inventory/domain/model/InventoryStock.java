@@ -1,33 +1,19 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.model;
 
+import lombok.Builder;
+import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Data
+@Builder
 public class InventoryStock {
     private Long id;
-    private Product product;
-    private Warehouse warehouse;
+    private Long productId;
+    private Long warehouseId;
     private BigDecimal existQty;
-    private Status status;
+    private String status;
     private LocalDateTime updatedAt;
 
-    public enum Status { A, B }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
-
-    public Warehouse getWarehouse() { return warehouse; }
-    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
-
-    public BigDecimal getExistQty() { return existQty; }
-    public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
-
-    public Status getStatus() { return status; }
-    public void setStatus(Status status) { this.status = status; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    // No explicit constructors; Lombok will generate builder and constructors
 }

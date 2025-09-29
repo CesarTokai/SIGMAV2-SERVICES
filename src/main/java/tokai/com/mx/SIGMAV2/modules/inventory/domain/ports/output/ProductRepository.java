@@ -10,4 +10,6 @@ public interface ProductRepository {
     Product save(Product product);
     void deleteById(Long id);
     Optional<Product> findByCveArt(String cveArt);
+    List<Product> searchByDescription(String description);
+
 }

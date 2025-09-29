@@ -3,18 +3,38 @@ package tokai.com.mx.SIGMAV2.modules.inventory.domain.model;
 public class Warehouse {
     private Long id;
     private String name;
-    private String location;
-    private boolean active;
+    private String observations;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public String getName() {
+        return name;
+    }
 
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getObservations() {
+        return observations;
+    }
+
+    public void setObservations(String observations) {
+        this.observations = observations;
+    }
+
+    public Warehouse(Long id, String name, String observations) {
+        this.id = id;
+        this.name = name;
+        this.observations = observations;
+    }
+
+    public Warehouse() {
+    }
 }

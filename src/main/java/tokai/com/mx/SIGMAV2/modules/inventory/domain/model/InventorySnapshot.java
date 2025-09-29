@@ -1,10 +1,10 @@
+
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class InventorySnapshot {
-
     private Long id;
     private Product product;
     private Warehouse warehouse;
@@ -58,5 +58,8 @@ public class InventorySnapshot {
 
     public void setWarehouse(Warehouse warehouse) {
         this.warehouse = warehouse;
+    }
+
+    public InventorySnapshot() {
     }
 }

@@ -7,8 +7,8 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 public interface PeriodManagementUseCase {
+    Period findById(Long id);
     Period createPeriod(LocalDate date, String comments);
-    Optional<Period> findById(Long id);
     Page<Period> findAll(Pageable pageable);
     Period updateComments(Long id, String comments);
     void deletePeriod(Long id);

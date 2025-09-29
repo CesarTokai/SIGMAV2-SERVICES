@@ -5,9 +5,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.IdDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.UpdatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.CreatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.PeriodResponseDTO;
-import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.UpdatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagementUseCase;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import jakarta.validation.Valid;
@@ -15,21 +16,36 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/sigmav2/periods")
 @RequiredArgsConstructor
-public class PeriodController {
+
+/**
+ * Controlador REST principal para la gestión avanzada de periodos.
+ * Expone endpoints para crear, consultar, actualizar, eliminar, cerrar y bloquear periodos,
+ * utilizando casos de uso y DTOs para aplicar lógica de negocio y validaciones.
+ */
+
+public class PeriodsManagementController {
     private final PeriodManagementUseCase periodManagementUseCase;
 
     @PostMapping
     public ResponseEntity<PeriodResponseDTO> createPeriod(@Valid @RequestBody CreatePeriodDTO createPeriodDTO) {
         Period period = periodManagementUseCase.createPeriod(createPeriodDTO.getDate(), createPeriodDTO.getComments());
-        // Recién creado no debería tener dependencias, evitamos la consulta adicional
         return ResponseEntity.ok(mapToResponseDTO(period, false));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PeriodResponseDTO> getPeriod(@PathVariable Long id) {
-        return periodManagementUseCase.findById(id)
-                .map(period -> ResponseEntity.ok(mapToResponseDTO(period, true)))
-                .orElse(ResponseEntity.notFound().build());
+    @PostMapping("/get")
+    public ResponseEntity<PeriodResponseDTO> getPeriod(@Valid @RequestBody IdDTO idDTO) {
+        Period period = periodManagementUseCase.findById(idDTO.getId());
+        if (period == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(mapToResponseDTO(period, true));
+    }
+
+    @PostMapping("/update-comments")
+    public ResponseEntity<PeriodResponseDTO> updatePeriodComments(
+            @Valid @RequestBody UpdatePeriodDTO updatePeriodDTO) {
+        Period period = periodManagementUseCase.updateComments(updatePeriodDTO.getId(), updatePeriodDTO.getComments());
+        return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
     @GetMapping
@@ -39,29 +55,21 @@ public class PeriodController {
         return ResponseEntity.ok(responseDTOs);
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<PeriodResponseDTO> updatePeriodComments(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdatePeriodDTO updatePeriodDTO) {
-        Period period = periodManagementUseCase.updateComments(id, updatePeriodDTO.getComments());
-        return ResponseEntity.ok(mapToResponseDTO(period, true));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePeriod(@PathVariable Long id) {
-        periodManagementUseCase.deletePeriod(id);
+    @PostMapping("/delete")
+    public ResponseEntity<Void> deletePeriod(@Valid @RequestBody IdDTO idDTO) {
+        periodManagementUseCase.deletePeriod(idDTO.getId());
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/close")
-    public ResponseEntity<PeriodResponseDTO> closePeriod(@PathVariable Long id) {
-        Period period = periodManagementUseCase.closePeriod(id);
+    @PostMapping("/close")
+    public ResponseEntity<PeriodResponseDTO> closePeriod(@Valid @RequestBody IdDTO idDTO) {
+        Period period = periodManagementUseCase.closePeriod(idDTO.getId());
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
-    @PostMapping("/{id}/lock")
-    public ResponseEntity<PeriodResponseDTO> lockPeriod(@PathVariable Long id) {
-        Period period = periodManagementUseCase.lockPeriod(id);
+    @PostMapping("/lock")
+    public ResponseEntity<PeriodResponseDTO> lockPeriod(@Valid @RequestBody IdDTO idDTO) {
+        Period period = periodManagementUseCase.lockPeriod(idDTO.getId());
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 

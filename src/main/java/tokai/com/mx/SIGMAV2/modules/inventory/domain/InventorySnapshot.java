@@ -1,15 +1,31 @@
-package tokai.com.mx.SIGMAV2.modules.inventory.application.dto;
+package tokai.com.mx.SIGMAV2.modules.inventory.domain;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public class InventorySnapshotDTO {
+public class InventorySnapshot {
+
     private Long id;
     private Long productId;
     private Long warehouseId;
     private Long periodId;
     private BigDecimal existQty;
     private LocalDateTime createdAt;
+
+    // Constructor, getters y setters
+    public InventorySnapshot(Long id, Long productId, Long warehouseId, Long periodId, BigDecimal existQty, LocalDateTime createdAt) {
+        this.id = id;
+        this.productId = productId;
+        this.warehouseId = warehouseId;
+        this.periodId = periodId;
+        this.existQty = existQty;
+        this.createdAt = createdAt;
+    }
+
+    public InventorySnapshot() {
+
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

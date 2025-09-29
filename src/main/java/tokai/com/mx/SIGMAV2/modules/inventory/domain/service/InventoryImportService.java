@@ -1,20 +1,26 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportResultDTO;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.*;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventorySnapshot;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Period;
 
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Service
 public class InventoryImportService implements InventoryImportUseCase {
-
 
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
@@ -23,14 +29,14 @@ public class InventoryImportService implements InventoryImportUseCase {
     private final InventoryStockRepository stockRepository;
     private final InventoryImportJobRepository importJobRepository;
 
-
+    @Autowired
     public InventoryImportService(
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
-            PeriodRepository periodRepository,
+            @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository,
             InventorySnapshotRepository snapshotRepository,
             InventoryStockRepository stockRepository,
-            InventoryImportJobRepository importJobRepository
+            @Qualifier("inventoryImportJobRepositoryAdapter") InventoryImportJobRepository importJobRepository
     ) {
         this.productRepository = productRepository;
         this.warehouseRepository = warehouseRepository;
@@ -38,6 +44,16 @@ public class InventoryImportService implements InventoryImportUseCase {
         this.snapshotRepository = snapshotRepository;
         this.stockRepository = stockRepository;
         this.importJobRepository = importJobRepository;
+    }
+
+    // Método para mapear el modelo Period de periods a inventory
+    private Period mapPeriod(tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period source) {
+        Period target = new Period();
+        target.setId(source.getId());
+        target.setPeriodDate(source.getDate());
+        target.setComments(source.getComments());
+        target.setState(Period.State.valueOf(source.getState().name()));
+        return target;
     }
 
     @Override
@@ -48,14 +64,12 @@ public class InventoryImportService implements InventoryImportUseCase {
         final ImportStats stats = new ImportStats();
 
         try {
-            // Validaciones iniciales
             MultipartFile file = request.getFile();
             if (file == null || file.isEmpty()) {
                 errors.add("El archivo está vacío");
                 return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
             }
 
-            // Validar extensión del archivo
             String fileName = file.getOriginalFilename();
             if (fileName != null && !fileName.toLowerCase().endsWith(".xlsx")) {
                 errors.add("El archivo debe ser formato XLSX");
@@ -69,18 +83,15 @@ public class InventoryImportService implements InventoryImportUseCase {
             }
 
             // 1. Validar periodo
-            Period period = periodRepository.findById(periodId)
+            tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period periodEntity = periodRepository.findById(periodId)
                     .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
-            if (period.getState() == Period.State.CLOSED || period.getState() == Period.State.LOCKED) {
-                errors.add("No se puede importar en un periodo cerrado o bloqueado");
-                return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
-            }
+            Period period = mapPeriod(periodEntity);
 
             // 2. Validar almacén
             Long warehouseId = request.getIdWarehouse();
             Warehouse warehouse = warehouseId != null
                     ? warehouseRepository.findById(warehouseId)
-                            .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
+                    .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
                     : getDefaultWarehouse();
 
             // 3. Parsear archivo
@@ -94,7 +105,6 @@ public class InventoryImportService implements InventoryImportUseCase {
             // 4. Procesar productos y snapshots
             Set<Long> importedProductIds = new HashSet<>();
             for (InventoryImportRow row : rows) {
-                // Validar datos requeridos
                 if (row.getCveArt() == null || row.getCveArt().trim().isEmpty()) {
                     errors.add("Fila " + (importedProductIds.size() + 1) + ": CVE_ART es requerido");
                     continue;
@@ -112,16 +122,16 @@ public class InventoryImportService implements InventoryImportUseCase {
             // 5. Marcar como baja los productos no incluidos
             if (!importedProductIds.isEmpty()) {
                 stats.deactivated = snapshotRepository.markAsInactiveNotInImport(
-                    period.getId(),
-                    warehouse.getId(),
-                    new ArrayList<>(importedProductIds)
+                        period.getId(),
+                        warehouse.getId(),
+                        new ArrayList<>(importedProductIds)
                 );
             }
 
             // 6. Registrar bitácora
             InventoryImportJob job = new InventoryImportJob();
             job.setFileName(file.getOriginalFilename());
-            job.setUser("SYSTEM"); // TODO: Obtener del contexto de seguridad
+            job.setUser("SYSTEM");
             job.setStartedAt(LocalDateTime.now());
             job.setFinishedAt(LocalDateTime.now());
             job.setTotalRecords(stats.totalRows);
@@ -147,7 +157,6 @@ public class InventoryImportService implements InventoryImportUseCase {
     private Product processProduct(InventoryImportRow row, ImportStats stats) {
         return productRepository.findByCveArt(row.getCveArt())
                 .map(existingProduct -> {
-                    // Actualizar datos si cambiaron
                     boolean changed = false;
                     if (!existingProduct.getDescr().equals(row.getDescr())) {
                         existingProduct.setDescr(row.getDescr());
@@ -175,7 +184,7 @@ public class InventoryImportService implements InventoryImportUseCase {
     }
 
     private void processSnapshot(Product product, Warehouse warehouse, Period period,
-                               BigDecimal existQty, ImportStats stats) {
+                                 BigDecimal existQty, ImportStats stats) {
         InventorySnapshot snapshot = snapshotRepository
                 .findByProductWarehousePeriod(product.getId(), warehouse.getId(), period.getId())
                 .orElseGet(() -> {
@@ -196,23 +205,17 @@ public class InventoryImportService implements InventoryImportUseCase {
     }
 
     private String generateLogFileUrl(Long jobId) {
-        // Implementar lógica para generar URL del archivo de log
         return "/api/inventory/import/logs/" + jobId;
     }
 
     private Warehouse getDefaultWarehouse() {
-        // Implementar lógica para obtener almacén por defecto
         return warehouseRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No hay almacén por defecto configurado"));
     }
 
     private List<InventoryImportRow> parseExcel(MultipartFile file) {
-        // Implementar lógica de parseo de Excel/CSV a DTOs
-        // Este método debe validar y mapear cada fila a InventoryImportRow
         throw new UnsupportedOperationException("No implementado");
     }
-
-
 
     // DTO auxiliar para parseo de archivo
     private static class InventoryImportRow {
@@ -221,7 +224,6 @@ public class InventoryImportService implements InventoryImportUseCase {
         private String uniMed;
         private BigDecimal existQty;
 
-        // Getters y setters
         public String getCveArt() { return cveArt; }
         public void setCveArt(String cveArt) { this.cveArt = cveArt; }
         public String getDescr() { return descr; }
