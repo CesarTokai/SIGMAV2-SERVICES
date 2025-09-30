@@ -11,6 +11,6 @@ public interface InventorySnapshotRepository {
     InventorySnapshot save(InventorySnapshot snapshot);
     int markAsInactiveNotInImport(Long periodId, Long warehouseId, List<Long> activeProductIds);
     Optional<InventorySnapshot> findById(Long id);
-    List<InventorySnapshot> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
 
+    Optional<InventorySnapshot> findByProductPeriod(Long id, Long id1);
 }

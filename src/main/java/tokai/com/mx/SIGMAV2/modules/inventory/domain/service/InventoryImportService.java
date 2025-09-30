@@ -11,7 +11,6 @@ import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportResultDTO;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventorySnapshot;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
@@ -26,35 +25,28 @@ import java.time.LocalDateTime;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.DigestInputStream;
-import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayInputStream;
+
 
 @Service
 public class InventoryImportService implements InventoryImportUseCase {
 
     private final ProductRepository productRepository;
-    private final WarehouseRepository warehouseRepository;
     private final PeriodRepository periodRepository;
     private final InventorySnapshotRepository snapshotRepository;
-    private final InventoryStockRepository stockRepository;
     private final InventoryImportJobRepository importJobRepository;
     private final JpaPersonalInformationRepository personalInformationRepository;
 
     @Autowired
     public InventoryImportService(
             ProductRepository productRepository,
-            WarehouseRepository warehouseRepository,
             @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository,
             InventorySnapshotRepository snapshotRepository,
-            InventoryStockRepository stockRepository,
             @Qualifier("inventoryImportJobRepositoryAdapter") InventoryImportJobRepository importJobRepository,
             JpaPersonalInformationRepository personalInformationRepository
     ) {
         this.productRepository = productRepository;
-        this.warehouseRepository = warehouseRepository;
         this.periodRepository = periodRepository;
         this.snapshotRepository = snapshotRepository;
-        this.stockRepository = stockRepository;
         this.importJobRepository = importJobRepository;
         this.personalInformationRepository = personalInformationRepository;
     }
@@ -100,12 +92,12 @@ public class InventoryImportService implements InventoryImportUseCase {
                     .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
             Period period = mapPeriod(periodEntity);
 
-            // 2. Validar almacén
-            Long warehouseId = request.getIdWarehouse();
-            Warehouse warehouse = warehouseId != null
-                    ? warehouseRepository.findById(warehouseId)
-                    .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
-                    : getDefaultWarehouse();
+            // 2. Validar almacén (eliminado, ya no se usa warehouse)
+            // Long warehouseId = request.getIdWarehouse();
+            // Warehouse warehouse = warehouseId != null
+            //         ? warehouseRepository.findById(warehouseId)
+            //         .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
+            //         : getDefaultWarehouse();
 
             // 3. Parsear archivo
             List<InventoryImportRow> rows = parseExcel(file);
@@ -126,19 +118,10 @@ public class InventoryImportService implements InventoryImportUseCase {
                 try {
                     Product product = processProduct(row, stats);
                     importedProductIds.add(product.getId());
-                    processSnapshot(product, warehouse, period, row.getExistQty(), stats);
+                    processSnapshot(product, period, row.getExistQty(), stats); // Ya no pasa warehouse
                 } catch (Exception e) {
                     errors.add("Error procesando " + row.getCveArt() + ": " + e.getMessage());
                 }
-            }
-
-            // 5. Marcar como baja los productos no incluidos
-            if (!importedProductIds.isEmpty()) {
-                stats.deactivated = snapshotRepository.markAsInactiveNotInImport(
-                        period.getId(),
-                        warehouse.getId(),
-                        new ArrayList<>(importedProductIds)
-                );
             }
 
             // 6. Registrar bitácora
@@ -146,7 +129,7 @@ public class InventoryImportService implements InventoryImportUseCase {
             if (username != null) {
                 BeanPersonalInformation personalInfo = personalInformationRepository.findAll()
                     .stream()
-                    .filter(pi -> pi.getUser().getEmail().equals(username)) // Ajusta si tu campo no es email
+                    .filter(pi -> pi.getUser().getEmail().equals(username))
                     .findFirst()
                     .orElse(null);
                 if (personalInfo != null) {
@@ -165,20 +148,17 @@ public class InventoryImportService implements InventoryImportUseCase {
             job.setStatus(errors.isEmpty() ? "SUCCESS" : "WARNING");
             job.setInsertedRows(stats.inserted);
             job.setUpdatedRows(stats.updated);
-            job.setSkippedRows(0); // Si tienes lógica para filas omitidas, asígnala aquí
+            job.setSkippedRows(0);
             job.setTotalRows(stats.totalRows);
             job.setIdPeriod(period.getId());
-            job.setIdWarehouse(warehouse.getId());
             job.setCreatedBy(nombreCompleto);
             logFileUrl = generateLogFileUrl(job.getId());
             job.setLogFilePath(logFileUrl);
-            // Guardar errores como JSON (aunque esté vacío)
             try {
                 job.setErrorsJson(new ObjectMapper().writeValueAsString(errors));
             } catch (Exception ex) {
                 job.setErrorsJson("[\"Error serializando errores\"]");
             }
-            // Calcular y guardar checksum SHA-256 del archivo
             try (InputStream is = file.getInputStream()) {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 DigestInputStream dis = new DigestInputStream(is, digest);
@@ -260,14 +240,13 @@ public class InventoryImportService implements InventoryImportUseCase {
                 });
     }
 
-    private void processSnapshot(Product product, Warehouse warehouse, Period period,
-                                 BigDecimal existQty, ImportStats stats) {
+    // Cambia la firma y lógica de processSnapshot para no usar warehouse
+    private void processSnapshot(Product product, Period period, BigDecimal existQty, ImportStats stats) {
         InventorySnapshot snapshot = snapshotRepository
-                .findByProductWarehousePeriod(product.getId(), warehouse.getId(), period.getId())
+                .findByProductPeriod(product.getId(), period.getId())
                 .orElseGet(() -> {
                     InventorySnapshot s = new InventorySnapshot();
                     s.setProduct(product);
-                    s.setWarehouse(warehouse);
                     s.setPeriod(period);
                     s.setCreatedAt(LocalDateTime.now());
                     return s;
@@ -285,10 +264,6 @@ public class InventoryImportService implements InventoryImportUseCase {
         return "/api/inventory/import/logs/" + jobId;
     }
 
-    private Warehouse getDefaultWarehouse() {
-        return warehouseRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No hay almacén por defecto configurado"));
-    }
 
     private List<InventoryImportRow> parseExcel(MultipartFile file) {
         List<InventoryImportRow> rows = new ArrayList<>();

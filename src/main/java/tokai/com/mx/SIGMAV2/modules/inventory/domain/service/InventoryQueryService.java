@@ -45,13 +45,6 @@ public class InventoryQueryService implements InventoryQueryUseCase {
         return snapshot;
     }
 
-    @Override
-    public List<InventorySnapshot> getSnapshotsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
-        return snapshotRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId)
-                .stream()
-                .map(this::toDomainModel)
-                .toList();
-    }
 
 
     @Override

@@ -17,7 +17,6 @@ public class InventorySnapshotRepositoryAdapter implements InventorySnapshotRepo
         this.jpaRepository = jpaRepository;
     }
 
-    @Override
     public List<InventorySnapshot> findByPeriodAndWarehouse(Long periodId, Long warehouseId) {
         // Implementa la lógica usando jpaRepository
         return List.of();
@@ -44,7 +43,9 @@ public class InventorySnapshotRepositoryAdapter implements InventorySnapshotRepo
     }
 
     @Override
-    public List<InventorySnapshot> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId) {
-        return List.of();
+    public Optional<InventorySnapshot> findByProductPeriod(Long id, Long id1) {
+        return Optional.empty();
     }
+
+
 }

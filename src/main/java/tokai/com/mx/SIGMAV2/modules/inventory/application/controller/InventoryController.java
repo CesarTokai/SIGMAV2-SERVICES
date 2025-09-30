@@ -15,7 +15,6 @@ import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import java.security.Principal;
 import java.util.List;
 import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
 
 @RestController
 @RequestMapping("/api/sigmav2/inventory")
@@ -44,17 +43,7 @@ public class InventoryController {
         this.periodRepository = periodRepository;
     }
 
-    // 1. Consultar snapshots por periodo y almacén
-    @GetMapping("/snapshots")
-    public ResponseEntity<List<InventorySnapshotDTO>> getSnapshotsByPeriodAndWarehouse(
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId) {
-        List<InventorySnapshot> snapshots = inventoryQueryUseCase.getSnapshotsByPeriodAndWarehouse(periodId, warehouseId);
-        List<InventorySnapshotDTO> dtos = snapshots.stream()
-                .map(this::mapToSnapshotDTO)
-                .toList();
-        return ResponseEntity.ok(dtos);
-    }
+
 
     // 2. Consultar stock actual
     @GetMapping("/stock")
