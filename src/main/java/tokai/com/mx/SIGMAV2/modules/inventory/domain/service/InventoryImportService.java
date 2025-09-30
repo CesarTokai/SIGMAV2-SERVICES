@@ -24,6 +24,10 @@ import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.DigestInputStream;
+import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
 
 @Service
 public class InventoryImportService implements InventoryImportUseCase {
@@ -166,17 +170,31 @@ public class InventoryImportService implements InventoryImportUseCase {
             job.setIdPeriod(period.getId());
             job.setIdWarehouse(warehouse.getId());
             job.setCreatedBy(nombreCompleto);
+            logFileUrl = generateLogFileUrl(job.getId());
             job.setLogFilePath(logFileUrl);
-            // Guardar errores como JSON si existen
-            if (!errors.isEmpty()) {
-                try {
-                    job.setErrorsJson(new ObjectMapper().writeValueAsString(errors));
-                } catch (Exception ex) {
-                    job.setErrorsJson("[\"Error serializando errores\"]");
-                }
+            // Guardar errores como JSON (aunque esté vacío)
+            try {
+                job.setErrorsJson(new ObjectMapper().writeValueAsString(errors));
+            } catch (Exception ex) {
+                job.setErrorsJson("[\"Error serializando errores\"]");
             }
-            // Si tienes lógica para checksum, asígnala aquí
-            // job.setChecksum(calculaChecksum(file));
+            // Calcular y guardar checksum SHA-256 del archivo
+            try (InputStream is = file.getInputStream()) {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                DigestInputStream dis = new DigestInputStream(is, digest);
+                byte[] buffer = new byte[4096];
+                while (dis.read(buffer) != -1) {}
+                byte[] hash = digest.digest();
+                StringBuilder hexString = new StringBuilder();
+                for (byte b : hash) {
+                    String hex = Integer.toHexString(0xff & b);
+                    if (hex.length() == 1) hexString.append('0');
+                    hexString.append(hex);
+                }
+                job.setChecksum(hexString.toString());
+            } catch (Exception ex) {
+                job.setChecksum(null);
+            }
             importJobRepository.save(job);
 
             logFileUrl = generateLogFileUrl(job.getId());
