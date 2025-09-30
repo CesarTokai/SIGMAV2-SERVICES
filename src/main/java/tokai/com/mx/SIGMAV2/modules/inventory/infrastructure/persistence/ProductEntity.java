@@ -5,17 +5,14 @@ import lombok.Getter;
 
 @Getter
 @Entity
-@Table(name = "ProductEntity")
+@Table(name = "products")
 public class ProductEntity {
-
-    private Long id;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_product")
     private Long idProduct;
 
-    // Otros campos según tu modelo
     @Column(name = "cve_art")
     private String cveArt;
 
@@ -31,10 +28,8 @@ public class ProductEntity {
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-
+         @Column(name = "lin_prod")
+    private String linProd;
 
     public Long getIdProduct() {
         return idProduct;
@@ -43,7 +38,6 @@ public class ProductEntity {
     public void setIdProduct(Long idProduct) {
         this.idProduct = idProduct;
     }
-
 
     public void setCveArt(String cveArt) { this.cveArt = cveArt; }
 
@@ -54,6 +48,9 @@ public class ProductEntity {
     public void setStatus(String status) { this.status = status; }
 
     public void setCreatedAt(java.time.LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getLinProd() { return linProd; }
+    public void setLinProd(String linProd) { this.linProd = linProd; }
 
 
 }

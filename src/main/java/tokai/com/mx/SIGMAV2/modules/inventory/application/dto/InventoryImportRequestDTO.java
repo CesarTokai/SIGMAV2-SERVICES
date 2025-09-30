@@ -6,6 +6,7 @@ public class InventoryImportRequestDTO {
     private MultipartFile file;
     private Long idPeriod;
     private Long idWarehouse; // opcional
+    private Long userId;
 
 
     public MultipartFile getFile() {
@@ -30,5 +31,13 @@ public class InventoryImportRequestDTO {
 
     public void setIdWarehouse(Long idWarehouse) {
         this.idWarehouse = idWarehouse;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

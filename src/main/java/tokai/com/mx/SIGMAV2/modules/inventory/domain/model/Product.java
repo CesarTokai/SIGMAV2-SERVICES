@@ -10,6 +10,7 @@ public class Product {
     private String uniMed;
     private Status status;
     private LocalDateTime createdAt;
+    private String linProd;
 
     public enum Status { A, B }
 
@@ -30,4 +31,7 @@ public class Product {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getLinProd() { return linProd; }
+    public void setLinProd(String linProd) { this.linProd = linProd; }
 }

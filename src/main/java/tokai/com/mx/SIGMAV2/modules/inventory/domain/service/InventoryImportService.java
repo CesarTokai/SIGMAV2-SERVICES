@@ -1,5 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,13 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Period;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
 
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.io.InputStream;
 
 @Service
 public class InventoryImportService implements InventoryImportUseCase {
@@ -28,6 +33,7 @@ public class InventoryImportService implements InventoryImportUseCase {
     private final InventorySnapshotRepository snapshotRepository;
     private final InventoryStockRepository stockRepository;
     private final InventoryImportJobRepository importJobRepository;
+    private final JpaPersonalInformationRepository personalInformationRepository;
 
     @Autowired
     public InventoryImportService(
@@ -36,7 +42,8 @@ public class InventoryImportService implements InventoryImportUseCase {
             @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository,
             InventorySnapshotRepository snapshotRepository,
             InventoryStockRepository stockRepository,
-            @Qualifier("inventoryImportJobRepositoryAdapter") InventoryImportJobRepository importJobRepository
+            @Qualifier("inventoryImportJobRepositoryAdapter") InventoryImportJobRepository importJobRepository,
+            JpaPersonalInformationRepository personalInformationRepository
     ) {
         this.productRepository = productRepository;
         this.warehouseRepository = warehouseRepository;
@@ -44,6 +51,7 @@ public class InventoryImportService implements InventoryImportUseCase {
         this.snapshotRepository = snapshotRepository;
         this.stockRepository = stockRepository;
         this.importJobRepository = importJobRepository;
+        this.personalInformationRepository = personalInformationRepository;
     }
 
     // Método para mapear el modelo Period de periods a inventory
@@ -129,9 +137,21 @@ public class InventoryImportService implements InventoryImportUseCase {
             }
 
             // 6. Registrar bitácora
+            String nombreCompleto = "Desconocido";
+            Long userId = request.getUserId(); // Asegúrate que el DTO tenga este campo
+            if (userId != null) {
+                Optional<BeanPersonalInformation> personalInfoOpt = personalInformationRepository.findByUser_UserId(userId);
+                if (personalInfoOpt.isPresent()) {
+                    BeanPersonalInformation pi = personalInfoOpt.get();
+                    nombreCompleto = pi.getName() + " " + pi.getFirstLastName();
+                    if (pi.getSecondLastName() != null && !pi.getSecondLastName().isEmpty()) {
+                        nombreCompleto += " " + pi.getSecondLastName();
+                    }
+                }
+            }
             InventoryImportJob job = new InventoryImportJob();
             job.setFileName(file.getOriginalFilename());
-            job.setUser("SYSTEM");
+            job.setUser(nombreCompleto);
             job.setStartedAt(LocalDateTime.now());
             job.setFinishedAt(LocalDateTime.now());
             job.setTotalRecords(stats.totalRows);
@@ -166,6 +186,19 @@ public class InventoryImportService implements InventoryImportUseCase {
                         existingProduct.setUniMed(row.getUniMed());
                         changed = true;
                     }
+                    if (row.getLinProd() != null && (existingProduct.getLinProd() == null || !existingProduct.getLinProd().equals(row.getLinProd()))) {
+                        existingProduct.setLinProd(row.getLinProd());
+                        changed = true;
+                    }
+                    if (row.getStatus() != null) {
+                        try {
+                            Product.Status newStatus = Product.Status.valueOf(row.getStatus().toUpperCase());
+                            if (existingProduct.getStatus() != newStatus) {
+                                existingProduct.setStatus(newStatus);
+                                changed = true;
+                            }
+                        } catch (Exception ignored) {}
+                    }
                     if (changed) {
                         return productRepository.save(existingProduct);
                     }
@@ -176,7 +209,12 @@ public class InventoryImportService implements InventoryImportUseCase {
                     p.setCveArt(row.getCveArt());
                     p.setDescr(row.getDescr());
                     p.setUniMed(row.getUniMed());
-                    p.setStatus(Product.Status.A);
+                    p.setLinProd(row.getLinProd());
+                    try {
+                        p.setStatus(Product.Status.valueOf(row.getStatus() != null ? row.getStatus().toUpperCase() : "A"));
+                    } catch (Exception e) {
+                        p.setStatus(Product.Status.A);
+                    }
                     p.setCreatedAt(LocalDateTime.now());
                     stats.incrementInserted();
                     return productRepository.save(p);
@@ -214,24 +252,86 @@ public class InventoryImportService implements InventoryImportUseCase {
     }
 
     private List<InventoryImportRow> parseExcel(MultipartFile file) {
-        throw new UnsupportedOperationException("No implementado");
+        List<InventoryImportRow> rows = new ArrayList<>();
+        try (InputStream is = file.getInputStream(); XSSFWorkbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rowIterator = sheet.iterator();
+            boolean isHeader = true;
+            int cveArtIdx = -1, descrIdx = -1, linProdIdx = -1, uniMedIdx = -1, existQtyIdx = -1, statusIdx = -1;
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                if (isHeader) {
+                    // Buscar índices de columnas por nombre
+                    for (Cell cell : row) {
+                        String val = cell.getStringCellValue().trim().toUpperCase();
+                        if (val.equals("CVE_ART")) cveArtIdx = cell.getColumnIndex();
+                        if (val.equals("DESCR")) descrIdx = cell.getColumnIndex();
+                        if (val.equals("LIN_PROD")) linProdIdx = cell.getColumnIndex();
+                        if (val.equals("UNI_MED")) uniMedIdx = cell.getColumnIndex();
+                        if (val.equals("EXIST_QTY") || val.equals("EXIST")) existQtyIdx = cell.getColumnIndex();
+                        if (val.equals("STATUS")) statusIdx = cell.getColumnIndex();
+                    }
+                    isHeader = false;
+                    // Validar que todas las columnas existan
+                    if (cveArtIdx == -1 || descrIdx == -1 || uniMedIdx == -1 || existQtyIdx == -1) {
+                        throw new IllegalArgumentException("El archivo no tiene las columnas requeridas: CVE_ART, DESCR, UNI_MED, EXIST/EXIST_QTY");
+                    }
+                    continue;
+                }
+                InventoryImportRow importRow = new InventoryImportRow();
+                Cell cveArtCell = row.getCell(cveArtIdx);
+                Cell descrCell = row.getCell(descrIdx);
+                Cell linProdCell = linProdIdx != -1 ? row.getCell(linProdIdx) : null;
+                Cell uniMedCell = row.getCell(uniMedIdx);
+                Cell existQtyCell = row.getCell(existQtyIdx);
+                Cell statusCell = statusIdx != -1 ? row.getCell(statusIdx) : null;
+                importRow.setCveArt(cveArtCell != null ? cveArtCell.toString().trim() : null);
+                importRow.setDescr(descrCell != null ? descrCell.toString().trim() : null);
+                importRow.setLinProd(linProdCell != null ? linProdCell.toString().trim() : null);
+                importRow.setUniMed(uniMedCell != null ? uniMedCell.toString().trim() : null);
+                if (existQtyCell != null) {
+                    try {
+                        String val = existQtyCell.toString().trim();
+                        importRow.setExistQty(val.isEmpty() ? BigDecimal.ZERO : new BigDecimal(val));
+                    } catch (Exception e) {
+                        importRow.setExistQty(BigDecimal.ZERO);
+                    }
+                } else {
+                    importRow.setExistQty(BigDecimal.ZERO);
+                }
+                importRow.setStatus(statusCell != null ? statusCell.toString().trim() : null);
+                // Solo agregar si tiene clave de producto
+                if (importRow.getCveArt() != null && !importRow.getCveArt().isEmpty()) {
+                    rows.add(importRow);
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error al leer el archivo XLSX: " + e.getMessage());
+        }
+        return rows;
     }
 
     // DTO auxiliar para parseo de archivo
     private static class InventoryImportRow {
         private String cveArt;
         private String descr;
+        private String linProd;
         private String uniMed;
         private BigDecimal existQty;
+        private String status;
 
         public String getCveArt() { return cveArt; }
         public void setCveArt(String cveArt) { this.cveArt = cveArt; }
         public String getDescr() { return descr; }
         public void setDescr(String descr) { this.descr = descr; }
+        public String getLinProd() { return linProd; }
+        public void setLinProd(String linProd) { this.linProd = linProd; }
         public String getUniMed() { return uniMed; }
         public void setUniMed(String uniMed) { this.uniMed = uniMed; }
         public BigDecimal getExistQty() { return existQty; }
         public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
     }
 
     // Clase auxiliar para manejar contadores
