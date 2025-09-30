@@ -1,5 +1,6 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +67,7 @@ public class InventoryImportService implements InventoryImportUseCase {
 
     @Override
     @Transactional
-    public InventoryImportResultDTO importInventory(InventoryImportRequestDTO request) {
+    public InventoryImportResultDTO importInventory(InventoryImportRequestDTO request, String username) {
         final List<String> errors = new ArrayList<>();
         String logFileUrl = null;
         final ImportStats stats = new ImportStats();
@@ -138,14 +139,16 @@ public class InventoryImportService implements InventoryImportUseCase {
 
             // 6. Registrar bitácora
             String nombreCompleto = "Desconocido";
-            Long userId = request.getUserId(); // Asegúrate que el DTO tenga este campo
-            if (userId != null) {
-                Optional<BeanPersonalInformation> personalInfoOpt = personalInformationRepository.findByUser_UserId(userId);
-                if (personalInfoOpt.isPresent()) {
-                    BeanPersonalInformation pi = personalInfoOpt.get();
-                    nombreCompleto = pi.getName() + " " + pi.getFirstLastName();
-                    if (pi.getSecondLastName() != null && !pi.getSecondLastName().isEmpty()) {
-                        nombreCompleto += " " + pi.getSecondLastName();
+            if (username != null) {
+                BeanPersonalInformation personalInfo = personalInformationRepository.findAll()
+                    .stream()
+                    .filter(pi -> pi.getUser().getEmail().equals(username)) // Ajusta si tu campo no es email
+                    .findFirst()
+                    .orElse(null);
+                if (personalInfo != null) {
+                    nombreCompleto = personalInfo.getName();
+                    if (personalInfo.getFirstLastName() != null && !personalInfo.getFirstLastName().isEmpty()) {
+                        nombreCompleto += " " + personalInfo.getFirstLastName();
                     }
                 }
             }
@@ -156,6 +159,24 @@ public class InventoryImportService implements InventoryImportUseCase {
             job.setFinishedAt(LocalDateTime.now());
             job.setTotalRecords(stats.totalRows);
             job.setStatus(errors.isEmpty() ? "SUCCESS" : "WARNING");
+            job.setInsertedRows(stats.inserted);
+            job.setUpdatedRows(stats.updated);
+            job.setSkippedRows(0); // Si tienes lógica para filas omitidas, asígnala aquí
+            job.setTotalRows(stats.totalRows);
+            job.setIdPeriod(period.getId());
+            job.setIdWarehouse(warehouse.getId());
+            job.setCreatedBy(nombreCompleto);
+            job.setLogFilePath(logFileUrl);
+            // Guardar errores como JSON si existen
+            if (!errors.isEmpty()) {
+                try {
+                    job.setErrorsJson(new ObjectMapper().writeValueAsString(errors));
+                } catch (Exception ex) {
+                    job.setErrorsJson("[\"Error serializando errores\"]");
+                }
+            }
+            // Si tienes lógica para checksum, asígnala aquí
+            // job.setChecksum(calculaChecksum(file));
             importJobRepository.save(job);
 
             logFileUrl = generateLogFileUrl(job.getId());

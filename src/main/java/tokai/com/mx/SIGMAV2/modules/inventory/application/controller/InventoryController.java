@@ -12,7 +12,10 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 
+import java.security.Principal;
 import java.util.List;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
 
 @RestController
 @RequestMapping("/api/sigmav2/inventory")
@@ -22,6 +25,9 @@ public class InventoryController {
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
     private final PeriodRepository periodRepository;
+
+    @Autowired
+    private JpaPersonalInformationRepository personalInformationRepository;
 
     @Autowired
     public InventoryController(
@@ -65,12 +71,15 @@ public class InventoryController {
     public ResponseEntity<InventoryImportResultDTO> importInventory(
             @RequestParam Long periodId,
             @RequestParam(required = false) Long warehouseId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            Principal principal
+    ) {
         InventoryImportRequestDTO request = new InventoryImportRequestDTO();
         request.setIdPeriod(periodId);
         request.setIdWarehouse(warehouseId);
         request.setFile(file);
-        InventoryImportResultDTO result = inventoryImportUseCase.importInventory(request);
+        // El nombre completo se obtiene en el servicio usando principal.getName()
+        InventoryImportResultDTO result = inventoryImportUseCase.importInventory(request, principal.getName());
         return ResponseEntity.ok(result);
     }
 

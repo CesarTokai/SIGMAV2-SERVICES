@@ -5,6 +5,6 @@ import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportRes
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 
 public interface InventoryImportUseCase {
-    InventoryImportResultDTO importInventory(InventoryImportRequestDTO request);
+    InventoryImportResultDTO importInventory(InventoryImportRequestDTO request, String username);
 
 }
