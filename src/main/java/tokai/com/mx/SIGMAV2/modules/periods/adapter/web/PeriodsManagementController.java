@@ -28,7 +28,7 @@ public class PeriodsManagementController {
 
     @PostMapping
     public ResponseEntity<PeriodResponseDTO> createPeriod(@Valid @RequestBody CreatePeriodDTO createPeriodDTO) {
-        Period period = periodManagementUseCase.createPeriod(createPeriodDTO.getDate(), createPeriodDTO.getComments());
+        Period period = periodManagementUseCase.createPeriod(createPeriodDTO.getDate(), createPeriodDTO.getComments(), createPeriodDTO.getUser());
         return ResponseEntity.ok(mapToResponseDTO(period, false));
     }
 

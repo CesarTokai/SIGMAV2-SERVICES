@@ -52,6 +52,11 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
         return jpaPeriodRepository.countDependencies(periodId);
     }
 
+    @Override
+    public long countByYear(int year) {
+        return jpaPeriodRepository.countByYear(year);
+    }
+
     private PeriodEntity toEntity(Period period) {
         if (period == null) return null;
         PeriodEntity entity = new PeriodEntity();

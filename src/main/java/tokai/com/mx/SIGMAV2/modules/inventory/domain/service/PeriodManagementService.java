@@ -6,6 +6,8 @@ import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+
 import java.time.LocalDate;
 
 public class PeriodManagementService implements PeriodManagementUseCase {
@@ -22,13 +24,8 @@ public class PeriodManagementService implements PeriodManagementUseCase {
     }
 
     @Override
-    public Period createPeriod(LocalDate date, String comments) {
-        if (periodRepository.findByDate(date).isPresent()) {
-            throw new IllegalArgumentException("Ya existe un periodo para la fecha indicada");
-        }
-        // Usar el constructor adecuado o factory method según tu implementación
-        Period period = Period.create(date, comments);
-        return periodRepository.save(period);
+    public Period createPeriod(LocalDate date, String comments, BeanUser user) {
+        throw new UnsupportedOperationException("La creación de periodos solo está permitida para el administrador a través del servicio principal");
     }
 
     @Override

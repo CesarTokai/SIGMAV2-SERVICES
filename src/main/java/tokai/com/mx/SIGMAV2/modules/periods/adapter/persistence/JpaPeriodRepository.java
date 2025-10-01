@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Optional;
+import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.PeriodEntity;
 
 @Repository
 public interface JpaPeriodRepository extends JpaRepository<PeriodEntity, Long> {
@@ -14,4 +15,8 @@ public interface JpaPeriodRepository extends JpaRepository<PeriodEntity, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM label_requests WHERE id_period = :periodId", nativeQuery = true)
     long countDependencies(@Param("periodId") Long periodId);
+
+    // Cuenta los periodos por año
+    @Query("SELECT COUNT(p) FROM InventoryPeriodEntity p WHERE YEAR(p.date) = :year")
+    long countByYear(@org.springframework.data.repository.query.Param("year") int year);
 }

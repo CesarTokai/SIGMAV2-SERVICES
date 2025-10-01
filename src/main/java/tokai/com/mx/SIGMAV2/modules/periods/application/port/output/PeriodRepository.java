@@ -14,4 +14,5 @@ public interface PeriodRepository {
     void deleteById(Long id);
     boolean existsByDate(LocalDate date);
     long countDependencies(Long periodId);
+    long countByYear(int year);
 }

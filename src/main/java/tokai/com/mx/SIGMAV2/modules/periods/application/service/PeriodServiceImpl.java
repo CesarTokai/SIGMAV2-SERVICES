@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagementUseCase;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import java.time.LocalDate;
 
@@ -19,12 +20,20 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
 
     @Override
     @Transactional
-    public Period createPeriod(LocalDate date, String comments) {
-        LocalDate normalizedDate = date.withDayOfMonth(1);
-        if (periodRepository.existsByDate(normalizedDate)) {
-            throw new IllegalArgumentException("Ya existe un periodo para esta fecha");
+    public Period createPeriod(LocalDate date, String comments, BeanUser user) {
+        if (user == null || user.getRole() == null || !user.getRole().name().equalsIgnoreCase("ADMIN")) {
+            throw new IllegalArgumentException("Solo el administrador puede crear periodos");
         }
-
+        LocalDate normalizedDate = date.withDayOfMonth(1);
+        int year = normalizedDate.getYear();
+        int month = normalizedDate.getMonthValue();
+        if (periodRepository.countByYear(year) >= 12) {
+            throw new IllegalStateException("No se pueden crear más de 12 periodos en el año " + year);
+        }
+        // Validar que no exista ya un periodo para ese mes y año
+        if (periodRepository.existsByDate(normalizedDate)) {
+            throw new IllegalArgumentException("Ya existe un periodo para el mes " + month + " del año " + year);
+        }
         Period period = Period.builder()
                 .date(normalizedDate)
                 .comments(comments)
@@ -39,6 +48,8 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
         return periodRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Periodo no encontrado"));
     }
+
+
 
     @Override
     public Page<Period> findAll(Pageable pageable) {
