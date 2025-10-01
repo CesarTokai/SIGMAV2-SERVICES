@@ -49,6 +49,19 @@ public class PeriodManagementService implements PeriodManagementUseCase {
         periodRepository.deleteById(id);
     }
 
+
+
+    @Override
+    public Period openPeriod(Long id) {
+        Period period = periodRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
+        if (period.getState() != PeriodState.DRAFT) {
+            throw new IllegalStateException("Solo se puede abrir un periodo en estado draft o cerrado");
+        }
+        period.setState(PeriodState.OPEN);
+        return periodRepository.save(period);
+    }
+
     @Override
     public Period closePeriod(Long id) {
         Period period = periodRepository.findById(id)

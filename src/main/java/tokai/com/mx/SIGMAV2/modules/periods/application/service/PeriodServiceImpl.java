@@ -64,6 +64,24 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
         periodRepository.deleteById(id);
     }
 
+    @Transactional
+    @Override
+    public Period openPeriod(Long id) {
+        Period period = periodRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Periodo no encontrado"));
+
+
+
+       if (period.getState() != Period.PeriodState.DRAFT) {
+            throw new IllegalStateException("Solo se pueden abrir periodos en estado DRAFT");
+        }
+
+
+
+        period.setState(Period.PeriodState.OPEN);
+        return periodRepository.save(period);
+    }
+
     @Override
     @Transactional
     public Period closePeriod(Long id) {

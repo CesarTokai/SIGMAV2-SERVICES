@@ -48,6 +48,14 @@ public class PeriodsManagementController {
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
+
+
+    @PostMapping("/open")
+    public ResponseEntity<PeriodResponseDTO> openPeriod(@Valid @RequestBody IdDTO idDTO) {
+        Period period = periodManagementUseCase.openPeriod(idDTO.getId());
+        return ResponseEntity.ok(mapToResponseDTO(period, true));
+    }
+
     @GetMapping
     public ResponseEntity<Page<PeriodResponseDTO>> getAllPeriods(Pageable pageable) {
         Page<Period> periods = periodManagementUseCase.findAll(pageable);

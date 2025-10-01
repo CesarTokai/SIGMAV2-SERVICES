@@ -52,4 +52,14 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
         // Implementa la lógica real si tienes dependencias
         return false;
     }
+
+    @Override
+    public void OpenPeriod(Long id) {
+        jpaRepository.findById(id).ifPresent(entity -> {
+            entity.setState(tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState.OPEN);
+            jpaRepository.save(entity);
+        });
+    }
+
+
 }

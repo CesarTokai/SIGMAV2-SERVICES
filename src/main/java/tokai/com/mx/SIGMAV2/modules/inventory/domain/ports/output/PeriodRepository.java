@@ -15,5 +15,6 @@ public interface PeriodRepository {
     Period save(Period period);
     void deleteById(Long id);
     boolean hasDependencies(Long id);
+    void OpenPeriod(Long id);
 
 }

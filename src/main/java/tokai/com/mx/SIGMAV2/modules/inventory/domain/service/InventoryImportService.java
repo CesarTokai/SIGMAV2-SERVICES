@@ -87,19 +87,11 @@ public class InventoryImportService implements InventoryImportUseCase {
                 return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
             }
 
-            // 1. Validar periodo
             tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period periodEntity = periodRepository.findById(periodId)
                     .orElseThrow(() -> new IllegalArgumentException("Periodo no existe"));
             Period period = mapPeriod(periodEntity);
 
-            // 2. Validar almacén (eliminado, ya no se usa warehouse)
-            // Long warehouseId = request.getIdWarehouse();
-            // Warehouse warehouse = warehouseId != null
-            //         ? warehouseRepository.findById(warehouseId)
-            //         .orElseThrow(() -> new IllegalArgumentException("Almacén no existe"))
-            //         : getDefaultWarehouse();
 
-            // 3. Parsear archivo
             List<InventoryImportRow> rows = parseExcel(file);
             if (rows.isEmpty()) {
                 errors.add("El archivo no contiene datos para importar");
@@ -121,6 +113,20 @@ public class InventoryImportService implements InventoryImportUseCase {
                     processSnapshot(product, period, row.getExistQty(), stats); // Ya no pasa warehouse
                 } catch (Exception e) {
                     errors.add("Error procesando " + row.getCveArt() + ": " + e.getMessage());
+                }
+            }
+
+            // Desactivar productos que están en el inventario del periodo pero no en el Excel
+            List<InventorySnapshot> existingSnapshots = snapshotRepository.findByPeriodAndWarehouse(period.getId(), null);
+            for (InventorySnapshot snapshot : existingSnapshots) {
+                Long productId = snapshot.getProduct().getId();
+                if (!importedProductIds.contains(productId)) {
+                    Product product = snapshot.getProduct();
+                    if (product.getStatus() != Product.Status.B) {
+                        product.setStatus(Product.Status.B);
+                        productRepository.save(product);
+                        stats.deactivated++;
+                    }
                 }
             }
 

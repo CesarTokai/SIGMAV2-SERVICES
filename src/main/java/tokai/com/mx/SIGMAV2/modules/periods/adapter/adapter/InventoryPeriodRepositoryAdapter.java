@@ -53,6 +53,8 @@ public class InventoryPeriodRepositoryAdapter implements tokai.com.mx.SIGMAV2.mo
         return jpaRepository.findAll(pageable).map(this::toPeriodsDomain);
     }
 
+
+
     @Override
     public tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period save(tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period period) {
         PeriodEntity entity = toEntityFromPeriods(period);
@@ -74,4 +76,14 @@ public class InventoryPeriodRepositoryAdapter implements tokai.com.mx.SIGMAV2.mo
             return false;
         }
     }
+
+    @Override
+    public void OpenPeriod(Long id) {
+        jpaRepository.findById(id).ifPresent(entity -> {
+            entity.setState(tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState.OPEN);
+            jpaRepository.save(entity);
+        });
+    }
+
+
 }
