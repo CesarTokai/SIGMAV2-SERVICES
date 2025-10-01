@@ -17,13 +17,17 @@ import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.infrastructure.persistence.Mu
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.infrastructure.persistence.imports.MultiWarehouseImportLogRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.WarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.WarehouseEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventoryStockRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,12 +36,44 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
     private final MultiWarehouseRepository multiWarehouseRepository;
     private final MultiWarehouseImportLogRepository importLogRepository;
     private final PeriodRepository periodRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final JpaProductRepository productRepository;
+    private final JpaInventoryStockRepository inventoryStockRepository;
 
     @Override
     public Page<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search, Pageable pageable) {
-        if (pageable == null) {
+        // Configurar paginación con tamaños específicos permitidos
+        if (search != null && search.getPageSize() != null) {
+            int size = search.getPageSize();
+            // Validar tamaños permitidos según reglas de negocio: 10, 25, 50, 100
+            if (size != 10 && size != 25 && size != 50 && size != 100) {
+                size = 50; // Valor por defecto
+            }
+            int page = pageable != null ? pageable.getPageNumber() : 0;
+
+            // Configurar ordenación personalizada
+            if (search.getOrderBy() != null && !search.getOrderBy().isBlank()) {
+                String orderBy = search.getOrderBy().toLowerCase();
+                boolean ascending = search.getAscending() != null ? search.getAscending() : true;
+
+                // Mapear nombres de columnas según reglas de negocio
+                String sortField = mapSortField(orderBy);
+                if (sortField != null) {
+                    org.springframework.data.domain.Sort sort = ascending ?
+                        org.springframework.data.domain.Sort.by(sortField).ascending() :
+                        org.springframework.data.domain.Sort.by(sortField).descending();
+                    pageable = PageRequest.of(page, size, sort);
+                } else {
+                    pageable = PageRequest.of(page, size);
+                }
+            } else {
+                pageable = PageRequest.of(page, size);
+            }
+        } else if (pageable == null) {
             pageable = PageRequest.of(0, 50);
         }
+
+        // Resolver periodo si se proporciona como string
         if (search != null && (search.getPeriodId() == null) && search.getPeriod() != null && !search.getPeriod().isBlank()) {
             LocalDate date = parsePeriod(search.getPeriod());
             if (date != null) {
@@ -45,7 +81,31 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 per.ifPresent(p -> search.setPeriodId(p.getId()));
             }
         }
+
         return multiWarehouseRepository.findExistences(search, pageable);
+    }
+
+    /**
+     * Mapea los nombres de columnas de la interfaz a los campos de la entidad
+     * según las reglas de negocio para ordenación personalizada
+     */
+    private String mapSortField(String orderBy) {
+        switch (orderBy) {
+            case "clave_producto":
+            case "producto":
+                return "productCode";
+            case "almacen":
+            case "clave_almacen":
+                return "warehouseName";
+            case "estado":
+                return "status";
+            case "existencias":
+                return "stock";
+            case "descripcion":
+                return "productName";
+            default:
+                return null; // Campo no válido para ordenación
+        }
     }
 
     @Override
@@ -81,13 +141,18 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         MultiWarehouseImportLog savedLog = importLogRepository.save(log);
 
         int processed = 0;
+        int warehousesCreated = 0;
+        int productsCreated = 0;
+        int existingUpdated = 0;
+        int markedAsInactive = 0;
+
         try {
             String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
-            List<MultiWarehouseExistence> toPersist;
+            List<MultiWarehouseExistence> parsedData;
             if (filename.endsWith(".csv")) {
-                toPersist = parseCsv(file);
+                parsedData = parseCsv(file);
             } else {
-                toPersist = parseXlsx(file);
+                parsedData = parseXlsx(file);
             }
 
             // Obtener el ID del periodo (si existe) o usar un valor predeterminado
@@ -96,28 +161,87 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 throw new IllegalStateException("No se pudo determinar el ID del periodo para " + period);
             }
 
-            // Obtener el ID máximo actual para generar IDs únicos
+            // REGLA DE NEGOCIO 1: Crear almacenes que no existen
+            Map<String, Long> warehouseMap = createMissingWarehouses(parsedData);
+            warehousesCreated = (int) warehouseMap.values().stream().filter(id -> id != null).count() -
+                              (int) warehouseRepository.count();
+
+            // REGLA DE NEGOCIO 2: Crear productos que no existen en inventario
+            Map<String, Long> productMap = createMissingProducts(parsedData, periodId);
+            productsCreated = (int) productMap.values().stream().filter(id -> id != null).count() -
+                            (int) productRepository.count();
+
+            // Obtener registros existentes de multiwarehouse para el periodo
+            List<MultiWarehouseExistence> existingRecords = multiWarehouseRepository.findAll()
+                .stream()
+                .filter(e -> e.getPeriodId().equals(periodId))
+                .collect(Collectors.toList());
+
+            // Crear mapa de registros existentes para búsqueda rápida
+            Map<String, MultiWarehouseExistence> existingMap = existingRecords.stream()
+                .collect(Collectors.toMap(
+                    e -> e.getProductCode() + "|" + e.getWarehouseName(),
+                    e -> e
+                ));
+
+            // REGLA DE NEGOCIO 3 y 4: Actualizar existentes o crear nuevos
+            List<MultiWarehouseExistence> toSave = new java.util.ArrayList<>();
             Long maxId = multiWarehouseRepository.findMaxId().orElse(0L);
 
-            // Asignar IDs manualmente a cada entidad y establecer el periodId
-            for (MultiWarehouseExistence existence : toPersist) {
-                existence.setId(++maxId);
-                existence.setPeriodId(periodId);
+            for (MultiWarehouseExistence newData : parsedData) {
+                String key = newData.getProductCode() + "|" + newData.getWarehouseName();
+
+                // Asignar warehouseId basado en el mapa de almacenes
+                Long warehouseId = warehouseMap.get(newData.getWarehouseName());
+                newData.setWarehouseId(warehouseId);
+                newData.setPeriodId(periodId);
+
+                if (existingMap.containsKey(key)) {
+                    // REGLA 4: Actualizar registro existente
+                    MultiWarehouseExistence existing = existingMap.get(key);
+                    existing.setStock(newData.getStock());
+                    existing.setStatus(newData.getStatus());
+                    existing.setProductName(newData.getProductName());
+                    toSave.add(existing);
+                    existingUpdated++;
+                } else {
+                    // REGLA 3: Crear nuevo registro
+                    newData.setId(++maxId);
+                    toSave.add(newData);
+                }
             }
 
+            // REGLA DE NEGOCIO 5: Marcar como "B" (baja) productos no presentes en Excel
+            Set<String> excelKeys = parsedData.stream()
+                .map(e -> e.getProductCode() + "|" + e.getWarehouseName())
+                .collect(Collectors.toSet());
 
-
-            if (!toPersist.isEmpty()) {
-                multiWarehouseRepository.saveAll(toPersist);
+            for (MultiWarehouseExistence existing : existingRecords) {
+                String key = existing.getProductCode() + "|" + existing.getWarehouseName();
+                if (!excelKeys.contains(key) && !"B".equals(existing.getStatus())) {
+                    existing.setStatus("B");
+                    toSave.add(existing);
+                    markedAsInactive++;
+                }
             }
 
-            processed = toPersist.size();
+            // Guardar todos los cambios
+            if (!toSave.isEmpty()) {
+                multiWarehouseRepository.saveAll(toSave);
+            }
+
+            processed = toSave.size();
             savedLog.setStatus("SUCCESS");
-            savedLog.setMessage("Importación completada. Registros: " + processed);
+            savedLog.setMessage(String.format(
+                "Importación completada. Registros procesados: %d, " +
+                "Almacenes creados: %d, Productos creados: %d, " +
+                "Existentes actualizados: %d, Marcados como baja: %d",
+                processed, warehousesCreated, productsCreated, existingUpdated, markedAsInactive
+            ));
+
         } catch (Exception ex) {
             savedLog.setStatus("ERROR");
             savedLog.setMessage("Error en importación: " + ex.getMessage());
-            // Propagar excepción no comprobada para activar rollback transaccional
             throw new RuntimeException(ex);
         } finally {
             importLogRepository.save(savedLog);
@@ -363,5 +487,104 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         return null;
     }
 
-}
+    /**
+     * REGLA DE NEGOCIO 1: Crear almacenes que no existen
+     * Si aparecen almacenes que no existen en el SIGMA, éstos serán creados automáticamente
+     * y se les agregará la leyenda: "Este almacén no existía y fue creado en la importación"
+     */
+    private Map<String, Long> createMissingWarehouses(List<MultiWarehouseExistence> parsedData) {
+        Map<String, Long> warehouseMap = new HashMap<>();
 
+        for (MultiWarehouseExistence data : parsedData) {
+            String warehouseName = data.getWarehouseName();
+            if (warehouseName == null || warehouseName.trim().isEmpty()) {
+                continue;
+            }
+
+            if (!warehouseMap.containsKey(warehouseName)) {
+                // Buscar almacén existente
+                Optional<WarehouseEntity> existing = warehouseRepository.findByNameWarehouseAndDeletedAtIsNull(warehouseName);
+
+                if (existing.isPresent()) {
+                    warehouseMap.put(warehouseName, existing.get().getId());
+                } else {
+                    // Crear nuevo almacén
+                    WarehouseEntity newWarehouse = new WarehouseEntity();
+                    newWarehouse.setWarehouseKey(generateWarehouseKey(warehouseName));
+                    newWarehouse.setNameWarehouse(warehouseName);
+                    newWarehouse.setObservations("Este almacén no existía y fue creado en la importación");
+                    newWarehouse.setCreatedAt(LocalDateTime.now());
+                    newWarehouse.setUpdatedAt(LocalDateTime.now());
+
+                    WarehouseEntity saved = warehouseRepository.save(newWarehouse);
+                    warehouseMap.put(warehouseName, saved.getId());
+                }
+            }
+        }
+
+        return warehouseMap;
+    }
+
+    /**
+     * REGLA DE NEGOCIO 2: Crear productos que no existen en inventario
+     * Si aparecen productos que no están en el inventario del periodo elegido,
+     * éstos serán creados automáticamente con estado "A"
+     */
+    private Map<String, Long> createMissingProducts(List<MultiWarehouseExistence> parsedData, Long periodId) {
+        Map<String, Long> productMap = new HashMap<>();
+
+        for (MultiWarehouseExistence data : parsedData) {
+            String productCode = data.getProductCode();
+            if (productCode == null || productCode.trim().isEmpty()) {
+                continue;
+            }
+
+            if (!productMap.containsKey(productCode)) {
+                // Buscar producto existente por cveArt (que es el código del producto)
+                Optional<ProductEntity> existing = productRepository.findByCveArt(productCode);
+
+                if (existing.isPresent()) {
+                    productMap.put(productCode, existing.get().getIdProduct());
+                } else {
+                    // Crear nuevo producto
+                    ProductEntity newProduct = new ProductEntity();
+                    newProduct.setCveArt(productCode);
+                    newProduct.setDescr(data.getProductName() != null ? data.getProductName() : productCode);
+                    newProduct.setStatus("A"); // Estado Alta por defecto
+                    newProduct.setCreatedAt(LocalDateTime.now());
+                    // Nota: ProductEntity no maneja periodId directamente, se maneja a nivel de inventario
+
+                    ProductEntity saved = productRepository.save(newProduct);
+                    productMap.put(productCode, saved.getIdProduct());
+                }
+            }
+        }
+
+        return productMap;
+    }
+
+    /**
+     * Genera una clave única para el almacén basada en el nombre
+     */
+    private String generateWarehouseKey(String warehouseName) {
+        if (warehouseName == null || warehouseName.trim().isEmpty()) {
+            return "ALM_" + System.currentTimeMillis();
+        }
+
+        // Generar clave basada en las primeras letras del nombre
+        String key = warehouseName.replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
+        if (key.length() > 10) {
+            key = key.substring(0, 10);
+        }
+
+        // Verificar unicidad
+        String baseKey = key;
+        int counter = 1;
+        while (warehouseRepository.existsByWarehouseKeyAndDeletedAtIsNull(key)) {
+            key = baseKey + "_" + counter++;
+        }
+
+        return key;
+    }
+
+}
