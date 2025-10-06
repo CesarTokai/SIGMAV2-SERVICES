@@ -38,5 +38,10 @@ public class MultiWarehouseImportLog {
 
     @Column(length = 1000)
     private String message;
-}
 
+    @Column(length = 64)
+    private String fileHash; // SHA-256 del archivo importado
+
+    @Column(length = 20)
+    private String stage; // Etapa de importación (opcional)
+}

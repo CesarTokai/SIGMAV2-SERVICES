@@ -29,6 +29,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.security.MessageDigest;
+import java.security.DigestInputStream;
+import java.io.InputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -104,7 +107,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             case "descripcion":
                 return "productName";
             default:
-                return null; // Campo no válido para ordenación
+                return null;
         }
     }
 
@@ -116,6 +119,24 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         }
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("Archivo multialmacen.xlsx* es obligatorio");
+        }
+
+        // Calcular hash del archivo
+        String fileHash = calculateSHA256(file);
+        String stage = "default"; // Puedes ajustar si manejas varias etapas
+        Optional<MultiWarehouseImportLog> existingLog = importLogRepository.findByPeriodAndStageAndFileHash(period, stage, fileHash);
+        if (existingLog.isPresent()) {
+            // Ya se importó este archivo para este periodo y etapa
+            MultiWarehouseImportLog log = new MultiWarehouseImportLog();
+            log.setFileName(file.getOriginalFilename());
+            log.setPeriod(period);
+            log.setImportDate(LocalDateTime.now());
+            log.setStatus("NO_CHANGES");
+            log.setMessage("El archivo ya fue importado previamente para este periodo y etapa. No se aplicaron cambios.");
+            log.setFileHash(fileHash);
+            log.setStage(stage);
+            importLogRepository.save(log);
+            return ResponseEntity.ok(log);
         }
 
         // Validar estado del periodo: rechazar si CLOSED o LOCKED
@@ -138,6 +159,8 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         log.setImportDate(LocalDateTime.now());
         log.setStatus("STARTED");
         log.setMessage("Importación iniciada");
+        log.setFileHash(fileHash);
+        log.setStage(stage);
         MultiWarehouseImportLog savedLog = importLogRepository.save(log);
 
         int processed = 0;
@@ -540,19 +563,17 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             }
 
             if (!productMap.containsKey(productCode)) {
-                // Buscar producto existente por cveArt (que es el código del producto)
                 Optional<ProductEntity> existing = productRepository.findByCveArt(productCode);
 
                 if (existing.isPresent()) {
                     productMap.put(productCode, existing.get().getIdProduct());
                 } else {
-                    // Crear nuevo producto
                     ProductEntity newProduct = new ProductEntity();
                     newProduct.setCveArt(productCode);
                     newProduct.setDescr(data.getProductName() != null ? data.getProductName() : productCode);
-                    newProduct.setStatus("A"); // Estado Alta por defecto
+                    newProduct.setStatus("A");
                     newProduct.setCreatedAt(LocalDateTime.now());
-                    // Nota: ProductEntity no maneja periodId directamente, se maneja a nivel de inventario
+                    newProduct.setUniMed("PZA"); // Valor por defecto para uni_med
 
                     ProductEntity saved = productRepository.save(newProduct);
                     productMap.put(productCode, saved.getIdProduct());
@@ -585,6 +606,24 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         }
 
         return key;
+    }
+
+    // Calcula el hash SHA-256 de un archivo MultipartFile
+    private String calculateSHA256(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            DigestInputStream dis = new DigestInputStream(is, digest);
+            byte[] buffer = new byte[4096];
+            while (dis.read(buffer) != -1) {}
+            byte[] hash = digest.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo calcular el hash SHA-256 del archivo", e);
+        }
     }
 
 }
