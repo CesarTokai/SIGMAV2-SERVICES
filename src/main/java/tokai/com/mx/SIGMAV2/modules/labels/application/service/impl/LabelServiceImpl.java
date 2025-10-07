@@ -14,6 +14,11 @@ import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -30,7 +35,7 @@ public class LabelServiceImpl implements LabelService {
         // Validación: no permitir solicitar si existen marbetes GENERADOS sin imprimir
         boolean exists = persistence.existsGeneratedUnprintedForProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (exists) {
-            throw new RuntimeException("Existen marbetes GENERADOS sin imprimir para este producto/almacén/periodo.");
+            throw new InvalidLabelStateException("Existen marbetes GENERADOS sin imprimir para este producto/almacén/periodo.");
         }
 
         // Crear y guardar la solicitud
@@ -52,12 +57,12 @@ public class LabelServiceImpl implements LabelService {
         // Buscar solicitud existente
         Optional<LabelRequest> opt = persistence.findByProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (opt.isEmpty()) {
-            throw new RuntimeException("No existe una solicitud para el producto/almacén/periodo.");
+            throw new LabelNotFoundException("No existe una solicitud para el producto/almacén/periodo.");
         }
         LabelRequest req = opt.get();
         int remaining = req.getRequestedLabels() - req.getFoliosGenerados();
         if (remaining <= 0) {
-            throw new RuntimeException("No hay folios solicitados para generar.");
+            throw new InvalidLabelStateException("No hay folios solicitados para generar.");
         }
         int toGenerate = Math.min(remaining, dto.getLabelsToGenerate());
 
@@ -97,30 +102,37 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public LabelCountEvent registerCountC1(CountEventDTO dto, Long userId, String userRole) {
-        // Roles permitidos para C1: ADMINISTRADOR, ALMACENISTA, AUXILIAR, AUXILIAR_DE_CONTEO
         if (userRole == null) {
-            throw new RuntimeException("Role de usuario requerido para registrar C1");
+            throw new PermissionDeniedException("Role de usuario requerido para registrar C1");
         }
         String roleUpper = userRole.toUpperCase();
         boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") || roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
         if (!allowed) {
-            throw new RuntimeException("No tiene permiso para registrar C1");
+            throw new PermissionDeniedException("No tiene permiso para registrar C1");
         }
 
-        // Verificar que el marbete exista y esté IMPRESO
+        // Verificar que el marbete exista
         Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
         if (optLabel.isEmpty()) {
-            throw new RuntimeException("El folio no existe");
+            throw new LabelNotFoundException("El folio no existe");
         }
         Label label = optLabel.get();
         if (label.getEstado() == Label.State.CANCELADO) {
-            throw new RuntimeException("No se puede registrar conteo: el marbete está CANCELADO.");
+            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
         }
         if (label.getEstado() != Label.State.IMPRESO) {
-            throw new RuntimeException("No se puede registrar conteo: el marbete no está IMPRESO.");
+            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete no está IMPRESO.");
         }
 
-        // Registrar evento de conteo número 1
+        // No permitir registrar C1 si ya existe C1
+        if (persistence.hasCountNumber(dto.getFolio(), 1)) {
+            throw new DuplicateCountException("El conteo C1 ya fue registrado para este folio.");
+        }
+        // No permitir registrar C1 si ya existe C2 (secuencia rota)
+        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
+            throw new CountSequenceException("No se puede registrar C1 porque ya existe un conteo C2 para este folio.");
+        }
+
         LabelCountEvent.Role roleEnum;
         try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR; }
 
@@ -130,32 +142,40 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole) {
-        // Roles permitidos para C2: AUXILIAR_DE_CONTEO (según configuración)
         if (userRole == null) {
-            throw new RuntimeException("Role de usuario requerido para registrar C2");
+            throw new PermissionDeniedException("Role de usuario requerido para registrar C2");
         }
         String roleUpper = userRole.toUpperCase();
         if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-            throw new RuntimeException("No tiene permiso para registrar C2");
+            throw new PermissionDeniedException("No tiene permiso para registrar C2");
         }
 
-        // Verificar que el marbete exista y esté IMPRESO
+        // Verificar que el marbete exista
         Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
         if (optLabel.isEmpty()) {
-            throw new RuntimeException("El folio no existe");
+            throw new LabelNotFoundException("El folio no existe");
         }
         Label label = optLabel.get();
         if (label.getEstado() == Label.State.CANCELADO) {
-            throw new RuntimeException("No se puede registrar conteo: el marbete está CANCELADO.");
+            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
         }
         if (label.getEstado() != Label.State.IMPRESO) {
-            throw new RuntimeException("No se puede registrar conteo: el marbete no está IMPRESO.");
+            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete no está IMPRESO.");
+        }
+
+        // Debe existir C1 antes de C2
+        if (!persistence.hasCountNumber(dto.getFolio(), 1)) {
+            throw new CountSequenceException("No se puede registrar C2 porque no existe un conteo C1 previo.");
+        }
+
+        // No permitir duplicar C2
+        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
+            throw new DuplicateCountException("El conteo C2 ya fue registrado para este folio.");
         }
 
         LabelCountEvent.Role roleEnum;
         try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR_DE_CONTEO; }
 
-        // Registrar evento de conteo número 2 y marcar is_final = true
         return persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
     }
 }

@@ -23,6 +23,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// Importar nuevas excepciones del módulo labels
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -186,6 +193,21 @@ public class GlobalExceptionHandler {
             ex.getMessage(),
             request.getDescription(false)
         );
+    }
+
+    @ExceptionHandler(LabelNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleLabelNotFound(LabelNotFoundException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "LABEL_NOT_FOUND", ex.getMessage(), request.getDescription(false));
+    }
+
+    @ExceptionHandler(PermissionDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handlePermissionDenied(PermissionDeniedException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", ex.getMessage(), request.getDescription(false));
+    }
+
+    @ExceptionHandler({DuplicateCountException.class, CountSequenceException.class, InvalidLabelStateException.class})
+    public ResponseEntity<Map<String, Object>> handleBusinessConflict(RuntimeException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, "BUSINESS_CONFLICT", ex.getMessage(), request.getDescription(false));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

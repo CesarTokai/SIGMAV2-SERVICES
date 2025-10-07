@@ -197,4 +197,21 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return jpaLabelCountEventRepository.save(ev);
     }
 
+    // Helpers para conteos
+    public boolean hasCountNumber(Long folio, Integer countNumber) {
+        return jpaLabelCountEventRepository.existsByFolioAndCountNumber(folio, countNumber);
+    }
+
+    public long countEventsForFolio(Long folio) {
+        return jpaLabelCountEventRepository.countByFolio(folio);
+    }
+
+    public java.util.Optional<LabelCountEvent> findLatestCountEvent(Long folio) {
+        return jpaLabelCountEventRepository.findTopByFolioOrderByCreatedAtDesc(folio);
+    }
+
+    public java.util.List<LabelCountEvent> findAllCountEvents(Long folio) {
+        return jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+    }
+
 }
