@@ -149,14 +149,8 @@
 				<configuration>
 					<mainClass>tokai.com.mx.SIGMAV2.Sigmav2Application</mainClass>
 					<excludes>
-
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
-
-							<groupId>org.mapstruct</groupId>
-							<artifactId>mapstruct-processor</artifactId>
-							<version>1.5.5.Final</version>
+						<exclude>org.projectlombok:lombok</exclude>
+						<exclude>org.mapstruct:mapstruct-processor</exclude>
 					</excludes>
 				</configuration>
 			</plugin>
