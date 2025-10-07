@@ -7,18 +7,23 @@ import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelFolioSequence;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelFolioSequenceRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelGenerationBatchRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +33,8 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     private final JpaLabelRequestRepository jpaLabelRequestRepository;
     private final JpaLabelFolioSequenceRepository jpaLabelFolioSequenceRepository;
     private final JpaLabelGenerationBatchRepository jpaLabelGenerationBatchRepository;
+    private final JpaLabelPrintRepository jpaLabelPrintRepository;
+    private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
 
     @Override
     public Label save(Label label) {
@@ -117,4 +124,77 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         }
         jpaLabelRepository.saveAll(labels);
     }
+
+    // Nueva operación: impresión de rango de marbetes
+    @Transactional
+    public synchronized LabelPrint printLabelsRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio, Long userId) {
+        if (endFolio < startFolio) {
+            throw new IllegalArgumentException("Rango inválido: endFolio < startFolio");
+        }
+        long count = endFolio - startFolio + 1;
+        if (count > 500) {
+            throw new IllegalArgumentException("Máximo 500 folios por lote.");
+        }
+
+        List<Label> labels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio);
+        // Verificar que todos los folios existan
+        if (labels.size() != count) {
+            // encontrar faltantes
+            java.util.Set<Long> found = labels.stream().map(Label::getFolio).collect(Collectors.toSet());
+            StringBuilder sb = new StringBuilder();
+            for (long f = startFolio; f <= endFolio; f++) {
+                if (!found.contains(f)) {
+                    if (sb.length() > 0) sb.append(',');
+                    sb.append(f);
+                }
+            }
+            String missing = sb.toString();
+            throw new IllegalStateException("No es posible imprimir marbetes no generados. Folios faltantes: " + missing);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        // Validar pertenencia a periodo/almacén y estado
+        for (Label l : labels) {
+            if (!l.getPeriodId().equals(periodId) || !l.getWarehouseId().equals(warehouseId)) {
+                throw new IllegalStateException("El folio " + l.getFolio() + " no pertenece al periodo/almacén seleccionado.");
+            }
+            if (l.getEstado() == Label.State.CANCELADO) {
+                throw new IllegalStateException("No es posible imprimir marbetes cancelados. Folio: " + l.getFolio());
+            }
+            // permitir GENERADO o IMPRESO (reimpresión)
+            l.setEstado(Label.State.IMPRESO);
+            l.setImpresoAt(now);
+        }
+
+        // Guardar todos los labels actualizados
+        jpaLabelRepository.saveAll(labels);
+
+        // Crear registro en label_prints
+        LabelPrint lp = new LabelPrint();
+        lp.setPeriodId(periodId);
+        lp.setWarehouseId(warehouseId);
+        lp.setFolioInicial(startFolio);
+        lp.setFolioFinal(endFolio);
+        lp.setCantidadImpresa((int)count);
+        lp.setPrintedBy(userId);
+        lp.setPrintedAt(now);
+
+        LabelPrint saved = jpaLabelPrintRepository.save(lp);
+
+        return saved;
+    }
+
+    @Transactional
+    public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
+        LabelCountEvent ev = new LabelCountEvent();
+        ev.setFolio(folio);
+        ev.setUserId(userId);
+        ev.setCountNumber(countNumber);
+        ev.setCountedValue(countedValue);
+        ev.setRoleAtTime(roleAtTime);
+        ev.setIsFinal(isFinal != null ? isFinal : false);
+        ev.setCreatedAt(LocalDateTime.now());
+        return jpaLabelCountEventRepository.save(ev);
+    }
+
 }
