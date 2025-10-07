@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-// Importar nuevas excepciones del módulo labels
+// Importar nueva0s excepciones del módulo labels
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
