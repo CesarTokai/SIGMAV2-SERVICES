@@ -1,12 +1,17 @@
 package tokai.com.mx.SIGMAV2.security.infrastructure.controller;
 
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.validation.Valid;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestAuthDTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestResetPasswordStep1DTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestResetPasswordStep2DTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.ResponseAuthDTO;
+import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
+import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.UserDetailsServicePer;
+import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
+import tokai.com.mx.SIGMAV2.shared.audit.AuditService;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 import tokai.com.mx.SIGMAV2.shared.response.ResponseHelper;
 
@@ -20,9 +25,15 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("permitAll()")
 public class AuthController {
     private final UserDetailsServicePer userDetailsServicePer;
+    private final JwtBlacklistService jwtBlacklistService;
+    private final JwtUtils jwtUtils;
+    private final AuditService auditService;
 
-    public AuthController(UserDetailsServicePer userDetailsServicePer) {
+    public AuthController(UserDetailsServicePer userDetailsServicePer, JwtBlacklistService jwtBlacklistService, JwtUtils jwtUtils, AuditService auditService) {
         this.userDetailsServicePer = userDetailsServicePer;
+        this.jwtBlacklistService = jwtBlacklistService;
+        this.jwtUtils = jwtUtils;
+        this.auditService = auditService;
     }
 
     @GetMapping("/")
@@ -59,6 +70,37 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseHelper.badRequest("INVALID_CODE", "Código de verificación inválido", e.getMessage());
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+        if (token != null && !token.isEmpty()) {
+            try {
+                DecodedJWT decoded = jwtUtils.validateToken(token);
+                long exp = decoded.getExpiresAt().toInstant().getEpochSecond();
+                jwtBlacklistService.blacklist(token, exp);
+                // Registrar en bitácora
+                AuditEntry entry = new AuditEntry();
+                entry.setAction("LOGOUT");
+                entry.setResourceType("Auth");
+                entry.setDetails("Logout JWT");
+                entry.setPrincipal(decoded.getSubject());
+                auditService.log(entry);
+            } catch (Exception e) {
+                // Si el token es inválido, igual respondemos éxito pero logueamos el error
+                AuditEntry entry = new AuditEntry();
+                entry.setAction("LOGOUT_FAIL");
+                entry.setResourceType("Auth");
+                entry.setDetails("Logout JWT inválido");
+                entry.setPrincipal(null);
+                auditService.log(entry);
+            }
+        }
+        return ResponseHelper.success(null, "Sesión cerrada correctamente");
     }
 
 }

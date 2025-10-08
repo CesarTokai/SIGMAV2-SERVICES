@@ -22,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtAuthenticationFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
+import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 
 import java.util.Arrays;
 
@@ -31,9 +32,11 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
+    private final JwtBlacklistService jwtBlacklistService;
 
-    public SecurityConfig(JwtUtils jwtUtils) {
+    public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService) {
         this.jwtUtils = jwtUtils;
+        this.jwtBlacklistService = jwtBlacklistService;
     }
 
     // configuration of security filter chain
@@ -52,7 +55,7 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtUtils), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtils, jwtBlacklistService), BasicAuthenticationFilter.class)
                 .build();
     }
 

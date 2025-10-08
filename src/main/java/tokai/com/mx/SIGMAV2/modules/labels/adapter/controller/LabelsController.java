@@ -21,14 +21,14 @@ public class LabelsController {
 
     // Solicitar folios (crear LabelRequest)
     @PostMapping("/request")
-    public ResponseEntity<?> requestLabels(@Valid @RequestBody LabelRequestDTO dto, @RequestHeader("X-User-Id") Long userId) {
+    public ResponseEntity<Void> requestLabels(@Valid @RequestBody LabelRequestDTO dto, @RequestHeader("X-User-Id") Long userId) {
         labelService.requestLabels(dto, userId);
         return ResponseEntity.status(201).build();
     }
 
     // Generar marbetes a partir de una solicitud
     @PostMapping("/generate")
-    public ResponseEntity<?> generateBatch(@Valid @RequestBody GenerateBatchDTO dto, @RequestHeader("X-User-Id") Long userId) {
+    public ResponseEntity<Void> generateBatch(@Valid @RequestBody GenerateBatchDTO dto, @RequestHeader("X-User-Id") Long userId) {
         labelService.generateBatch(dto, userId);
         return ResponseEntity.ok().build();
     }

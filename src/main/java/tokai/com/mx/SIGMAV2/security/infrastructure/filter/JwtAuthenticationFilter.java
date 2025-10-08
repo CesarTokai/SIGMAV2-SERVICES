@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.exception.*;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
+import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 
 import java.io.IOException;
@@ -32,9 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final JwtUtils jwtUtils;
     private final ObjectMapper objectMapper;
+    private final JwtBlacklistService jwtBlacklistService;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService) {
         this.jwtUtils = jwtUtils;
+        this.jwtBlacklistService = jwtBlacklistService;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.findAndRegisterModules(); // Para LocalDateTime
     }
@@ -85,13 +88,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             log.warn("Token extraído (longitud: {}): [{}...]", 
                      token.length(), token.length() > 30 ? token.substring(0, 30) : token);
-            
             if (token.trim().isEmpty()) {
                 log.warn("Token vacío después de extraer 'Bearer '");
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }
-
+            // Validar si el token está en la blacklist
+            if (jwtBlacklistService.isBlacklisted(token)) {
+                log.warn("Token JWT en blacklist, acceso denegado");
+                sendErrorResponse(response, new TokenRevokedException());
+                return;
+            }
             // Validar token
             DecodedJWT decodedJWT = jwtUtils.validateToken(token);
 
