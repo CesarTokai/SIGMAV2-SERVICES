@@ -17,6 +17,8 @@ import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeSe
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.VerificationCodeLogRepository;
 
 import jakarta.validation.Valid;
+import tokai.com.mx.SIGMAV2.shared.response.CustomResponse;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/api/sigmav2/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMINISTRADOR')")
 public class AdminUserController {
@@ -40,30 +42,34 @@ public class AdminUserController {
      * Crea un nuevo usuario desde el panel de administración
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
+    public ResponseEntity<CustomResponse<AdminUserResponse>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
         log.info("Creando usuario desde panel de administración: {}", request.getEmail());
+        try {
+            UserRequest userRequest = new UserRequest();
+            userRequest.setEmail(request.getEmail());
+            userRequest.setPassword(request.getPassword());
+            userRequest.setRole(request.getRole());
 
-        // Convertir a UserRequest para usar el servicio existente
-        UserRequest userRequest = new UserRequest();
-        userRequest.setEmail(request.getEmail());
-        userRequest.setPassword(request.getPassword());
-        userRequest.setRole(request.getRole());
+            User user = userService.register(userRequest);
 
-        User user = userService.register(userRequest);
+            if (request.isPreVerified()) {
+                user = userService.forceVerifyUser(user.getId());
+            }
 
-        // Si el admin quiere que esté pre-verificado
-        if (request.isPreVerified()) {
-            user = userService.forceVerifyUser(user.getId());
+            AdminUserResponse userResponse = convertToAdminUserResponse(user);
+
+            CustomResponse<AdminUserResponse> response = new CustomResponse<>(
+                    userResponse, false, HttpStatus.CREATED.value(), "Usuario creado exitosamente por administrador"
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (Exception e) {
+            // Aquí capturas cualquier excepción y das retroalimentación
+            CustomResponse<AdminUserResponse> errorResponse = new CustomResponse<>(
+                    null, true, HttpStatus.BAD_REQUEST.value(), "Error al crear usuario: " + e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }
-
-        AdminUserResponse userResponse = convertToAdminUserResponse(user);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Usuario creado exitosamente por administrador");
-        response.put("data", userResponse);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

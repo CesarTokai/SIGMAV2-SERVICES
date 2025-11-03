@@ -97,6 +97,27 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    // Nuevo endpoint: devuelve sólo si el usuario está conectado (status)
+    @GetMapping("/{email}/connected")
+    public ResponseEntity<Map<String, Object>> isConnected(@PathVariable String email) {
+        log.info("Consultando estado de conexión para usuario: {}", email);
+
+        Optional<User> userOpt = userService.findByUsername(email);
+        Map<String, Object> response = new HashMap<>();
+        if (userOpt.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Usuario no encontrado");
+            response.put("email", email);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        User user = userOpt.get();
+        response.put("success", true);
+        response.put("email", user.getEmail());
+        response.put("connected", user.isStatus()); // true = conectado, false = no conectado
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{email}")
     public ResponseEntity<Map<String, Object>> deleteByEmail(@PathVariable String email) {
         log.info("Eliminando usuario: {}", email);
@@ -117,8 +138,9 @@ public class UserController {
         
         Optional<User> userOpt = userService.verifyByUsernameAndCode(request.getEmail(), request.getCode());
         
-        User user = userOpt.get(); // El servicio ya maneja el caso de Optional vacío con excepción
-        
+        User user = userOpt.orElseThrow(() -> new RuntimeException("Usuario no encontrado al verificar")); // evitar Optional.get() sin comprobación
+
+
         UserDomainResponse userResponse = new UserDomainResponse(
                 user.getId(),
                 user.getEmail(),

@@ -10,10 +10,12 @@ import tokai.com.mx.SIGMAV2.security.infrastructure.dto.ResponseAuthDTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.UserDetailsServicePer;
-import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
+  import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
 import tokai.com.mx.SIGMAV2.shared.audit.AuditService;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 import tokai.com.mx.SIGMAV2.shared.response.ResponseHelper;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,12 +30,14 @@ public class AuthController {
     private final JwtBlacklistService jwtBlacklistService;
     private final JwtUtils jwtUtils;
     private final AuditService auditService;
+    private final JpaUserRepository jpaUserRepository;
 
-    public AuthController(UserDetailsServicePer userDetailsServicePer, JwtBlacklistService jwtBlacklistService, JwtUtils jwtUtils, AuditService auditService) {
+    public AuthController(UserDetailsServicePer userDetailsServicePer, JwtBlacklistService jwtBlacklistService, JwtUtils jwtUtils, AuditService auditService, JpaUserRepository jpaUserRepository) {
         this.userDetailsServicePer = userDetailsServicePer;
         this.jwtBlacklistService = jwtBlacklistService;
         this.jwtUtils = jwtUtils;
         this.auditService = auditService;
+        this.jpaUserRepository = jpaUserRepository;
     }
 
     @GetMapping("/")
@@ -83,12 +87,27 @@ public class AuthController {
                 DecodedJWT decoded = jwtUtils.validateToken(token);
                 long exp = decoded.getExpiresAt().toInstant().getEpochSecond();
                 jwtBlacklistService.blacklist(token, exp);
+
+                String subject = decoded.getSubject();
+                // marcar usuario como inactivo si existe
+                try {
+                    if (subject != null) {
+                        jpaUserRepository.findByEmail(subject).ifPresent(u -> {
+                            u.setStatus(false);
+                            jpaUserRepository.save(u);
+                        });
+                    }
+                } catch (Exception ignore) {
+                    // no propagar
+                }
+
                 // Registrar en bitácora
                 AuditEntry entry = new AuditEntry();
                 entry.setAction("LOGOUT");
                 entry.setResourceType("Auth");
                 entry.setDetails("Logout JWT");
-                entry.setPrincipal(decoded.getSubject());
+                entry.setPrincipal(subject);
+                entry.setOutcome("SUCCESS");
                 auditService.log(entry);
             } catch (Exception e) {
                 // Si el token es inválido, igual respondemos éxito pero logueamos el error
@@ -97,6 +116,7 @@ public class AuthController {
                 entry.setResourceType("Auth");
                 entry.setDetails("Logout JWT inválido");
                 entry.setPrincipal(null);
+                entry.setOutcome("FAILURE");
                 auditService.log(entry);
             }
         }

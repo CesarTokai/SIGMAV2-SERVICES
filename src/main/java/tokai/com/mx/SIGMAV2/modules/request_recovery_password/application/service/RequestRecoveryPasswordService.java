@@ -1,4 +1,3 @@
-
 package tokai.com.mx.SIGMAV2.modules.request_recovery_password.application.service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +26,9 @@ import tokai.com.mx.SIGMAV2.shared.exception.UserNotFoundException;
 import tokai.com.mx.SIGMAV2.shared.exception.UnauthorizedAccessException;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Slf4j
 @Service
 public class RequestRecoveryPasswordService {
@@ -34,6 +36,8 @@ public class RequestRecoveryPasswordService {
     final MailSenderImpl mailSenderImpl;
     final UserRepository userRepository;
     final PasswordEncoder passwordEncoder;
+
+    private static final Logger logger = LoggerFactory.getLogger(RequestRecoveryPasswordService.class);
 
     public RequestRecoveryPasswordService(
         IRequestRecoveryPassword requestRecoveryPasswordRepository,
@@ -190,20 +194,26 @@ public class RequestRecoveryPasswordService {
 
     @Transactional
     public boolean createRequest(String email) {
+        logger.debug("createRequest invoked for email={}", email);
         Optional<BeanUser> user = userRepository.findByEmail(email);
         if (user.isEmpty()) {
+            logger.debug("Usuario no existe: {}", email);
             throw new IllegalArgumentException("El usuario no existe.");
         }
         BeanUser existingUser = user.get();
         int pendingRequests = requestRecoveryPasswordRepository.countAllByUserAndStatus(existingUser, BeanRequestStatus.PENDING);
+        logger.debug("Pending requests for user {} = {}", email, pendingRequests);
         if (pendingRequests > 0) {
+            logger.debug("Ya existe una solicitud pendiente para: {}", email);
             throw new IllegalStateException("Ya existe una solicitud pendiente para este usuario.");
         }
         BeanRequestRecoveryPassword request = new BeanRequestRecoveryPassword();
         request.setUser(existingUser);
         request.setStatus(BeanRequestStatus.PENDING);
         request.setDate(LocalDate.now());
-        requestRecoveryPasswordRepository.save(request);
+        logger.debug("Saving request entity for user={}", email);
+        BeanRequestRecoveryPassword saved = requestRecoveryPasswordRepository.save(request);
+        logger.debug("Saved request id={}, user={}", saved.getRequestId(), saved.getUser() != null ? saved.getUser().getEmail() : null);
         return true;
     }
 

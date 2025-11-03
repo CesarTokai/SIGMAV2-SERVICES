@@ -15,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.application.service.RequestRecoveryPasswordService;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.RequestToResolveRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.VerifyEmailDTO;
@@ -22,9 +24,10 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto
 
 @CrossOrigin(origins = {"*"})
 @RestController
-@RequestMapping("/api/sigmav2/request-recovery-password")
+@RequestMapping("/api/sigmav2/auth")
 public class RequestRecoveryPasswordController {
     final RequestRecoveryPasswordService requestRecoveryPasswordService;
+    private static final Logger log = LoggerFactory.getLogger(RequestRecoveryPasswordController.class);
 
     public RequestRecoveryPasswordController(RequestRecoveryPasswordService requestRecoveryPasswordService) {
         this.requestRecoveryPasswordService = requestRecoveryPasswordService;
@@ -77,18 +80,12 @@ public class RequestRecoveryPasswordController {
     @PostMapping("/createRequest")
     @PreAuthorize("permitAll()")
     public ResponseEntity<?> createPasswordRecoveryRequest(@RequestBody @Valid VerifyEmailDTO payload) {
+        log.debug("POST /api/auth/createRequest body={}", payload);
         boolean success = requestRecoveryPasswordService.createRequest(payload.email());
-        
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
-        
-        if (success) {
-            response.put("message", "Solicitud de recuperación creada exitosamente");
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } else {
-            response.put("message", "Error al crear la solicitud de recuperación");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
+        response.put("message", success ? "Solicitud de recuperación creada exitosamente" : "Error al crear la solicitud de recuperación");
+        return ResponseEntity.status(success ? HttpStatus.CREATED : HttpStatus.BAD_REQUEST).body(response);
     }
 
 

@@ -51,7 +51,9 @@ public class SecurityConfig {
                                 "/api/sigmav2/users/register",
                                 "/api/sigmav2/users/verify",
                                 "/api/sigmav2/users/exists",
-                                "/api/sigmav2/auth/**")
+                                "/api/sigmav2/auth/**",
+                                "/api/auth/**",
+                                "/api/sigmav2/auth/login")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

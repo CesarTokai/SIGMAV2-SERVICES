@@ -34,7 +34,9 @@ public class UserRepositoryAdapter implements UserRepository {
     public User save(User user) {
         log.debug("Guardando usuario: {}", user.getEmail());
         BeanUser beanUser = userMapper.toBean(user);
-        BeanUser savedBeanUser = jpaUserRepository.save(beanUser);
+        // Usar saveAndFlush para forzar que JPA envíe el UPDATE/INSERT inmediatamente
+        BeanUser savedBeanUser = jpaUserRepository.saveAndFlush(beanUser);
+        log.debug("Usuario guardado: id={}, email={}, verificationCode={}", savedBeanUser.getId(), savedBeanUser.getEmail(), savedBeanUser.getVerificationCode());
         return userMapper.toDomain(savedBeanUser);
     }
 
@@ -81,7 +83,7 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     public Page<User> findAll(Pageable pageable) {
-        log.debug("Buscando todos los usuarios con paginación: page={}, size={}", 
+        log.debug("Buscando todos los usuarios con paginación: page={}, size={} ",
                 pageable.getPageNumber(), pageable.getPageSize());
         return jpaUserRepository.findAll(pageable)
                 .map(userMapper::toDomain);
