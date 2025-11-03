@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -36,10 +38,32 @@ public class RequestRecoveryPasswordController {
     @GetMapping("/getPage")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
     public ResponseEntity<?> findRequest(Pageable pageable){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        log.debug("findRequest invoked by={}, authenticated={}, authorities={}",
+                auth == null ? null : auth.getName(),
+                auth != null && auth.isAuthenticated(),
+                auth == null ? null : auth.getAuthorities());
         return new ResponseEntity<>(
                 this.requestRecoveryPasswordService.findRequest(pageable),
                 HttpStatus.OK
         );
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<?> whoAmI() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Map<String, Object> resp = new HashMap<>();
+        if (auth == null) {
+            resp.put("name", null);
+            resp.put("authenticated", false);
+            resp.put("authorities", null);
+        } else {
+            resp.put("name", auth.getName());
+            resp.put("authenticated", auth.isAuthenticated());
+            resp.put("authorities", auth.getAuthorities());
+        }
+        return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/resolveRequest")

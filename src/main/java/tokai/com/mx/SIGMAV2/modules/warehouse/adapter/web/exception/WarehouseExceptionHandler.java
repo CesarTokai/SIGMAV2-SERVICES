@@ -14,6 +14,8 @@ import tokai.com.mx.SIGMAV2.modules.warehouse.domain.exception.WarehouseNotFound
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.access.AccessDeniedException;
 
 @Slf4j
 @RestControllerAdvice
@@ -103,6 +105,32 @@ public class WarehouseExceptionHandler {
         response.put("timestamp", LocalDateTime.now());
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthorizationDenied(AuthorizationDeniedException e) {
+        log.warn("Autorización denegada: {}", e.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", "No tienes permisos para realizar esta acción");
+        response.put("error", "ACCESS_DENIED");
+        response.put("timestamp", LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleSpringAccessDenied(AccessDeniedException e) {
+        log.warn("Acceso denegado (Spring): {}", e.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", "No tienes permisos para realizar esta acción");
+        response.put("error", "ACCESS_DENIED");
+        response.put("timestamp", LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(Exception.class)

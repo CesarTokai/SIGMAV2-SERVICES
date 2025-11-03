@@ -41,9 +41,10 @@ public class JwtUtils {
         String role = authentication.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining());
+                .map(auth -> auth == null ? "" : (auth.startsWith("ROLE_") ? auth : "ROLE_" + auth))
+                .collect(Collectors.joining(","));
 
-        String jwtToken = JWT.create()
+        return JWT.create()
                 .withIssuer(userGenerator) // El dueño del token
                 .withSubject(username) // a quien se le da el token
                 .withClaim("authorities", role)  // autorizacion del token
@@ -52,8 +53,6 @@ public class JwtUtils {
                 .withJWTId(UUID.randomUUID().toString()) // id del token
                 .withNotBefore(new Date(System.currentTimeMillis())) // ES VALIDO DESDE AHORA
                 .sign(algorithm); // firma del token
-
-        return jwtToken;
     }
 
     public DecodedJWT validateToken(String token){
@@ -112,7 +111,7 @@ public class JwtUtils {
     }
 
     public String extractUsername(DecodedJWT decodedJWT){
-        return decodedJWT.getSubject().toString();
+        return decodedJWT.getSubject();
     }
 
     public Map<String, Claim> extractClaims(DecodedJWT decodedJWT){
@@ -126,10 +125,7 @@ public class JwtUtils {
         try {
             DecodedJWT decodedJWT = validateToken(token);
             return extractUsername(decodedJWT);
-        } catch (JwtException e) {
-            log.warn("No se pudo extraer username del token: {}", e.getMessage());
-            return null;
-        } catch (CustomException e) {
+        } catch (JwtException | CustomException e) {
             log.warn("No se pudo extraer username del token: {}", e.getMessage());
             return null;
         }
@@ -143,10 +139,7 @@ public class JwtUtils {
             DecodedJWT decodedJWT = validateToken(token);
             Claim authoritiesClaim = decodedJWT.getClaim("authorities");
             return authoritiesClaim != null ? authoritiesClaim.asString() : null;
-        } catch (JwtException e) {
-            log.warn("No se pudo extraer rol del token: {}", e.getMessage());
-            return null;
-        } catch (CustomException e) {
+        } catch (JwtException | CustomException e) {
             log.warn("No se pudo extraer rol del token: {}", e.getMessage());
             return null;
         }

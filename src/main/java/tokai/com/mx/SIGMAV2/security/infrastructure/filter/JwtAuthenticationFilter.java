@@ -3,7 +3,6 @@ package tokai.com.mx.SIGMAV2.security.infrastructure.filter;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
@@ -54,15 +53,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             || path.equals("/api/sigmav2/users/register")
             || path.equals("/api/sigmav2/users/verify")
             || path.equals("/api/sigmav2/users/exists")
-            // Endpoints de autenticación:
-            || path.startsWith("/api/sigmav2/auth/");
+            // Endpoints de autenticación (solo públicos concretos):
+            || path.equals("/api/sigmav2/auth/createRequest")
+            || path.equals("/api/sigmav2/auth/verifyUser")
+            || path.equals("/api/sigmav2/auth/login");
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain)
-            throws ServletException, IOException {
+            throws IOException {
 
         try {
             // Obtener token del header
@@ -110,11 +111,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Collection<? extends GrantedAuthority> authorities = 
                 AuthorityUtils.commaSeparatedStringToAuthorityList(claims);
 
+            log.debug("JWT parsed username={} authoritiesClaim={} parsedAuthorities={}", username, claims, authorities);
+
             // Establecer authentication en el contexto de seguridad
             SecurityContext context = SecurityContextHolder.getContext();
             context.setAuthentication(new UsernamePasswordAuthenticationToken(username, null, authorities));
             SecurityContextHolder.setContext(context);
 
+            log.debug("Authentication set for username={} with authorities={}", username, authorities);
             // Continuar con la cadena de filtros
             filterChain.doFilter(request, response);
 
@@ -140,9 +144,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         ApiResponse<?> errorResponse;
         
-        if (jwtException instanceof TokenExpiredException) {
-            TokenExpiredException tokenExpired = (TokenExpiredException) jwtException;
-            errorResponse = ApiResponse.<Object>builder()
+        if (jwtException instanceof TokenExpiredException tokenExpired) {
+            errorResponse = ApiResponse.builder()
                     .success(false)
                     .error(ApiResponse.ErrorDetails.builder()
                             .code(jwtException.getErrorCode())

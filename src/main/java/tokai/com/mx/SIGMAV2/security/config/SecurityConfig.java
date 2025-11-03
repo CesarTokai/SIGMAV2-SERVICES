@@ -51,9 +51,11 @@ public class SecurityConfig {
                                 "/api/sigmav2/users/register",
                                 "/api/sigmav2/users/verify",
                                 "/api/sigmav2/users/exists",
-                                "/api/sigmav2/auth/**",
-                                "/api/auth/**",
-                                "/api/sigmav2/auth/login")
+                                // Permitir solo endpoints públicos concretos
+                                "/api/sigmav2/auth/createRequest",
+                                "/api/sigmav2/auth/verifyUser",
+                                "/api/sigmav2/auth/login",
+                                "/api/auth/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
