@@ -22,8 +22,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtAuthenticationFilter;
+import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtRevocationFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
+import tokai.com.mx.SIGMAV2.security.infrastructure.service.TokenRevocationService;
 
 import java.util.Arrays;
 
@@ -34,11 +36,14 @@ public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
     private final JwtBlacklistService jwtBlacklistService;
+    private final TokenRevocationService tokenRevocationService;
     private final JpaUserRepository jpaUserRepository;
 
-    public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService, JpaUserRepository jpaUserRepository) {
+    public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService,
+                         TokenRevocationService tokenRevocationService, JpaUserRepository jpaUserRepository) {
         this.jwtUtils = jwtUtils;
         this.jwtBlacklistService = jwtBlacklistService;
+        this.tokenRevocationService = tokenRevocationService;
         this.jpaUserRepository = jpaUserRepository;
     }
 
@@ -58,10 +63,11 @@ public class SecurityConfig {
                                 "/api/sigmav2/auth/createRequest",
                                 "/api/sigmav2/auth/verifyUser",
                                 "/api/sigmav2/auth/login",
-                                "/api/auth/**")
+                                "/api/auth/logout")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(new JwtRevocationFilter(tokenRevocationService, jwtUtils), BasicAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtils, jwtBlacklistService, jpaUserRepository), BasicAuthenticationFilter.class)
                 .build();
     }

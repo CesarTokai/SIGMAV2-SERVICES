@@ -55,6 +55,27 @@ public class JwtUtils {
                 .sign(algorithm); // firma del token
     }
 
+    /**
+     * Valida el token JWT verificando firma, expiración y claims
+     *
+     * IMPORTANTE - Validación de Expiración:
+     * - El token contiene un claim 'exp' (fecha de expiración) generado al crear el token
+     * - Esta validación compara 'exp' con la fecha/hora actual del servidor
+     * - Si exp < now() → lanza TokenExpiredException
+     * - NO consulta base de datos - la validación es local y rápida
+     *
+     * Flujo de validación:
+     * 1. Verifica firma HMAC256 (token no ha sido modificado)
+     * 2. Verifica issuer (generado por este servidor)
+     * 3. Verifica exp > now() (token no ha expirado) ← EXPIRACIÓN NATURAL
+     * 4. Verifica nbf <= now() (token ya es válido)
+     *
+     * @param token Token JWT en formato string
+     * @return DecodedJWT con los claims del token
+     * @throws TokenExpiredException si exp < now() (expiración natural por tiempo)
+     * @throws TokenInvalidException si la firma es inválida o claims incorrectos
+     * @throws TokenMalformedException si el formato del token es inválido
+     */
     public DecodedJWT validateToken(String token){
         try {
             // traer el algoritmo

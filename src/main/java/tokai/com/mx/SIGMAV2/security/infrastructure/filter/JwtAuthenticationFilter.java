@@ -61,7 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Endpoints de autenticación (solo públicos concretos):
             || path.equals("/api/sigmav2/auth/createRequest")
             || path.equals("/api/sigmav2/auth/verifyUser")
-            || path.equals("/api/sigmav2/auth/login");
+            || path.equals("/api/sigmav2/auth/login")
+            || path.equals("/api/auth/logout");
     }
 
     @Override
@@ -99,14 +100,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }
-            // Validar si el token está en la blacklist
+            // Validar si el token está en la blacklist (memoria - legacy)
+            // Nota: JwtRevocationFilter ya verifica la BD, esto es un segundo nivel
             if (jwtBlacklistService.isBlacklisted(token)) {
-                log.warn("Token JWT en blacklist, acceso denegado");
+                log.warn("Token JWT en blacklist (memoria), acceso denegado");
                 sendErrorResponse(response, new TokenRevokedException());
                 return;
             }
-            // Validar token
-            DecodedJWT decodedJWT = jwtUtils.validateToken(token);
+
+            // Intentar reutilizar DecodedJWT validado por JwtRevocationFilter
+            // Esto evita doble parsing del token (optimización)
+            DecodedJWT decodedJWT = (DecodedJWT) request.getAttribute("DECODED_JWT");
+
+            // Si no está en el atributo, validar el token
+            // IMPORTANTE: validateToken() verifica:
+            //  1. Firma válida
+            //  2. Expiración natural (exp < now) ← Aquí se detecta token expirado
+            //  3. Claims correctos
+            // NO consulta BD - la expiración se valida por la fecha 'exp' dentro del token
+            if (decodedJWT == null) {
+                decodedJWT = jwtUtils.validateToken(token); // Puede lanzar TokenExpiredException
+            }
 
             // Extraer información del token
             String username = decodedJWT.getSubject();
@@ -141,6 +155,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (JwtException e) {
+            // Captura excepciones de JWT:
+            // - TokenExpiredException: exp < now() (expiración natural por tiempo)
+            // - TokenRevokedException: token en lista negra (revocación manual)
+            // - TokenInvalidException: firma inválida, claims incorrectos
+            // - TokenMalformedException: formato inválido
             log.warn("Error de autenticación JWT: {} - {}", e.getErrorCode(), e.getMessage());
             sendErrorResponse(response, e);
         } catch (Exception e) {

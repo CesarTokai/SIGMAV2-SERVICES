@@ -5,15 +5,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
 @SpringBootApplication
-@EntityScan(basePackages = {"tokai.com.mx.SIGMAV2.modules", "tokai.com.mx.SIGMAV2.shared"})
-@EnableJpaRepositories(basePackages = {"tokai.com.mx.SIGMAV2.modules", "tokai.com.mx.SIGMAV2.shared"})
+@EntityScan(basePackages = {"tokai.com.mx.SIGMAV2.modules", "tokai.com.mx.SIGMAV2.shared", "tokai.com.mx.SIGMAV2.security"})
+@EnableJpaRepositories(basePackages = {"tokai.com.mx.SIGMAV2.modules", "tokai.com.mx.SIGMAV2.shared", "tokai.com.mx.SIGMAV2.security"})
 @EnableAsync
+@EnableScheduling
 public class Sigmav2Application {
 
     public static void main(String[] args) {
