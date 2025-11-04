@@ -18,7 +18,7 @@ public class AdminUpdateUserRequest {
     @Email(message = "El formato del email no es válido")
     private String email;
     
-    @Pattern(regexp = "USER|ADMIN", message = "El rol debe ser USER o ADMIN")
+    @Pattern(regexp = "ADMINISTRADOR| ALMACENISTA |AUXILIAR | AUXILIAR_DE_CONTEO", message = "El rol debe ser ADMINISTRADOR")
     private String role;
     
     private Boolean status;

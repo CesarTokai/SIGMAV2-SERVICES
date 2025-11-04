@@ -18,11 +18,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.exception.*;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Filtro JWT mejorado con manejo de respuestas JSON
@@ -33,10 +36,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtils jwtUtils;
     private final ObjectMapper objectMapper;
     private final JwtBlacklistService jwtBlacklistService;
+    private final JpaUserRepository jpaUserRepository;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService, JpaUserRepository jpaUserRepository) {
         this.jwtUtils = jwtUtils;
         this.jwtBlacklistService = jwtBlacklistService;
+        this.jpaUserRepository = jpaUserRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.findAndRegisterModules(); // Para LocalDateTime
     }
@@ -113,6 +118,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             log.debug("JWT parsed username={} authoritiesClaim={} parsedAuthorities={}", username, claims, authorities);
 
+            // Verificar en BD que el usuario asociado al token esté activo
+            if (username != null && !username.isBlank()) {
+                Optional<BeanUser> maybe = jpaUserRepository.findByEmail(username);
+                if (maybe.isPresent()) {
+                    BeanUser beanUser = maybe.get();
+                    if (!beanUser.isStatus()) {
+                        // Usuario inactivo: rechazar con 403
+                        sendForbiddenResponse(response, "El usuario se encuentra inactivo");
+                        return;
+                    }
+                }
+            }
+
             // Establecer authentication en el contexto de seguridad
             SecurityContext context = SecurityContextHolder.getContext();
             context.setAuthentication(new UsernamePasswordAuthenticationToken(username, null, authorities));
@@ -165,6 +183,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String jsonResponse = objectMapper.writeValueAsString(errorResponse);
         response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
+    }
+
+    private void sendForbiddenResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        ApiResponse<?> api = ApiResponse.error("ACCESS_DENIED", message, null);
+        String json = objectMapper.writeValueAsString(api);
+        response.getWriter().write(json);
         response.getWriter().flush();
     }
 }

@@ -25,7 +25,7 @@ public class AdminCreateUserRequest {
     private String password;
     
     @NotBlank(message = "El rol es obligatorio")
-    @Pattern(regexp = "USER|ADMIN", message = "El rol debe ser USER o ADMIN")
+    @Pattern(regexp = "ADMINISTRADOR|ALMACENISTA|AUXILIAR|AUXILIAR_DE_CONTEO", message = "El rol debe ser ADMINISTRADOR|ALMACENISTA|AUXILIAR|AUXILIAR_DE_CONTEO")
     private String role;
     
     private boolean preVerified = false; // Admin puede crear usuarios pre-verificados

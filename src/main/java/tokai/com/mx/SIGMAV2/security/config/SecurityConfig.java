@@ -20,6 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtAuthenticationFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
@@ -33,10 +34,12 @@ public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
     private final JwtBlacklistService jwtBlacklistService;
+    private final JpaUserRepository jpaUserRepository;
 
-    public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService) {
+    public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService, JpaUserRepository jpaUserRepository) {
         this.jwtUtils = jwtUtils;
         this.jwtBlacklistService = jwtBlacklistService;
+        this.jpaUserRepository = jpaUserRepository;
     }
 
     // configuration of security filter chain
@@ -59,7 +62,7 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtUtils, jwtBlacklistService), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtils, jwtBlacklistService, jpaUserRepository), BasicAuthenticationFilter.class)
                 .build();
     }
 
