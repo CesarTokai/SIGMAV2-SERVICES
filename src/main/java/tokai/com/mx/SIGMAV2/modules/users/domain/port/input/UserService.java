@@ -69,6 +69,11 @@ public interface UserService {
      */
     User update(User user);
     
+    /**
+     * Actualiza solo el rol de un usuario
+     */
+    User updateUserRole(Long userId, String role);
+
     // ============ MÉTODOS ADMINISTRATIVOS ============
     
     /**

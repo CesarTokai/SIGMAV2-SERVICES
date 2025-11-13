@@ -190,6 +190,24 @@ public class AdminUserController {
     }
 
     /**
+     * Actualiza solo el rol de un usuario
+     */
+    @PutMapping("/{userId}/role")
+    public ResponseEntity<Map<String, Object>> updateUserRole(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> body) {
+        String role = body.get("role");
+        log.info("Actualizando solo el rol del usuario ID: {} a {}", userId, role);
+        User updatedUser = userService.updateUserRole(userId, role);
+        AdminUserResponse userResponse = convertToAdminUserResponse(updatedUser);
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Rol actualizado exitosamente");
+        response.put("data", userResponse);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Elimina un usuario
      */
     @DeleteMapping("/{userId}")

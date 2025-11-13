@@ -554,4 +554,45 @@ public class UserServiceImpl implements UserService {
         log.info("Limpieza completada: {} usuarios no verificados eliminados", deletedCount);
         return deletedCount;
     }
+
+    /**
+     * Actualiza solo el rol de un usuario
+     */
+    @Override
+    @Transactional
+    public User updateUserRole(Long userId, String role) {
+        log.info("Actualizando rol del usuario ID: {} a {}", userId, role);
+
+        if (userId == null) {
+            throw new IllegalArgumentException("El ID del usuario es obligatorio");
+        }
+        if (role == null || role.trim().isEmpty()) {
+            throw new IllegalArgumentException("El rol es obligatorio");
+        }
+
+        Role roleEnum;
+        try {
+            roleEnum = Role.valueOf(role.toUpperCase().trim());
+        } catch (IllegalArgumentException e) {
+            throw new tokai.com.mx.SIGMAV2.shared.exception.InvalidRoleException("Rol inválido: " + role);
+        }
+
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            log.warn("Usuario no encontrado al intentar cambiar rol: ID {}", userId);
+            throw new tokai.com.mx.SIGMAV2.shared.exception.UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+
+        try {
+            User user = optionalUser.get();
+            user.setRole(roleEnum);
+            user.setUpdatedAt(LocalDateTime.now());
+            User updated = userRepository.save(user);
+            log.info("Rol actualizado exitosamente para usuario ID: {} a {}", userId, roleEnum);
+            return updated;
+        } catch (Exception e) {
+            log.error("Error al actualizar rol del usuario ID: {}: {}", userId, e.getMessage(), e);
+            throw new tokai.com.mx.SIGMAV2.shared.exception.CustomException("Error interno al actualizar el rol del usuario. Intente nuevamente.");
+        }
+    }
 }

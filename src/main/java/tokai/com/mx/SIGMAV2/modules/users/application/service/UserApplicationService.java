@@ -319,6 +319,30 @@ public class UserApplicationService implements UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Actualiza solo el rol de un usuario
+     *
+     * @param userId
+     * @param role
+     */
+    @Override
+    public User updateUserRole(Long userId, String role) {
+        log.info("Actualizando rol del usuario ID: {} a {}", userId, role);
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
+        }
+        User user = optionalUser.get();
+        try {
+            Role newRole = Role.valueOf(role.toUpperCase());
+            user.setRole(newRole);
+            user.setUpdatedAt(LocalDateTime.now());
+            return userRepository.save(user);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRoleException("Rol inválido: " + role);
+        }
+    }
+
     // ============ MÉTODOS ADMINISTRATIVOS ============
     
     /**
