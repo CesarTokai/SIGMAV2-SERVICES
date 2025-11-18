@@ -4,6 +4,11 @@ public class UserRequest {
     private String email;
     private String password;
     private String role;
+    private String name;
+    private String firstLastName;
+    private String secondLastName;
+    private String phoneNumber;
+    private String comments;
 
     // Getters and Setters
     public String getEmail() {
@@ -30,6 +35,46 @@ public class UserRequest {
         this.role = role;
     }
 
+    public String getName() {
+        return name;
+    }
 
-    
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getFirstLastName() {
+        return firstLastName;
+    }
+
+    public void setFirstLastName(String firstLastName) {
+        this.firstLastName = firstLastName;
+    }
+
+    public String getSecondLastName() {
+        return secondLastName;
+    }
+
+    public void setSecondLastName(String secondLastName) {
+        this.secondLastName = secondLastName;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getComments() {
+        return comments;
+    }
+
+    public void setComments(String comments) {
+        this.comments = comments;
+    }
+
+
+
 }

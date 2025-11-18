@@ -1,11 +1,17 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
 
+import lombok.Getter;
+import lombok.Setter;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
+
 import java.time.LocalDateTime;
 
 /**
  * Entidad de dominio pura - Información Personal del Usuario
  * Sin dependencias de frameworks externos
  */
+@Getter
+@Setter
 public class PersonalInformation {
     private Long id;
     private Long userId;
@@ -14,6 +20,7 @@ public class PersonalInformation {
     private String secondLastName;
     private String phoneNumber;
     private byte[] image;
+    private String comments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -21,18 +28,22 @@ public class PersonalInformation {
     public PersonalInformation() {}
 
     // Constructor completo
-    public PersonalInformation(Long id, Long userId, String name, String firstLastName, 
-                             String secondLastName, String phoneNumber, byte[] image,
-                             LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = id;
-        this.userId = userId;
-        this.name = name;
-        this.firstLastName = firstLastName;
-        this.secondLastName = secondLastName;
-        this.phoneNumber = phoneNumber;
-        this.image = image;
+
+
+    public PersonalInformation(String comments, LocalDateTime createdAt, String firstLastName, Long id, byte[] image, String name, String phoneNumber, String secondLastName, LocalDateTime updatedAt, Long userId) {
+        this.comments = comments;
         this.createdAt = createdAt;
+        this.firstLastName = firstLastName;
+        this.id = id;
+        this.image = image;
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.secondLastName = secondLastName;
         this.updatedAt = updatedAt;
+        this.userId = userId;
+    }
+
+    public PersonalInformation(Object o, Long userId, String name, String firstLastName, String secondLastName, String phoneNumber, Object o1, LocalDateTime now, LocalDateTime now1) {
     }
 
     // Métodos de dominio
@@ -41,6 +52,7 @@ public class PersonalInformation {
         this.firstLastName = firstLastName;
         this.secondLastName = secondLastName;
         this.phoneNumber = phoneNumber;
+        this.comments = comments;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -62,76 +74,8 @@ public class PersonalInformation {
                firstLastName != null && !firstLastName.trim().isEmpty();
     }
 
-    // Getters y Setters
-    public Long getId() {
-        return id;
-    }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public void setUser(UserEntity user) {
 
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getFirstLastName() {
-        return firstLastName;
-    }
-
-    public void setFirstLastName(String firstLastName) {
-        this.firstLastName = firstLastName;
-    }
-
-    public String getSecondLastName() {
-        return secondLastName;
-    }
-
-    public void setSecondLastName(String secondLastName) {
-        this.secondLastName = secondLastName;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public byte[] getImage() {
-        return image;
-    }
-
-    public void setImage(byte[] image) {
-        this.image = image;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

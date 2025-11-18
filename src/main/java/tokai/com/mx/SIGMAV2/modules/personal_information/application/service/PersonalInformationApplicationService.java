@@ -47,6 +47,7 @@ public class PersonalInformationApplicationService implements PersonalInformatio
             // Actualizar información existente
             personalInfo = existingInfo.get();
             personalInfo.updateInformation(
+
                 request.getName(),
                 request.getFirstLastName(),
                 request.getSecondLastName(),

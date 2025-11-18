@@ -27,4 +27,15 @@ public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecov
             @Param("role") ERole role,
             @Param("status") BeanRequestStatus status,
             Pageable pageable);
+
+    @Query("SELECT new tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.ResponsePageRequestRecoveryDTO(" +
+            "r.requestId, r.status, r.date, r.user.email, r.user.email, r.user.role) " +
+            "FROM BeanRequestRecoveryPassword r " +
+            "WHERE r.user.role = :role " +
+            "AND r.status IN :statuses " +
+            "ORDER BY r.date ASC")
+    Page<ResponsePageRequestRecoveryDTO> getRequestByRoleAndStatuses(
+            @Param("role") ERole role,
+            @Param("statuses") java.util.List<BeanRequestStatus> statuses,
+            Pageable pageable);
 }

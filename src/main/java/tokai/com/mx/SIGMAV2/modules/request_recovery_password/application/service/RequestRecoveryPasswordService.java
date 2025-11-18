@@ -222,4 +222,43 @@ public class RequestRecoveryPasswordService {
         Optional<BeanUser> user = userRepository.findByEmail(email);
         return user.isPresent();
     }
+
+    @Transactional(readOnly = true)
+    public Page<ResponsePageRequestRecoveryDTO> getRequestHistory(Pageable pageable) {
+        String email = SessionInformation.getUserName();
+        String role = SessionInformation.getRole();
+        log.info("Buscando historial de solicitudes para usuario: {} con rol: {}", email, role);
+
+        // Validar que el usuario existe
+        Optional<BeanUser> user = userRepository.findByEmail(email);
+        if(user.isEmpty()) {
+            log.error("Usuario no encontrado en sesión: {}", email);
+            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
+        }
+        if(role == null || role.trim().isEmpty()) {
+            log.error("Rol no definido para usuario: {}", email);
+            throw new UnauthorizedAccessException("Rol de usuario no definido");
+        }
+        try {
+            switch(role.toUpperCase()) {
+                case "ADMINISTRADOR":
+                    // Ver historial de solicitudes de ALMACENISTA aceptadas y rechazadas
+                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
+                        ERole.ALMACENISTA, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
+                case "ALMACENISTA":
+                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
+                        ERole.AUXILIAR, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
+                case "AUXILIAR":
+                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
+                        ERole.AUXILIAR_DE_CONTEO, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
+                default:
+                    log.warn("Rol sin permisos para ver historial: {}", role);
+                    throw new UnauthorizedAccessException(
+                        "No tienes permisos para ver el historial de solicitudes de recuperación de contraseña");
+            }
+        } catch (Exception e) {
+            log.error("Error al buscar historial de solicitudes: {}", e.getMessage(), e);
+            throw new CustomException("Error interno al buscar historial de solicitudes de recuperación");
+        }
+    }
 }

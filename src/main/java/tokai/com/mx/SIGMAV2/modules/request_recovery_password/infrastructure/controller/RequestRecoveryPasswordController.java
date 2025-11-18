@@ -112,5 +112,19 @@ public class RequestRecoveryPasswordController {
         return ResponseEntity.status(success ? HttpStatus.CREATED : HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @GetMapping("/getHistory")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
+    public ResponseEntity<?> getRequestHistory(Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        log.debug("getRequestHistory invoked by={}, authenticated={}, authorities={}",
+                auth == null ? null : auth.getName(),
+                auth != null && auth.isAuthenticated(),
+                auth == null ? null : auth.getAuthorities());
+        // Implementa este método en el servicio para devolver solicitudes aceptadas y rechazadas
+        return new ResponseEntity<>(
+                this.requestRecoveryPasswordService.getRequestHistory(pageable),
+                HttpStatus.OK
+        );
+    }
 
 }

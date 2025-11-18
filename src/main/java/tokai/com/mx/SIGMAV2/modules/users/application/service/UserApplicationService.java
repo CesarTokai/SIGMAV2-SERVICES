@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.mapper.BeanPersonalInformationMapper;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
@@ -15,6 +17,9 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +38,7 @@ public class UserApplicationService implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
     private final VerificationCodeService verificationCodeService;
+    private final PersonalInformationRepository personalInformationRepository;
 
     /**
      * Registrar un nuevo usuario con validaciones completas.
@@ -76,7 +82,22 @@ public class UserApplicationService implements UserService {
             // Guardar usuario
             User savedUser = userRepository.save(user);
             log.info("Usuario registrado exitosamente con ID: {}", savedUser.getId());
-            
+
+            // Crear y guardar información personal asociada
+            BeanPersonalInformation personalInfo = new BeanPersonalInformation();
+            personalInfo.setName(request.getName());
+            personalInfo.setFirstLastName(request.getFirstLastName());
+            personalInfo.setSecondLastName(request.getSecondLastName());
+            personalInfo.setPhoneNumber(request.getPhoneNumber());
+            personalInfo.setComments(request.getComments());
+            // Relacionar con el usuario (UserEntity)
+            UserEntity userEntity = new UserEntity();
+            userEntity.setUserId(savedUser.getId());
+            personalInfo.setUser(userEntity);
+            PersonalInformation personalInformationEntity = BeanPersonalInformationMapper.toEntity(personalInfo);
+            personalInformationRepository.save(personalInformationEntity);
+            log.info("Información personal creada para el usuario ID: {}", savedUser.getId());
+
             // Generar y enviar código de verificación usando el nuevo servicio
             try {
                 String verificationCode = verificationCodeService.generateVerificationCode(
@@ -85,30 +106,26 @@ public class UserApplicationService implements UserService {
                 // Actualizar el usuario con el código
                 savedUser.setVerificationCode(verificationCode);
                 savedUser = userRepository.save(savedUser);
-                
                 String subject = "SIGMAV2 - Código de Verificación";
                 String message = String.format(
-                    "Hola,\\n\\n" +
-                    "Gracias por registrarte en SIGMAV2.\\n\\n" +
-                    "Tu código de verificación es: %s\\n\\n" +
-                    "Por favor, ingresa este código para activar tu cuenta.\\n\\n" +
-                    "Este código tiene una validez de 24 horas.\\n\\n" +
-                    "Si no solicitaste este registro, puedes ignorar este correo.\\n\\n" +
-                    "Saludos,\\n" +
+                    "Hola,\n\n" +
+                    "Gracias por registrarte en SIGMAV2.\n\n" +
+                    "Tu código de verificación es: %s\n\n" +
+                    "Por favor, ingresa este código para activar tu cuenta.\n\n" +
+                    "Este código tiene una validez de 24 horas.\n\n" +
+                    "Si no solicitaste este registro, puedes ignorar este correo.\n\n" +
+                    "Saludos,\n" +
                     "Equipo SIGMAV2",
                     verificationCode
                 );
                 
                 mailSender.send(savedUser.getEmail(), subject, message);
                 log.info("Código de verificación enviado al correo: {}", savedUser.getEmail());
-                
             } catch (Exception e) {
                 log.error("Error al enviar código de verificación a {}: {}", savedUser.getEmail(), e.getMessage());
                 // No lanzamos excepción porque el usuario ya fue creado exitosamente
             }
-            
             return savedUser;
-            
         } catch (Exception e) {
             log.error("Error al registrar usuario {}: {}", normalizedEmail, e.getMessage(), e);
             throw new CustomException("Error interno al registrar el usuario. Intente nuevamente.");

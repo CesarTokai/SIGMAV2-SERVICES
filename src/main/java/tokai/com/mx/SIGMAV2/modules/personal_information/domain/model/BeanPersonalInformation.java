@@ -48,6 +48,9 @@ public class BeanPersonalInformation {
     @Column(name = "updated_at", nullable = true)
     private LocalDateTime updatedAt;
     
+    @Column(name = "comments", nullable = true)
+    private String comments;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -70,7 +73,10 @@ public class BeanPersonalInformation {
     )
     private UserEntity user;
     
+    public String getComments() {
+        return comments;
+    }
+    public void setComments(String comments) {
+        this.comments = comments;
+    }
 }
-
-
-

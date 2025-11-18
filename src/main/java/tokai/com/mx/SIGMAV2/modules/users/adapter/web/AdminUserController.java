@@ -189,6 +189,7 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
+
     /**
      * Actualiza solo el rol de un usuario
      */
