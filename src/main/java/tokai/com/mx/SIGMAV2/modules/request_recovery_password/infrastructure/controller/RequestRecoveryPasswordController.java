@@ -68,11 +68,29 @@ public class RequestRecoveryPasswordController {
 
     @PostMapping("/resolveRequest")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
-    public ResponseEntity<?> resolveRequest(@RequestBody @Valid RequestToResolveRequestDTO payload){
-        return new ResponseEntity<>(
-                this.requestRecoveryPasswordService.completeRequest(payload),
-                HttpStatus.OK
-        );
+    public ResponseEntity<?> resolveRequest(@RequestBody @Valid RequestToResolveRequestDTO payload) {
+        log.info("=== INICIO resolveRequest ===");
+        log.info("Payload recibido: {}", payload.getRequestId());
+        try {
+            String generatedPassword = this.requestRecoveryPasswordService.completeRequest(payload);
+            log.info("Contraseña generada: {}", generatedPassword);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Solicitud resuelta exitosamente");
+            response.put("generatedPassword", generatedPassword);
+
+            log.info("Respuesta construida: {}", response);
+            log.info("=== FIN resolveRequest ===");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error al resolver la solicitud: {}", e.getMessage(), e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Error al resolver la solicitud: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
     @PostMapping("/rejectRequest")
@@ -127,15 +145,6 @@ public class RequestRecoveryPasswordController {
         );
     }
 
-    @GetMapping("/debugPendingCounts")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
-    public ResponseEntity<?> debugPendingCounts() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        log.debug("debugPendingCounts invoked by={}, authenticated={}, authorities={}",
-                auth == null ? null : auth.getName(),
-                auth != null && auth.isAuthenticated(),
-                auth == null ? null : auth.getAuthorities());
-        return new ResponseEntity<>(this.requestRecoveryPasswordService.debugPendingCounts(), HttpStatus.OK);
-    }
+
 
 }
