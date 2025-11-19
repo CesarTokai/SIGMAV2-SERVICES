@@ -9,6 +9,8 @@ public class UserRequest {
     private String secondLastName;
     private String phoneNumber;
     private String comments;
+    private Boolean status;
+    private Boolean preVerified;
 
     // Getters and Setters
     public String getEmail() {
@@ -73,6 +75,22 @@ public class UserRequest {
 
     public void setComments(String comments) {
         this.comments = comments;
+    }
+
+    public Boolean getStatus() {
+        return status;
+    }
+
+    public void setStatus(Boolean status) {
+        this.status = status;
+    }
+
+    public Boolean getPreVerified() {
+        return preVerified;
+    }
+
+    public void setPreVerified(Boolean preVerified) {
+        this.preVerified = preVerified;
     }
 
 

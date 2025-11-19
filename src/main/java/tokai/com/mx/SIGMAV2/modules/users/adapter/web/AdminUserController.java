@@ -49,12 +49,16 @@ public class AdminUserController {
             userRequest.setEmail(request.getEmail());
             userRequest.setPassword(request.getPassword());
             userRequest.setRole(request.getRole());
+            userRequest.setName(request.getName());
+            userRequest.setFirstLastName(request.getFirstLastName());
+            userRequest.setSecondLastName(request.getSecondLastName());
+            userRequest.setPhoneNumber(request.getPhoneNumber());
+            userRequest.setComments(request.getComments());
+            userRequest.setStatus(request.isStatus()); // Mapear status configurable
+            userRequest.setPreVerified(request.isPreVerified()); // Mapear pre-verificación
 
             User user = userService.register(userRequest);
 
-            if (request.isPreVerified()) {
-                user = userService.forceVerifyUser(user.getId());
-            }
 
             AdminUserResponse userResponse = convertToAdminUserResponse(user);
 

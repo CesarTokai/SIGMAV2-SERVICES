@@ -30,4 +30,15 @@ public class AdminCreateUserRequest {
     
     private boolean preVerified = false; // Admin puede crear usuarios pre-verificados
     private boolean sendWelcomeEmail = true; // Enviar email de bienvenida
+    private boolean status = false; // Status del usuario (activo/inactivo)
+
+    @NotBlank(message = "El nombre es obligatorio")
+    private String name;
+
+    @NotBlank(message = "El primer apellido es obligatorio")
+    private String firstLastName;
+
+    private String secondLastName;
+    private String phoneNumber;
+    private String comments;
 }

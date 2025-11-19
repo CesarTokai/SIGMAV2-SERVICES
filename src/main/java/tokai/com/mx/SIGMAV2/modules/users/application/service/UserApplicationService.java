@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.mapper.BeanPersonalInformationMapper;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
@@ -17,9 +16,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,88 +44,143 @@ public class UserApplicationService implements UserService {
     @Transactional
     public User register(UserRequest request) {
         log.info("Iniciando registro de usuario: {}", request.getEmail());
-        
-        // Validaciones de entrada
+
+        // Validar campos obligatorios
+        validateRequiredFields(request);
+
+        // Validaciones de formato
         ValidationUtils.validateEmail(request.getEmail());
         ValidationUtils.validatePassword(request.getPassword());
-        
+
         String normalizedEmail = request.getEmail().toLowerCase().trim();
-        
+
         // Verificar si ya existe el usuario
         if (userRepository.existsByEmail(normalizedEmail)) {
             log.warn("Intento de registro con email existente: {}", normalizedEmail);
             throw new UserAlreadyExistsException("Ya existe un usuario con el email: " + normalizedEmail);
         }
-        
+
         try {
-            // Encriptar contraseña
-            String encryptedPassword = passwordEncoder.encode(request.getPassword());
-            
-            // Crear entidad de dominio
-            User user = new User(
-                    null, // ID será asignado por la base de datos
-                    normalizedEmail,
-                    encryptedPassword,
-                    Role.valueOf(request.getRole().toUpperCase()),
-                    true, // status activo
-                    false, // no verificado inicialmente
-                    0, // attempts
-                    null, // lastTryAt
-                    null, // verificationCode - se genera después
-                    LocalDateTime.now(), // createdAt
-                    LocalDateTime.now() // updatedAt
-            );
-            
-            // Guardar usuario
+            // Crear y guardar usuario
+            User user = createUser(request, normalizedEmail);
             User savedUser = userRepository.save(user);
+
             log.info("Usuario registrado exitosamente con ID: {}", savedUser.getId());
 
-            // Crear y guardar información personal asociada
-            BeanPersonalInformation personalInfo = new BeanPersonalInformation();
-            personalInfo.setName(request.getName());
-            personalInfo.setFirstLastName(request.getFirstLastName());
-            personalInfo.setSecondLastName(request.getSecondLastName());
-            personalInfo.setPhoneNumber(request.getPhoneNumber());
-            personalInfo.setComments(request.getComments());
-            // Relacionar con el usuario (UserEntity)
-            UserEntity userEntity = new UserEntity();
-            userEntity.setUserId(savedUser.getId());
-            personalInfo.setUser(userEntity);
-            PersonalInformation personalInformationEntity = BeanPersonalInformationMapper.toEntity(personalInfo);
-            personalInformationRepository.save(personalInformationEntity);
-            log.info("Información personal creada para el usuario ID: {}", savedUser.getId());
+            // Crear información personal asociada
+            createPersonalInformation(request, savedUser);
 
-            // Generar y enviar código de verificación usando el nuevo servicio
-            try {
-                String verificationCode = verificationCodeService.generateVerificationCode(
-                    savedUser.getEmail(), "Registro inicial");
-                
-                // Actualizar el usuario con el código
-                savedUser.setVerificationCode(verificationCode);
-                savedUser = userRepository.save(savedUser);
-                String subject = "SIGMAV2 - Código de Verificación";
-                String message = String.format(
-                    "Hola,\n\n" +
-                    "Gracias por registrarte en SIGMAV2.\n\n" +
-                    "Tu código de verificación es: %s\n\n" +
-                    "Por favor, ingresa este código para activar tu cuenta.\n\n" +
-                    "Este código tiene una validez de 24 horas.\n\n" +
-                    "Si no solicitaste este registro, puedes ignorar este correo.\n\n" +
-                    "Saludos,\n" +
-                    "Equipo SIGMAV2",
-                    verificationCode
-                );
-                
-                mailSender.send(savedUser.getEmail(), subject, message);
-                log.info("Código de verificación enviado al correo: {}", savedUser.getEmail());
-            } catch (Exception e) {
-                log.error("Error al enviar código de verificación a {}: {}", savedUser.getEmail(), e.getMessage());
-                // No lanzamos excepción porque el usuario ya fue creado exitosamente
+            // Enviar correo de verificación si el usuario no está pre-verificado
+            if (!isPreVerified(request)) {
+                sendVerificationEmail(savedUser);
             }
+
             return savedUser;
+
         } catch (Exception e) {
-            log.error("Error al registrar usuario {}: {}", normalizedEmail, e.getMessage(), e);
-            throw new CustomException("Error interno al registrar el usuario. Intente nuevamente.");
+            log.error("Error al registrar usuario {}: {}", normalizedEmail, e.getMessage());
+            throw new CustomException("Error al crear usuario: " + e.getMessage());
+        }
+    }
+
+    private void validateRequiredFields(UserRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new CustomException("El campo 'name' es obligatorio y no puede estar vacío.");
+        }
+        if (request.getFirstLastName() == null || request.getFirstLastName().trim().isEmpty()) {
+            throw new CustomException("El campo 'firstLastName' es obligatorio y no puede estar vacío.");
+        }
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new CustomException("El campo 'email' es obligatorio y no puede estar vacío.");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new CustomException("El campo 'password' es obligatorio y no puede estar vacío.");
+        }
+        if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+            throw new CustomException("El campo 'role' es obligatorio y no puede estar vacío.");
+        }
+    }
+
+    private User createUser(UserRequest request, String normalizedEmail) {
+        String encryptedPassword = passwordEncoder.encode(request.getPassword());
+
+        // Determinar status basado en el request o valor por defecto (false)
+        boolean status = request.getStatus() != null ? request.getStatus() : false;
+
+        // Determinar si está pre-verificado
+        boolean preVerified = isPreVerified(request);
+
+        // Generar código de verificación solo si no está pre-verificado
+        String verificationCode = null;
+        if (!preVerified) {
+            verificationCode = verificationCodeService.generateVerificationCode(
+                normalizedEmail, "Registro inicial");
+        }
+
+        return new User(
+                null, // ID será asignado por la base de datos
+                normalizedEmail,
+                encryptedPassword,
+                Role.valueOf(request.getRole().toUpperCase()),
+                status, // Status configurable desde el request
+                preVerified, // Pre-verificado si se especifica
+                0, // attempts
+                null, // lastTryAt
+                verificationCode, // Código solo si no está pre-verificado
+                LocalDateTime.now(), // createdAt
+                LocalDateTime.now() // updatedAt
+        );
+    }
+
+    private void createPersonalInformation(UserRequest request, User savedUser) {
+        try {
+            // Crear información personal usando el dominio model correcto
+            PersonalInformation personalInfo = new PersonalInformation(
+                    null, // ID será asignado por la base de datos
+                    savedUser.getId(), // user_id del usuario guardado
+                    request.getName(),
+                    request.getFirstLastName(),
+                    request.getSecondLastName(),
+                    request.getPhoneNumber(),
+                    null, // image - opcional
+                    request.getComments(),
+                    LocalDateTime.now(), // createdAt
+                    LocalDateTime.now()  // updatedAt
+            );
+
+            personalInformationRepository.save(personalInfo);
+            log.info("Información personal creada exitosamente para usuario ID: {}", savedUser.getId());
+
+        } catch (Exception e) {
+            log.error("Error al crear información personal para usuario {}: {}", savedUser.getId(), e.getMessage());
+            throw new CustomException("Error al crear información personal: " + e.getMessage());
+        }
+    }
+
+    private boolean isPreVerified(UserRequest request) {
+        return request.getPreVerified() != null && request.getPreVerified();
+    }
+
+    private void sendVerificationEmail(User user) {
+        try {
+            String subject = "SIGMAV2 - Código de Verificación";
+            String message = String.format(
+                "Hola,\n\n" +
+                "Gracias por registrarte en SIGMAV2.\n\n" +
+                "Tu código de verificación es: %s\n\n" +
+                "Por favor, ingresa este código para activar tu cuenta.\n\n" +
+                "Este código tiene una validez de 24 horas.\n\n" +
+                "Si no solicitaste este registro, puedes ignorar este correo.\n\n" +
+                "Saludos,\n" +
+                "Equipo SIGMAV2",
+                user.getVerificationCode()
+            );
+
+            mailSender.send(user.getEmail(), subject, message);
+            log.info("Correo de verificación enviado a: {}", user.getEmail());
+        } catch (Exception e) {
+            log.warn("No se pudo enviar correo de verificación a {}: {}", user.getEmail(), e.getMessage());
+            // No lanzamos excepción para no afectar el registro
         }
     }
 
@@ -339,22 +391,31 @@ public class UserApplicationService implements UserService {
     /**
      * Actualiza solo el rol de un usuario
      *
-     * @param userId
-     * @param role
+     * @param userId ID del usuario a actualizar
+     * @param role Rol a asignar al usuario
+     * @return Usuario actualizado
      */
     @Override
     public User updateUserRole(Long userId, String role) {
         log.info("Actualizando rol del usuario ID: {} a {}", userId, role);
+
         Optional<User> optionalUser = userRepository.findById(userId);
         if (optionalUser.isEmpty()) {
             throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
         }
+
         User user = optionalUser.get();
+
         try {
             Role newRole = Role.valueOf(role.toUpperCase());
             user.setRole(newRole);
             user.setUpdatedAt(LocalDateTime.now());
-            return userRepository.save(user);
+
+            User updatedUser = userRepository.save(user);
+            log.info("Rol del usuario ID: {} actualizado exitosamente a {}", userId, newRole);
+
+            return updatedUser;
+
         } catch (IllegalArgumentException e) {
             throw new InvalidRoleException("Rol inválido: " + role);
         }

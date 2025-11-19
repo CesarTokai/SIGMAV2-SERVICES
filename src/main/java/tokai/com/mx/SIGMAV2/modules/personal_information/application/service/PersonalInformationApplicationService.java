@@ -64,6 +64,7 @@ public class PersonalInformationApplicationService implements PersonalInformatio
                 request.getSecondLastName(),
                 request.getPhoneNumber(),
                 null, // imagen inicial null
+                null, // comments inicial null
                 LocalDateTime.now(),
                 LocalDateTime.now()
             );
@@ -175,6 +176,7 @@ public class PersonalInformationApplicationService implements PersonalInformatio
                 userId,
                 null, null, null, null,
                 image,
+                null, // comments
                 LocalDateTime.now(),
                 LocalDateTime.now()
             ));

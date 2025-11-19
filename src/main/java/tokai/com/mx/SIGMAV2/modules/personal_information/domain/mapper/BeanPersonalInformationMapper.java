@@ -11,8 +11,10 @@ public class BeanPersonalInformationMapper {
         entity.setSecondLastName(bean.getSecondLastName());
         entity.setPhoneNumber(bean.getPhoneNumber());
         entity.setComments(bean.getComments());
-        entity.setUser(bean.getUser());
+        // Mapear el userId correctamente
+        if (bean.getUser() != null) {
+            entity.setUserId(bean.getUser().getUserId());
+        }
         return entity;
     }
 }
-

@@ -56,31 +56,45 @@ public class RequestRecoveryPasswordService {
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
         
-        log.info("Buscando solicitudes de recuperación para usuario: {} con rol: {}", email, role);
+        // Normalizar
+        String normalizedSessionEmail = email != null ? email.toLowerCase().trim() : null;
+        String normalizedRole = role != null ? role.toUpperCase().trim() : null;
+
+        log.info("Buscando solicitudes de recuperación para usuario: {} (normalizado={}) con rol: {} (normalizado={})",
+                email, normalizedSessionEmail, role, normalizedRole);
 
         // Validar que el usuario existe
-        Optional<BeanUser> user = userRepository.findByEmail(email);
+        Optional<BeanUser> user = userRepository.findByEmail(normalizedSessionEmail);
         if(user.isEmpty()) {
-            log.error("Usuario no encontrado en sesión: {}", email);
+            log.error("Usuario no encontrado en sesión: {}", normalizedSessionEmail);
             throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
         }
 
         // Validar rol y autorización
-        if(role == null || role.trim().isEmpty()) {
-            log.error("Rol no definido para usuario: {}", email);
+        if(normalizedRole == null || normalizedRole.trim().isEmpty()) {
+            log.error("Rol no definido para usuario: {}", normalizedSessionEmail);
             throw new UnauthorizedAccessException("Rol de usuario no definido");
         }
 
         try {
-            // Determinar solicitudes según jerarquía de roles
-            switch(role.toUpperCase()) {
+            // Conteos para depuración
+            long totalPending = requestRecoveryPasswordRepository.countByStatus(BeanRequestStatus.PENDING);
+            log.info("Total solicitudes pendientes en sistema={}", totalPending);
+
+            switch(normalizedRole) {
                 case "ADMINISTRADOR":
+                    long pendingForAlmacenista = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.ALMACENISTA, BeanRequestStatus.PENDING);
+                    log.info("Pending for ALMACENISTA: {}", pendingForAlmacenista);
                     return requestRecoveryPasswordRepository.getRequestByRole(
                         ERole.ALMACENISTA, BeanRequestStatus.PENDING, pageable);
                 case "ALMACENISTA":
+                    long pendingForAuxiliar = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.AUXILIAR, BeanRequestStatus.PENDING);
+                    log.info("Pending for AUXILIAR: {}", pendingForAuxiliar);
                     return requestRecoveryPasswordRepository.getRequestByRole(
                         ERole.AUXILIAR, BeanRequestStatus.PENDING, pageable);
                 case "AUXILIAR":
+                    long pendingForAuxCont = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING);
+                    log.info("Pending for AUXILIAR_DE_CONTEO: {}", pendingForAuxCont);
                     return requestRecoveryPasswordRepository.getRequestByRole(
                         ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING, pageable);
                 default:
@@ -99,7 +113,9 @@ public class RequestRecoveryPasswordService {
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
         
-        log.info("Completando solicitud de recuperación por usuario: {}", email);
+        // Normalizar email de sesión y registrar para depuración
+        String normalizedSessionEmail = email != null ? email.toLowerCase().trim() : null;
+        log.info("Completando solicitud de recuperación por usuario: {} (normalizado={})", email, normalizedSessionEmail);
 
         // Validaciones de entrada
         if(payload == null) {
@@ -110,16 +126,16 @@ public class RequestRecoveryPasswordService {
             throw new IllegalArgumentException("El ID de la solicitud es obligatorio");
         }
 
-        // Validar que el usuario existe
-        Optional<BeanUser> user = userRepository.findByEmail(email);
+        // Validar que el usuario existe (usar email normalizado)
+        Optional<BeanUser> user = userRepository.findByEmail(normalizedSessionEmail);
         if(user.isEmpty()) {
-            log.error("Usuario no encontrado en sesión: {}", email);
+            log.error("Usuario no encontrado en sesión: {}", normalizedSessionEmail);
             throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
         }
 
         // Validar autorización
         if(role == null || role.trim().isEmpty()) {
-            log.error("Rol no definido para usuario: {}", email);
+            log.error("Rol no definido para usuario: {}", normalizedSessionEmail);
             throw new UnauthorizedAccessException("Rol de usuario no definido");
         }
 
@@ -143,9 +159,20 @@ public class RequestRecoveryPasswordService {
         }
 
         BeanUser userToUpdate = request.get().getUser();
-        if (!userToUpdate.isVerified() || !userToUpdate.isStatus()) {
-            throw new CustomException("The account is either not verified or blocked");
+        // Log del estado del usuario objetivo para diagnóstico
+        log.info("Target user for recovery id={}, email='{}', verified={}, status={}",
+                userToUpdate.getId(), userToUpdate.getEmail(), userToUpdate.isVerified(), userToUpdate.isStatus());
+
+        // Validaciones separadas con logs para facilitar diagnóstico
+        if (!userToUpdate.isVerified()) {
+            log.warn("Intento de recuperación para usuario no verificado: id={}, email={}", userToUpdate.getId(), userToUpdate.getEmail());
+            throw new CustomException("The account is not verified");
         }
+        if (!userToUpdate.isStatus()) {
+            log.warn("Intento de recuperación para usuario bloqueado/inactivo: id={}, email={}", userToUpdate.getId(), userToUpdate.getEmail());
+            throw new CustomException("The account is blocked or inactive");
+        }
+
         String newPass = SecurityCode.generateAlphanumeric();
         String encodedPass = passwordEncoder.encode(newPass);
         userToUpdate.setPasswordHash(encodedPass);
@@ -261,4 +288,19 @@ public class RequestRecoveryPasswordService {
             throw new CustomException("Error interno al buscar historial de solicitudes de recuperación");
         }
     }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> debugPendingCounts() {
+        Map<String, Object> m = new HashMap<>();
+        long totalPending = requestRecoveryPasswordRepository.countByStatus(BeanRequestStatus.PENDING);
+        long pendingForAlmacenista = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.ALMACENISTA, BeanRequestStatus.PENDING);
+        long pendingForAuxiliar = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.AUXILIAR, BeanRequestStatus.PENDING);
+        long pendingForAuxCont = requestRecoveryPasswordRepository.countByUserRoleAndStatus(ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING);
+        m.put("totalPending", totalPending);
+        m.put("pendingForAlmacenista", pendingForAlmacenista);
+        m.put("pendingForAuxiliar", pendingForAuxiliar);
+        m.put("pendingForAuxiliarDeConteo", pendingForAuxCont);
+        return m;
+    }
 }
+

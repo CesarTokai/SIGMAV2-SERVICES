@@ -27,8 +27,9 @@ public class PersonalInformationDomainMapper {
                 entity.getSecondLastName(),
                 entity.getPhoneNumber(),
                 entity.getImage(),
-                null, // createdAt - BeanPersonalInformation no tiene estos campos
-                null  // updatedAt - BeanPersonalInformation no tiene estos campos
+                entity.getComments(), // comments
+                null,
+                null
         );
     }
 

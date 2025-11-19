@@ -27,23 +27,20 @@ public class PersonalInformation {
     // Constructor por defecto
     public PersonalInformation() {}
 
-    // Constructor completo
-
-
-    public PersonalInformation(String comments, LocalDateTime createdAt, String firstLastName, Long id, byte[] image, String name, String phoneNumber, String secondLastName, LocalDateTime updatedAt, Long userId) {
+    // Constructor completo ordenado
+    public PersonalInformation(Long id, Long userId, String name, String firstLastName,
+                             String secondLastName, String phoneNumber, byte[] image,
+                             String comments, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.userId = userId;
+        this.name = name;
+        this.firstLastName = firstLastName;
+        this.secondLastName = secondLastName;
+        this.phoneNumber = phoneNumber;
+        this.image = image;
         this.comments = comments;
         this.createdAt = createdAt;
-        this.firstLastName = firstLastName;
-        this.id = id;
-        this.image = image;
-        this.name = name;
-        this.phoneNumber = phoneNumber;
-        this.secondLastName = secondLastName;
         this.updatedAt = updatedAt;
-        this.userId = userId;
-    }
-
-    public PersonalInformation(Object o, Long userId, String name, String firstLastName, String secondLastName, String phoneNumber, Object o1, LocalDateTime now, LocalDateTime now1) {
     }
 
     // Métodos de dominio

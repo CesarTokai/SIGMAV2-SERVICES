@@ -127,4 +127,15 @@ public class RequestRecoveryPasswordController {
         );
     }
 
+    @GetMapping("/debugPendingCounts")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
+    public ResponseEntity<?> debugPendingCounts() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        log.debug("debugPendingCounts invoked by={}, authenticated={}, authorities={}",
+                auth == null ? null : auth.getName(),
+                auth != null && auth.isAuthenticated(),
+                auth == null ? null : auth.getAuthorities());
+        return new ResponseEntity<>(this.requestRecoveryPasswordService.debugPendingCounts(), HttpStatus.OK);
+    }
+
 }

@@ -38,4 +38,9 @@ public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecov
             @Param("role") ERole role,
             @Param("statuses") java.util.List<BeanRequestStatus> statuses,
             Pageable pageable);
+
+    // Métodos de ayuda para depuración
+    long countByStatus(BeanRequestStatus status);
+
+    long countByUserRoleAndStatus(ERole role, BeanRequestStatus status);
 }
