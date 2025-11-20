@@ -34,30 +34,48 @@ public class UserCompleteController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
     public ResponseEntity<Map<String, Object>> getMyCompleteInfo() {
         log.info("Obteniendo información completa del usuario autenticado");
-        
+
         try {
-            // Obtener el email del usuario autenticado
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String email = authentication.getName();
-            
+            Object principal = authentication.getPrincipal();
+
+            // Extracción robusta del email/username del principal
+            String email;
+            if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+                email = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+            } else if (principal instanceof String) {
+                email = (String) principal;
+            } else {
+                email = authentication.getName();
+            }
+
+            log.info("Principal type: {}, extracted identifier: {}", principal != null ? principal.getClass().getName() : "null", email);
+
             Optional<UserCompleteResponse> userCompleteOpt = getUserCompleteInfo(email);
-            
+
             if (userCompleteOpt.isEmpty()) {
+                // Loguear para depuración: intentar mostrar si existe usuario en DB con ese email
+                log.warn("No se encontró usuario con email extraído: {}", email);
                 Map<String, Object> result = new HashMap<>();
                 result.put("success", false);
                 result.put("message", "Usuario no encontrado");
+                result.put("emailSearched", email);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
             }
-            
+
             UserCompleteResponse userComplete = userCompleteOpt.get();
-            
+
+            // Loguear id y si se encontró información personal
+            log.info("Usuario encontrado id={}, email={}, hasPersonalInformation={}",
+                    userComplete.getUserId(), userComplete.getEmail(), userComplete.getPersonalInformation() != null);
+
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
             result.put("data", userComplete);
             result.put("hasPersonalInformation", userComplete.getPersonalInformation() != null);
-            
+
             return ResponseEntity.ok(result);
-            
+
         } catch (Exception e) {
             log.error("Error al obtener información completa del usuario: {}", e.getMessage(), e);
             Map<String, Object> result = new HashMap<>();
@@ -196,10 +214,19 @@ public class UserCompleteController {
         }
         
         User user = userOpt.get();
-        
+        log.info("Usuario encontrado: email={}, userId={}", user.getEmail(), user.getId());
+
         // Buscar información personal
         Optional<PersonalInformation> personalInfoOpt = personalInformationService.findByUserId(user.getId());
         
+        if (personalInfoOpt.isPresent()) {
+            PersonalInformation pi = personalInfoOpt.get();
+            log.info("Información personal encontrada: personalInfoId={}, userId={}, name={}",
+                    pi.getId(), pi.getUserId(), pi.getName());
+        } else {
+            log.warn("NO se encontró información personal para userId={}", user.getId());
+        }
+
         UserCompleteResponse response = buildUserCompleteResponse(user, personalInfoOpt);
         
         log.info("Información completa obtenida para usuario: {}", email);
@@ -224,10 +251,19 @@ public class UserCompleteController {
         }
         
         User user = userOpt.get();
-        
+        log.info("Usuario encontrado: email={}, userId={}", user.getEmail(), user.getId());
+
         // Buscar información personal
         Optional<PersonalInformation> personalInfoOpt = personalInformationService.findByUserId(userId);
         
+        if (personalInfoOpt.isPresent()) {
+            PersonalInformation pi = personalInfoOpt.get();
+            log.info("Información personal encontrada: personalInfoId={}, userId={}, name={}",
+                    pi.getId(), pi.getUserId(), pi.getName());
+        } else {
+            log.warn("NO se encontró información personal para userId={}", userId);
+        }
+
         UserCompleteResponse response = buildUserCompleteResponse(user, personalInfoOpt);
         
         log.info("Información completa obtenida para usuario ID: {}", userId);

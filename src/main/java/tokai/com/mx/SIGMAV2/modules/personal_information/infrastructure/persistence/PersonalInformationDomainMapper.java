@@ -28,8 +28,8 @@ public class PersonalInformationDomainMapper {
                 entity.getPhoneNumber(),
                 entity.getImage(),
                 entity.getComments(), // comments
-                null,
-                null
+                entity.getCreatedAt(), // Mapear createdAt
+                entity.getUpdatedAt()  // Mapear updatedAt
         );
     }
 
