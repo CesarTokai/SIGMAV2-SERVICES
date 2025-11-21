@@ -2,7 +2,6 @@ package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
 
 import lombok.Getter;
 import lombok.Setter;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +22,9 @@ public class PersonalInformation {
     private String comments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String email;
+    private String role;
+    private boolean status;
 
     // Constructor por defecto
     public PersonalInformation() {}
@@ -30,7 +32,25 @@ public class PersonalInformation {
     // Constructor completo ordenado
     public PersonalInformation(Long id, Long userId, String name, String firstLastName,
                              String secondLastName, String phoneNumber, byte[] image,
-                             String comments, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                             String comments, LocalDateTime createdAt, LocalDateTime updatedAt,
+                             String email, String role, boolean status) {
+        this.id = id;
+        this.userId = userId;
+        this.name = name;
+        this.firstLastName = firstLastName;
+        this.secondLastName = secondLastName;
+        this.phoneNumber = phoneNumber;
+        this.image = image;
+        this.comments = comments;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.email = email;
+        this.role = role;
+        this.status = status;
+    }
+
+    // Constructor adicional para manejar casos con valores nulos
+    public PersonalInformation(Long id, Long userId, String name, String firstLastName, String secondLastName, String phoneNumber, byte[] image, String comments, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.name = name;
@@ -49,15 +69,16 @@ public class PersonalInformation {
         this.firstLastName = firstLastName;
         this.secondLastName = secondLastName;
         this.phoneNumber = phoneNumber;
-        this.comments = comments;
         this.updatedAt = LocalDateTime.now();
     }
 
+    // Métodos de dominio para actualizar la imagen
     public void updateImage(byte[] image) {
         this.image = image;
         this.updatedAt = LocalDateTime.now();
     }
 
+    // Métodos de dominio para obtener el nombre completo
     public String getFullName() {
         StringBuilder fullName = new StringBuilder();
         if (name != null) fullName.append(name);
@@ -66,13 +87,9 @@ public class PersonalInformation {
         return fullName.toString().trim();
     }
 
+    // Métodos de dominio para verificar información básica completa
     public boolean hasCompleteBasicInfo() {
         return name != null && !name.trim().isEmpty() && 
                firstLastName != null && !firstLastName.trim().isEmpty();
-    }
-
-
-    public void setUser(UserEntity user) {
-
     }
 }

@@ -194,6 +194,33 @@ public class PersonalInformationApplicationService implements PersonalInformatio
     }
 
     /**
+     * Busca información personal y detalles de usuario por ID de usuario
+     */
+    public Optional<PersonalInformation> findByUserIdWithUserDetails(Long userId) {
+        log.info("Buscando información personal y detalles de usuario para ID: {}", userId);
+
+        if (userId == null) {
+            throw new IllegalArgumentException("El ID del usuario es obligatorio");
+        }
+
+        Optional<PersonalInformation> personalInfoOpt = personalInformationRepository.findByUserId(userId);
+
+        if (personalInfoOpt.isPresent()) {
+            PersonalInformation personalInfo = personalInfoOpt.get();
+
+            // Obtener detalles adicionales del usuario
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new CustomException("Usuario no encontrado para ID: " + userId));
+
+            personalInfo.setEmail(user.getEmail());
+            personalInfo.setRole(user.getRole().toString());
+            personalInfo.setStatus(user.isStatus());
+        }
+
+        return personalInfoOpt;
+    }
+
+    /**
      * Validar que el usuario existe
      */
     private void validateUserExists(Long userId) {

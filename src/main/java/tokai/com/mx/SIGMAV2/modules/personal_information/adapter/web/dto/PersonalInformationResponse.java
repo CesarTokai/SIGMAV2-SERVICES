@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * DTO de respuesta para información personal
@@ -16,14 +17,19 @@ public class PersonalInformationResponse {
     private String fullName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String email;
+    private String role;
+    private boolean status;
+    private String comments; // nuevo campo
 
     // Constructor por defecto
     public PersonalInformationResponse() {}
 
-    // Constructor completo
-    public PersonalInformationResponse(Long id, Long userId, String name, String firstLastName, 
+    // Constructor completo (compatibilidad antigua)
+    public PersonalInformationResponse(Long id, Long userId, String name, String firstLastName,
                                      String secondLastName, String phoneNumber, boolean hasImage,
-                                     String fullName, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                     String fullName, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                     String email, String role, boolean status) {
         this.id = id;
         this.userId = userId;
         this.name = name;
@@ -34,6 +40,19 @@ public class PersonalInformationResponse {
         this.fullName = fullName;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.email = email;
+        this.role = role;
+        this.status = status;
+    }
+
+    // Nuevo constructor que incluye comments
+    public PersonalInformationResponse(Long id, Long userId, String name, String firstLastName,
+                                        String secondLastName, String phoneNumber, boolean hasImage,
+                                        String fullName, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                        String email, String role, boolean status, String comments) {
+        this(id, userId, name, firstLastName, secondLastName, phoneNumber, hasImage,
+                fullName, createdAt, updatedAt, email, role, status);
+        this.comments = comments;
     }
 
     // Getters y Setters
@@ -101,6 +120,7 @@ public class PersonalInformationResponse {
         this.fullName = fullName;
     }
 
+    @JsonProperty("created_at")
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -109,11 +129,44 @@ public class PersonalInformationResponse {
         this.createdAt = createdAt;
     }
 
+    @JsonProperty("updated_at")
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean isStatus() {
+        return status;
+    }
+
+    public void setStatus(boolean status) {
+        this.status = status;
+    }
+
+    public String getComments() {
+        return comments;
+    }
+
+    public void setComments(String comments) {
+        this.comments = comments;
     }
 }

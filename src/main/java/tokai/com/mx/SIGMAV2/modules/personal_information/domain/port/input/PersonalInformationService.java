@@ -41,4 +41,11 @@ public interface PersonalInformationService {
      * Actualiza la imagen del usuario
      */
     PersonalInformation updateImage(Long userId, byte[] image);
+
+    /**
+     * Busca información personal por ID de usuario y enriquece con detalles del usuario
+     * (email, role, status). Implementación en la capa de aplicación realizará la
+     * consulta a `UserService` y poblará esos campos en el `PersonalInformation`.
+     */
+    Optional<PersonalInformation> findByUserIdWithUserDetails(Long userId);
 }

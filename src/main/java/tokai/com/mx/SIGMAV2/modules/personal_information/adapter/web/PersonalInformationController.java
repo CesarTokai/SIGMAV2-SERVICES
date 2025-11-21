@@ -109,8 +109,9 @@ public class PersonalInformationController {
     public ResponseEntity<Map<String, Object>> getPersonalInformationByUserId(@PathVariable Long userId) {
         log.info("Obteniendo información personal para usuario ID: {}", userId);
         
-        Optional<PersonalInformation> personalInfoOpt = personalInformationService.findByUserId(userId);
-        
+        // Usar el método que también carga detalles del usuario (email, role, status) en el modelo
+        Optional<PersonalInformation> personalInfoOpt = personalInformationService.findByUserIdWithUserDetails(userId);
+
         if (personalInfoOpt.isEmpty()) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
@@ -119,8 +120,25 @@ public class PersonalInformationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
         }
         
-        PersonalInformationResponse response = mapToResponseWithImageInfo(personalInfoOpt.get(), userId);
-        
+        // Construir respuesta a partir del PersonalInformation (ya contiene email/role/status tras la llamada)
+        PersonalInformation pi = personalInfoOpt.get();
+        PersonalInformationResponse response = new PersonalInformationResponse(
+                pi.getId(),
+                pi.getUserId(),
+                pi.getName(),
+                pi.getFirstLastName(),
+                pi.getSecondLastName(),
+                pi.getPhoneNumber(),
+                pi.getImage() != null && pi.getImage().length > 0,
+                pi.getFullName(),
+                pi.getCreatedAt(),
+                pi.getUpdatedAt(),
+                pi.getEmail(),
+                pi.getRole(),
+                pi.isStatus(),
+                pi.getComments()
+        );
+
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("data", response);
@@ -384,38 +402,46 @@ public class PersonalInformationController {
      * Mapea de modelo de dominio a DTO de respuesta usando el servicio de imagen
      */
     private PersonalInformationResponse mapToResponseWithImageInfo(PersonalInformation personalInfo, Long userId) {
-        // Usar el servicio de imagen para verificar si tiene imagen
-        boolean hasImage = imageService.hasImage(userId);
-        
-        return new PersonalInformationResponse(
-                personalInfo.getId(),
-                personalInfo.getUserId(),
-                personalInfo.getName(),
-                personalInfo.getFirstLastName(),
-                personalInfo.getSecondLastName(),
-                personalInfo.getPhoneNumber(),
-                hasImage,
-                personalInfo.getFullName(),
-                personalInfo.getCreatedAt(),
-                personalInfo.getUpdatedAt()
-        );
-    }
+         // Usar el servicio de imagen para verificar si tiene imagen
+         boolean hasImage = imageService.hasImage(userId);
 
-    /**
-     * Mapea de modelo de dominio a DTO de respuesta (método legacy para compatibilidad)
-     */
-    private PersonalInformationResponse mapToResponse(PersonalInformation personalInfo) {
-        return new PersonalInformationResponse(
-                personalInfo.getId(),
-                personalInfo.getUserId(),
-                personalInfo.getName(),
-                personalInfo.getFirstLastName(),
-                personalInfo.getSecondLastName(),
-                personalInfo.getPhoneNumber(),
-                personalInfo.getImage() != null && personalInfo.getImage().length > 0,
-                personalInfo.getFullName(),
-                personalInfo.getCreatedAt(),
-                personalInfo.getUpdatedAt()
-        );
-    }
-}
+         return new PersonalInformationResponse(
+                 personalInfo.getId(),
+                 personalInfo.getUserId(),
+                 personalInfo.getName(),
+                 personalInfo.getFirstLastName(),
+                 personalInfo.getSecondLastName(),
+                 personalInfo.getPhoneNumber(),
+                 hasImage,
+                 personalInfo.getFullName(),
+                 personalInfo.getCreatedAt(),
+                 personalInfo.getUpdatedAt(),
+                 personalInfo.getEmail(),
+                 personalInfo.getRole(),
+                 personalInfo.isStatus(),
+                 personalInfo.getComments()
+         );
+     }
+
+     /**
+      * Mapea de modelo de dominio a DTO de respuesta (método legacy para compatibilidad)
+      */
+     private PersonalInformationResponse mapToResponse(PersonalInformation personalInfo) {
+         return new PersonalInformationResponse(
+                 personalInfo.getId(),
+                 personalInfo.getUserId(),
+                 personalInfo.getName(),
+                 personalInfo.getFirstLastName(),
+                 personalInfo.getSecondLastName(),
+                 personalInfo.getPhoneNumber(),
+                 personalInfo.getImage() != null && personalInfo.getImage().length > 0,
+                 personalInfo.getFullName(),
+                 personalInfo.getCreatedAt(),
+                 personalInfo.getUpdatedAt(),
+                 personalInfo.getEmail(),
+                 personalInfo.getRole(),
+                 personalInfo.isStatus(),
+                 personalInfo.getComments()
+         );
+     }
+ }
