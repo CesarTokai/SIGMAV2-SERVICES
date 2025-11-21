@@ -21,6 +21,7 @@ import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.UserWarehouseAssignment;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.UserWarehouseService;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.WarehouseService;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ public class MainWarehouseController {
 
     private final WarehouseService warehouseService;
     private final UserWarehouseService userWarehouseService;
+    private final UserService userService;
     private final WarehouseAccessValidator accessValidator;
 
     // ============ CRUD DE ALMACENES ============
@@ -68,18 +70,32 @@ public class MainWarehouseController {
                     Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             
+            // Normalizar parámetro search: si viene "false" o "null" (strings) lo tratamos como ausente
+            String normalizedSearch = (search == null) ? null : search.trim();
+            if (normalizedSearch != null) {
+                if (normalizedSearch.equalsIgnoreCase("false") || normalizedSearch.equalsIgnoreCase("null") || normalizedSearch.isEmpty()) {
+                    normalizedSearch = null;
+                }
+            }
+            log.debug("normalizedSearch='{}' (original='{}')", normalizedSearch, search);
+
             Page<Warehouse> warehouses;
             
             // Si es ADMINISTRADOR, ve todos; otros solo ven sus almacenes asignados
             if (hasRole("ADMINISTRADOR")) {
-                warehouses = (search != null && !search.trim().isEmpty()) 
-                    ? warehouseService.findAllWithSearch(search.trim(), pageable)
+                warehouses = (normalizedSearch != null)
+                    ? warehouseService.findAllWithSearch(normalizedSearch, pageable)
                     : warehouseService.findAllWarehouses(pageable);
             } else {
                 // Filtrar por almacenes asignados al usuario
                 warehouses = warehouseService.findWarehousesByUserId(currentUserId, pageable);
             }
-            
+            // Defensa: si por alguna razón el servicio retornó null, evitar NPE y devolver error controlado
+            if (warehouses == null) {
+                log.error("WarehouseService devolvió null al solicitar lista de almacenes (pageable={} search={})", pageable, search);
+                return handleError("Error interno: no se pudo obtener la lista de almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
             List<WarehouseResponseDTO> warehouseDTOs = warehouses.getContent().stream()
                     .map(this::mapToResponseDTO)
                     .collect(Collectors.toList());
@@ -365,15 +381,20 @@ public class MainWarehouseController {
 
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        // Aquí deberías extraer el ID del usuario del token JWT
-        // Por ahora, usamos un método simplificado
-        return extractUserIdFromAuthentication(auth);
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Usuario no autenticado");
+        }
+
+        String email = auth.getName();
+        // Buscar el usuario por email para obtener su ID real
+        return userService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado: " + email))
+                .getId();
     }
 
+    // Mantengo el método extractUserIdFromAuthentication solo como utilidad (no usado)
     private Long extractUserIdFromAuthentication(Authentication auth) {
-        // Implementar extracción del user ID del JWT
-        // Por ahora retornamos un ID fijo para pruebas
-        return 10L; // TODO: Implementar extracción real del JWT
+        return null;
     }
 
     private boolean hasRole(String role) {
@@ -407,3 +428,4 @@ public class MainWarehouseController {
         return ResponseEntity.status(status).body(response);
     }
 }
+

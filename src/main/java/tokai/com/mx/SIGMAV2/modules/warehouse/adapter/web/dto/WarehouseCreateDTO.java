@@ -7,13 +7,12 @@ import lombok.Data;
 
 @Data
 public class WarehouseCreateDTO {
+    @Size(min = 3, max = 20, message = "El nombre debe tener entre 3 y 100 caracteres")
     @NotBlank(message = "La clave del almacén es requerida")
-    @Pattern(regexp = "^[A-Z0-9]+$", message = "La clave debe contener solo letras mayúsculas y números")
-    @Size(min = 2, max = 10, message = "La clave debe tener entre 2 y 10 caracteres")
     private String warehouseKey;
 
     @NotBlank(message = "El nombre del almacén es requerido")
-    @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
+    @Size(min = 3, max = 20, message = "El nombre debe tener entre 3 y 100 caracteres")
     private String nameWarehouse;
 
     @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")

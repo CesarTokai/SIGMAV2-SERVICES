@@ -60,7 +60,8 @@ public class WarehouseServiceImpl implements WarehouseService {
         WarehouseEntity entity = new WarehouseEntity();
         entity.setWarehouseKey(normalizedKey);
         entity.setNameWarehouse(normalizedName);
-        entity.setObservations(dto.getObservations() != null ? dto.getObservations().trim() : null);
+        // Normalizar observaciones: convertir cadenas vacías a null
+        entity.setObservations(StringUtils.trimToNull(dto.getObservations()));
         entity.setCreatedBy(createdBy);
         entity.setUpdatedBy(createdBy);
         // Establecer timestamps manualmente para garantizar valores no nulos sin depender de auditoría global
@@ -112,7 +113,12 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         // Ahora sí, aplicar los cambios al entity
         entity.setNameWarehouse(normalizedName);
-        entity.setObservations(dto.getObservations() != null ? dto.getObservations().trim() : null);
+        // Actualizar observaciones solo si vienen en el DTO (para no sobrescribir con null si no se envía)
+        if (dto.getObservations() != null) {
+            // Permitimos limpiar el campo si el cliente envía una cadena vacía;
+            // StringUtils.trimToNull convertirá "" o espacios a null.
+            entity.setObservations(StringUtils.trimToNull(dto.getObservations()));
+        }
         entity.setUpdatedBy(updatedBy);
         entity.setUpdatedAt(LocalDateTime.now());
 
@@ -176,7 +182,9 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Override
     public Page<Warehouse> findAllWarehouses(Pageable pageable) {
-        return null;
+        // Devolver página de almacenes activos (deleted_at IS NULL) mapeando a modelo de dominio
+        return warehouseRepository.findAllByDeletedAtIsNull(pageable)
+                .map(this::mapToWarehouse);
     }
 
     @Override
