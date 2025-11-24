@@ -16,5 +16,6 @@ public interface PeriodRepository {
     void deleteById(Long id);
     boolean hasDependencies(Long id);
     void OpenPeriod(Long id);
+    Optional<Period> findLatest();
 
 }

@@ -57,6 +57,11 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
         return jpaPeriodRepository.countByYear(year);
     }
 
+    @Override
+    public Optional<Period> findLatest() {
+        return jpaPeriodRepository.findLatestPeriod().map(this::toDomain);
+    }
+
     private PeriodEntity toEntity(Period period) {
         if (period == null) return null;
         PeriodEntity entity = new PeriodEntity();

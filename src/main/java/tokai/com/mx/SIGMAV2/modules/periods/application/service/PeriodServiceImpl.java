@@ -9,6 +9,8 @@ import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagem
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 
@@ -21,9 +23,12 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
     @Override
     @Transactional
     public Period createPeriod(LocalDate date, String comments, BeanUser user) {
-        if (user == null || user.getRole() == null || !user.getRole().name().equalsIgnoreCase("ADMIN")) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMINISTRADOR"))) {
             throw new IllegalArgumentException("Solo el administrador puede crear periodos");
         }
+
         LocalDate normalizedDate = date.withDayOfMonth(1);
         int year = normalizedDate.getYear();
         int month = normalizedDate.getMonthValue();

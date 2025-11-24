@@ -15,4 +15,5 @@ public interface PeriodRepository {
     boolean existsByDate(LocalDate date);
     long countDependencies(Long periodId);
     long countByYear(int year);
+    Optional<Period> findLatest();
 }

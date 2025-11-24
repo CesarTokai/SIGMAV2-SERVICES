@@ -19,4 +19,8 @@ public interface JpaPeriodRepository extends JpaRepository<PeriodEntity, Long> {
     // Cuenta los periodos por año
     @Query("SELECT COUNT(p) FROM InventoryPeriodEntity p WHERE YEAR(p.date) = :year")
     long countByYear(@org.springframework.data.repository.query.Param("year") int year);
+
+    // Obtener el último periodo registrado ordenado por fecha descendente
+    @Query("SELECT p FROM InventoryPeriodEntity p ORDER BY p.date DESC LIMIT 1")
+    Optional<PeriodEntity> findLatestPeriod();
 }

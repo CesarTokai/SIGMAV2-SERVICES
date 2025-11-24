@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Inventario - SIGMA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .left-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .right-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            margin-right: 8px;
+        }
+
+        select, input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box input {
+            min-width: 300px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #2196F3;
+        }
+
+        .btn-secondary:hover {
+            background-color: #0b7dda;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        thead {
+            background-color: #f8f9fa;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background-color: #e9ecef;
+        }
+
+        th.sortable::after {
+            content: ' ⇅';
+            color: #999;
+            font-size: 12px;
+        }
+
+        th.sort-asc::after {
+            content: ' ▲';
+            color: #4CAF50;
+        }
+
+        th.sort-desc::after {
+            content: ' ▼';
+            color: #4CAF50;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-A {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-B {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .page-size-selector select {
+            min-width: 80px;
+        }
+
+        .page-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .page-btn {
+            padding: 6px 12px;
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .page-btn.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Catálogo de Inventario</h1>
+        <p class="subtitle">Consulte el inventario de la organización por periodo. Solo disponible para Administradores.</p>
+
+        <div id="errorContainer"></div>
+
+        <div class="controls-container">
+            <div class="left-controls">
+                <label for="periodSelect">Periodo:</label>
+                <select id="periodSelect">
+                    <option value="">Cargando periodos...</option>
+                </select>
+            </div>
+            <div class="right-controls">
+                <div class="search-box">
+                    <label for="searchInput">Buscar:</label>
+                    <input type="text" id="searchInput" placeholder="Buscar por clave, producto o unidad...">
+                </div>
+                <button class="btn-secondary" onclick="window.location.href='/api/sigmav2/inventory/import'">Importar Inventario</button>
+            </div>
+        </div>
+
+        <div id="tableContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+
+        <div id="paginationContainer"></div>
+    </div>
+
+    <script>
+        // Configuración
+        const API_BASE_URL = '/api/sigmav2/inventory';
+        let currentPage = 0;
+        let currentSize = 10;
+        let currentSort = { field: 'cveArt', direction: 'asc' };
+        let currentSearch = '';
+        let currentPeriodId = null;
+        let authToken = null;
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Obtener token del localStorage o sessionStorage
+            authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+            loadPeriods();
+
+            // Event listeners
+            document.getElementById('periodSelect').addEventListener('change', function() {
+                currentPeriodId = this.value;
+                currentPage = 0;
+                loadInventory();
+            });
+
+            document.getElementById('searchInput').addEventListener('input', debounce(function() {
+                currentSearch = this.value;
+                currentPage = 0;
+                loadInventory();
+            }, 500));
+        });
+
+        // Función debounce para búsqueda
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Cargar periodos disponibles
+        async function loadPeriods() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/all-periods`, {
+                    headers: getHeaders()
+                });
+
+                if (!response.ok) throw new Error('Error al cargar periodos');
+
+                const periods = await response.json();
+                const select = document.getElementById('periodSelect');
+                select.innerHTML = '<option value="">Seleccione un periodo</option>';
+
+                periods.forEach(period => {
+                    const option = document.createElement('option');
+                    option.value = period.id;
+                    option.textContent = formatDate(period.date);
+                    select.appendChild(option);
+                });
+
+                // Cargar último periodo por defecto
+                const latestResponse = await fetch(`${API_BASE_URL}/latest-period`, {
+                    headers: getHeaders()
+                });
+
+                if (latestResponse.ok) {
+                    const latestPeriod = await latestResponse.json();
+                    select.value = latestPeriod.id;
+                    currentPeriodId = latestPeriod.id;
+                    loadInventory();
+                }
+            } catch (error) {
+                showError('Error al cargar los periodos: ' + error.message);
+            }
+        }
+
+        // Cargar inventario con paginación
+        async function loadInventory() {
+            if (!currentPeriodId) {
+                document.getElementById('tableContainer').innerHTML = '<div class="no-data">Por favor seleccione un periodo</div>';
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const params = new URLSearchParams({
+                    periodId: currentPeriodId,
+                    page: currentPage,
+                    size: currentSize,
+                    sort: `${currentSort.field},${currentSort.direction}`
+                });
+
+                if (currentSearch) {
+                    params.append('search', currentSearch);
+                }
+
+                const response = await fetch(`${API_BASE_URL}/period-report?${params}`, {
+                    headers: getHeaders()
+                });
+
+                if (!response.ok) throw new Error('Error al cargar el inventario');
+
+                const data = await response.json();
+                renderTable(data);
+                renderPagination(data);
+            } catch (error) {
+                showError('Error al cargar el inventario: ' + error.message);
+                document.getElementById('tableContainer').innerHTML = '<div class="no-data">Error al cargar datos</div>';
+            }
+        }
+
+        // Renderizar tabla
+        function renderTable(data) {
+            if (!data.content || data.content.length === 0) {
+                document.getElementById('tableContainer').innerHTML = '<div class="no-data">No se encontraron productos</div>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable ${getSortClass('cveArt')}" onclick="sort('cveArt')">Clave de Producto</th>
+                            <th class="sortable ${getSortClass('descr')}" onclick="sort('descr')">Producto</th>
+                            <th class="sortable ${getSortClass('uniMed')}" onclick="sort('uniMed')">Unidad</th>
+                            <th class="sortable ${getSortClass('existQty')}" onclick="sort('existQty')">Existencias</th>
+                            <th class="sortable ${getSortClass('status')}" onclick="sort('status')">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.content.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${escapeHtml(item.cveArt || '-')}</td>
+                        <td>${escapeHtml(item.descr || '-')}</td>
+                        <td>${escapeHtml(item.uniMed || '-')}</td>
+                        <td>${formatNumber(item.existQty)}</td>
+                        <td><span class="status-badge status-${item.status}">${item.status === 'A' ? 'Alta' : 'Baja'}</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        // Renderizar paginación
+        function renderPagination(data) {
+            const start = data.number * data.size + 1;
+            const end = Math.min((data.number + 1) * data.size, data.totalElements);
+
+            let html = `
+                <div class="pagination">
+                    <div class="pagination-info">
+                        Mostrando ${start} a ${end} de ${data.totalElements} registros
+                    </div>
+                    <div class="pagination-controls">
+                        <div class="page-size-selector">
+                            <label>Mostrar:</label>
+                            <select onchange="changePageSize(this.value)">
+                                <option value="10" ${currentSize === 10 ? 'selected' : ''}>10</option>
+                                <option value="25" ${currentSize === 25 ? 'selected' : ''}>25</option>
+                                <option value="50" ${currentSize === 50 ? 'selected' : ''}>50</option>
+                                <option value="100" ${currentSize === 100 ? 'selected' : ''}>100</option>
+                            </select>
+                        </div>
+                        <div class="page-buttons">
+                            <button class="page-btn" onclick="goToPage(0)" ${data.first ? 'disabled' : ''}>Primera</button>
+                            <button class="page-btn" onclick="goToPage(${data.number - 1})" ${data.first ? 'disabled' : ''}>Anterior</button>
+                            <span style="padding: 0 10px;">Página ${data.number + 1} de ${data.totalPages}</span>
+                            <button class="page-btn" onclick="goToPage(${data.number + 1})" ${data.last ? 'disabled' : ''}>Siguiente</button>
+                            <button class="page-btn" onclick="goToPage(${data.totalPages - 1})" ${data.last ? 'disabled' : ''}>Última</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('paginationContainer').innerHTML = html;
+        }
+
+        // Funciones auxiliares
+        function sort(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            currentPage = 0;
+            loadInventory();
+        }
+
+        function getSortClass(field) {
+            if (currentSort.field === field) {
+                return currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc';
+            }
+            return '';
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadInventory();
+        }
+
+        function changePageSize(size) {
+            currentSize = parseInt(size);
+            currentPage = 0;
+            loadInventory();
+        }
+
+        function showLoading() {
+            document.getElementById('tableContainer').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Cargando datos...</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            document.getElementById('errorContainer').innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> ${escapeHtml(message)}
+                </div>
+            `;
+            setTimeout(() => {
+                document.getElementById('errorContainer').innerHTML = '';
+            }, 5000);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long' });
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '-';
+            return parseFloat(num).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.toString().replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function getHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            return headers;
+        }
+    </script>
+</body>
+</html>
+

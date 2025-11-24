@@ -85,5 +85,9 @@ public class InventoryPeriodRepositoryAdapter implements tokai.com.mx.SIGMAV2.mo
         });
     }
 
+    @Override
+    public Optional<Period> findLatest() {
+        return jpaRepository.findLatestPeriod().map(this::toPeriodsDomain);
+    }
 
 }

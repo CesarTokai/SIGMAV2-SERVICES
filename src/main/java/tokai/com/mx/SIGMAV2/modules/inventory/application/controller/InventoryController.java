@@ -2,7 +2,10 @@ package tokai.com.mx.SIGMAV2.modules.inventory.application.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,7 +16,17 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventorySnapshotRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
+
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryPeriodReportDTO;
+
 import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 
 @RestController
@@ -29,6 +42,12 @@ public class InventoryController {
     private JpaPersonalInformationRepository personalInformationRepository;
 
     @Autowired
+    private JpaInventorySnapshotRepository jpaInventorySnapshotRepository;
+
+    @Autowired
+    private JpaProductRepository jpaProductRepository;
+
+    @Autowired
     public InventoryController(
             InventoryQueryUseCase inventoryQueryUseCase,
             InventoryImportUseCase inventoryImportUseCase,
@@ -42,8 +61,6 @@ public class InventoryController {
         this.warehouseRepository = warehouseRepository;
         this.periodRepository = periodRepository;
     }
-
-
 
     // 2. Consultar stock actual
     @GetMapping("/stock")
@@ -99,6 +116,87 @@ public class InventoryController {
     public ResponseEntity<List<Period>> listPeriods() {
         List<Period> periods = periodRepository.findAll(Pageable.unpaged()).getContent();
         return ResponseEntity.ok(periods);
+    }
+
+    @GetMapping("/latest-period")
+    public ResponseEntity<Period> getLatestPeriod() {
+        Optional<Period> latestPeriod = periodRepository.findLatest();
+        return latestPeriod.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Nuevo endpoint: reporte por periodo y almacén con paginación, búsqueda y ordenación
+    @GetMapping("/period-report")
+    public ResponseEntity<Page<InventoryPeriodReportDTO>> periodReport(
+            @RequestParam Long periodId,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "cveArt,asc") String[] sort) {
+
+        // Crear Pageable con ordenación
+        List<Sort.Order> orders = new ArrayList<>();
+        if (sort[0].contains(",")) {
+            // sort="field,direction"
+            for (String sortOrder : sort) {
+                String[] _sort = sortOrder.split(",");
+                String field = mapSortField(_sort[0]);
+                Sort.Direction direction = _sort.length > 1 && _sort[1].equalsIgnoreCase("desc")
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
+                orders.add(new Sort.Order(direction, field));
+            }
+        } else {
+            // sort=field&direction=asc/desc
+            String field = mapSortField(sort[0]);
+            Sort.Direction direction = sort.length > 1 && sort[1].equalsIgnoreCase("desc")
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+            orders.add(new Sort.Order(direction, field));
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
+
+        // Buscar con paginación
+        Page<InventorySnapshotJpaEntity> entitiesPage =
+            jpaInventorySnapshotRepository.findByPeriodWithSearch(periodId, warehouseId, search, pageable);
+
+        // Mapear a DTO
+        Page<InventoryPeriodReportDTO> reportPage = entitiesPage.map(e -> {
+            InventoryPeriodReportDTO dto = new InventoryPeriodReportDTO();
+            // obtener producto
+            Optional<ProductEntity> prodOpt = jpaProductRepository.findById(e.getProductId());
+            if (prodOpt.isPresent()) {
+                ProductEntity pe = prodOpt.get();
+                dto.setCveArt(pe.getCveArt());
+                dto.setDescr(pe.getDescr());
+                dto.setUniMed(pe.getUniMed());
+            } else {
+                dto.setCveArt(null);
+                dto.setDescr(null);
+                dto.setUniMed(null);
+            }
+            dto.setExistQty(e.getExistQty());
+            dto.setStatus(e.getStatus());
+            return dto;
+        });
+
+        return ResponseEntity.ok(reportPage);
+    }
+
+    /**
+     * Mapea los nombres de campo del frontend a los nombres de campo de la base de datos
+     */
+    private String mapSortField(String field) {
+        return switch (field) {
+            case "cveArt" -> "productId"; // Ordenar por ID ya que no tenemos join directo
+            case "descr" -> "productId";
+            case "uniMed" -> "productId";
+            case "existQty", "existencias" -> "existQty";
+            case "status", "estado" -> "status";
+            default -> "productId";
+        };
     }
 
     // Mapeos mínimos a DTO

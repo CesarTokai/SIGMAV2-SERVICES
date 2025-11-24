@@ -61,5 +61,9 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
         });
     }
 
+    @Override
+    public Optional<Period> findLatest() {
+        return jpaRepository.findLatestPeriod().map(mapper::toDomain);
+    }
 
 }
