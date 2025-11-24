@@ -9,6 +9,7 @@ public class ProductMapper {
     public Product toDomain(ProductEntity entity) {
         if (entity == null) return null;
         Product product = new Product();
+        product.setId(entity.getIdProduct());
         product.setCveArt(entity.getCveArt());
         product.setDescr(entity.getDescr());
         product.setLinProd(entity.getLinProd());
@@ -21,6 +22,7 @@ public class ProductMapper {
     public ProductEntity toEntity(Product product) {
         if (product == null) return null;
         ProductEntity entity = new ProductEntity();
+        entity.setIdProduct(product.getId()); // ⭐ MAPEAR EL ID
         entity.setCveArt(product.getCveArt());
         entity.setDescr(product.getDescr());
         entity.setLinProd(product.getLinProd());

@@ -9,25 +9,31 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.*;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.*;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.*;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportRequestDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportResultDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryPeriodReportDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventorySnapshotDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryStockDTO;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventorySnapshot;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryQueryUseCase;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.PeriodRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.ProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.WarehouseRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventorySnapshotRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventorySnapshotRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-
-import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryPeriodReportDTO;
-
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 
 @RestController
 @RequestMapping("/api/sigmav2/inventory")
@@ -123,6 +129,98 @@ public class InventoryController {
         Optional<Period> latestPeriod = periodRepository.findLatest();
         return latestPeriod.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Endpoint de depuración para verificar datos por periodo
+    @GetMapping("/debug/period/{periodId}")
+    public ResponseEntity<?> debugPeriodData(@PathVariable Long periodId) {
+        List<InventorySnapshotJpaEntity> snapshots = jpaInventorySnapshotRepository.findByPeriodId(periodId);
+        List<InventorySnapshotJpaEntity> allSnapshots = jpaInventorySnapshotRepository.findAll();
+        long totalProducts = jpaProductRepository.count();
+
+        return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+            put("periodId", periodId);
+            put("snapshotsCountForThisPeriod", snapshots.size());
+            put("totalSnapshotsAllPeriods", allSnapshots.size());
+            put("totalProducts", totalProducts);
+            put("sampleSnapshotsForThisPeriod", snapshots.stream().limit(5).map(s -> new java.util.HashMap<String, Object>() {{
+                put("id", s.getId());
+                put("productId", s.getProductId());
+                put("periodId", s.getPeriodId());
+                put("warehouseId", s.getWarehouseId());
+                put("existQty", s.getExistQty());
+                put("status", s.getStatus());
+            }}).toList());
+            put("sampleSnapshotsAllPeriods", allSnapshots.stream().limit(5).map(s -> new java.util.HashMap<String, Object>() {{
+                put("id", s.getId());
+                put("productId", s.getProductId());
+                put("periodId", s.getPeriodId());
+                put("warehouseId", s.getWarehouseId());
+                put("existQty", s.getExistQty());
+                put("status", s.getStatus());
+            }}).toList());
+        }});
+    }
+
+    // Endpoint para verificar estado general de la base de datos
+    @GetMapping("/debug/database-status")
+    public ResponseEntity<?> databaseStatus() {
+        long totalSnapshots = jpaInventorySnapshotRepository.count();
+        long totalProducts = jpaProductRepository.count();
+
+        return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+            put("totalSnapshots", totalSnapshots);
+            put("totalProducts", totalProducts);
+            put("message", totalSnapshots == 0 ?
+                "No hay datos de inventario. Debes importar un archivo Excel primero usando el endpoint /api/sigmav2/inventory/import" :
+                "La base de datos contiene datos de inventario");
+        }});
+    }
+
+    // Endpoint para diagnosticar problemas con period-report
+    @GetMapping("/debug/diagnose-period/{periodId}")
+    public ResponseEntity<?> diagnosePeriod(@PathVariable Long periodId) {
+        List<InventorySnapshotJpaEntity> snapshots = jpaInventorySnapshotRepository.findByPeriodId(periodId);
+
+        List<java.util.Map<String, Object>> snapshotDetails = new ArrayList<>();
+        for (InventorySnapshotJpaEntity snapshot : snapshots) {
+            java.util.Map<String, Object> detail = new java.util.HashMap<>();
+            detail.put("snapshotId", snapshot.getId());
+            detail.put("productId", snapshot.getProductId());
+            detail.put("existQty", snapshot.getExistQty());
+            detail.put("status", snapshot.getStatus());
+
+            // Buscar el producto
+            if (snapshot.getProductId() != null) {
+                Optional<ProductEntity> productOpt = jpaProductRepository.findById(snapshot.getProductId());
+                if (productOpt.isPresent()) {
+                    ProductEntity p = productOpt.get();
+                    detail.put("productFound", true);
+                    detail.put("cveArt", p.getCveArt());
+                    detail.put("descr", p.getDescr());
+                    detail.put("uniMed", p.getUniMed());
+                } else {
+                    detail.put("productFound", false);
+                    detail.put("error", "Producto con ID " + snapshot.getProductId() + " no existe en la tabla products");
+                }
+            } else {
+                detail.put("productFound", false);
+                detail.put("error", "product_id es NULL");
+            }
+
+            snapshotDetails.add(detail);
+        }
+
+        return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+            put("periodId", periodId);
+            put("totalSnapshots", snapshots.size());
+            put("snapshotDetails", snapshotDetails);
+            put("diagnosis", snapshots.isEmpty() ?
+                "No hay snapshots para este periodo" :
+                snapshotDetails.stream().anyMatch(d -> !((Boolean)d.get("productFound"))) ?
+                    "Algunos snapshots tienen productos que no existen en la tabla products" :
+                    "Todos los snapshots tienen productos válidos. El problema puede estar en el query o en los parámetros de búsqueda");
+        }});
     }
 
     // Nuevo endpoint: reporte por periodo y almacén con paginación, búsqueda y ordenación

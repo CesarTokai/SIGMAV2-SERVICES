@@ -18,8 +18,11 @@ public interface JpaInventorySnapshotRepository extends JpaRepository<InventoryS
     @Query("SELECT s FROM InventorySnapshotJpaEntity s WHERE s.periodId = :periodId AND s.warehouseId = :warehouseId")
     List<InventorySnapshotJpaEntity> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
 
+    @Query("SELECT s FROM InventorySnapshotJpaEntity s WHERE s.periodId = :periodId")
+    List<InventorySnapshotJpaEntity> findByPeriodId(@Param("periodId") Long periodId);
+
     @Query("SELECT s FROM InventorySnapshotJpaEntity s " +
-           "JOIN ProductEntity p ON s.productId = p.idProduct " +
+           "LEFT JOIN ProductEntity p ON s.productId = p.idProduct " +
            "WHERE s.periodId = :periodId " +
            "AND (:warehouseId IS NULL OR s.warehouseId = :warehouseId) " +
            "AND (:search IS NULL OR :search = '' OR " +
