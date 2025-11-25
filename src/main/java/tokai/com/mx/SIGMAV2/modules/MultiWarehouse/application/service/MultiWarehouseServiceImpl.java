@@ -645,4 +645,13 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         }
     }
 
+    @Override
+    public ResponseEntity<?> getStock(String productCode, String warehouseKey, Long periodId) {
+        Optional<MultiWarehouseExistence> opt = multiWarehouseRepository.findByProductCodeAndWarehouseKeyAndPeriodId(productCode, warehouseKey, periodId);
+        if (opt.isPresent()) {
+            return ResponseEntity.ok(opt.get().getStock());
+        } else {
+            return ResponseEntity.status(404).body("No se encontró stock para ese producto, almacén y periodo.");
+        }
+    }
 }

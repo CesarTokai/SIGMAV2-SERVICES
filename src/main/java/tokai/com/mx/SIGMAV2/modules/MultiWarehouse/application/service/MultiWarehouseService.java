@@ -13,5 +13,5 @@ public interface MultiWarehouseService {
     ResponseEntity<?> processWizardStep(MultiWarehouseWizardStepDTO stepDTO);
     ResponseEntity<?> exportExistences(MultiWarehouseSearchDTO search);
     ResponseEntity<?> getImportLog(Long id);
+    ResponseEntity<?> getStock(String productCode, String warehouseKey, Long periodId);
 }
-

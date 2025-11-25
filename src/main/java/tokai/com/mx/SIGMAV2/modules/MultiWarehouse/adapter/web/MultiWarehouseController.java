@@ -45,5 +45,13 @@ public class MultiWarehouseController {
     public ResponseEntity<?> getImportLog(@PathVariable Long id) {
         return multiWarehouseService.getImportLog(id);
     }
-}
 
+    @GetMapping("/stock")
+    public ResponseEntity<?> getStock(
+        @RequestParam String productCode,
+        @RequestParam String warehouseKey,
+        @RequestParam Long periodId
+    ) {
+        return multiWarehouseService.getStock(productCode, warehouseKey, periodId);
+    }
+}
