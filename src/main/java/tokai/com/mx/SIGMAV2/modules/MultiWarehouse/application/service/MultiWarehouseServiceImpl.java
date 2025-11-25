@@ -496,7 +496,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
     }
 
     private LocalDate parsePeriod(String period) {
-        // Acepta MM-yyyy o yyyy-MM
+        // Acepta MM-yyyy, yyyy-MM o yyyy-MM-dd
         String p = period.trim();
         try {
             if (p.matches("\\d{2}-\\d{4}")) {
@@ -509,6 +509,10 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 java.time.YearMonth ym = java.time.YearMonth.parse(p, fmt);
                 return ym.atDay(1);
             }
+            if (p.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                // yyyy-MM-dd
+                return LocalDate.parse(p);
+            }
         } catch (Exception ignored) {}
         return null;
     }
@@ -519,15 +523,26 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
      * y se les agregará la leyenda: "Este almacén no existía y fue creado en la importación"
      *
      * IMPORTANTE: CVE_ALM del Excel representa la clave del almacén (warehouse_key)
+     *
+     * Si la clave es solo un número (o número decimal terminado en .0), el nombre será "Almacén <número>".
+     * Si la clave es texto, el nombre será igual a la clave.
+     * Se normaliza la clave para evitar valores como "55.0".
      */
     private Map<String, Long> createMissingWarehouses(List<MultiWarehouseExistence> parsedData) {
         Map<String, Long> warehouseMap = new HashMap<>();
 
         for (MultiWarehouseExistence data : parsedData) {
-            String warehouseKey = data.getWarehouseKey(); // CVE_ALM del Excel
-            if (warehouseKey == null || warehouseKey.trim().isEmpty()) {
+            String warehouseKeyRaw = data.getWarehouseKey(); // CVE_ALM del Excel
+            if (warehouseKeyRaw == null || warehouseKeyRaw.trim().isEmpty()) {
                 continue;
             }
+            String warehouseKey = warehouseKeyRaw.trim();
+            // Normalizar: si es número decimal terminado en .0, dejar solo la parte entera
+            if (warehouseKey.matches("\\d+\\.0")) {
+                warehouseKey = warehouseKey.substring(0, warehouseKey.indexOf('.'));
+            }
+            // Actualizar la clave normalizada en el objeto
+            data.setWarehouseKey(warehouseKey);
 
             if (!warehouseMap.containsKey(warehouseKey)) {
                 // Buscar almacén existente por clave
@@ -538,10 +553,15 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     // Actualizar el nombre del almacén en el objeto de datos
                     data.setWarehouseName(existing.get().getNameWarehouse());
                 } else {
-                    // Crear nuevo almacén - el nombre será el mismo que la clave si no se proporciona
-                    String warehouseName = data.getWarehouseName() != null && !data.getWarehouseName().trim().isEmpty()
-                        ? data.getWarehouseName()
-                        : warehouseKey;
+                    // Si no viene nombre en el Excel, usar la clave como nombre
+                    String warehouseName;
+                    if (data.getWarehouseName() != null && !data.getWarehouseName().trim().isEmpty()) {
+                        warehouseName = data.getWarehouseName().trim();
+                    } else if (warehouseKey.matches("\\d+")) {
+                        warehouseName = "Almacén " + warehouseKey;
+                    } else {
+                        warehouseName = warehouseKey;
+                    }
 
                     WarehouseEntity newWarehouse = new WarehouseEntity();
                     newWarehouse.setWarehouseKey(warehouseKey);
