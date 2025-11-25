@@ -20,12 +20,14 @@ public class MultiWarehouseExistence {
     @Column(nullable = false)
     private Long warehouseId;
 
-    private String warehouseName;
+    private String warehouseKey; // CVE_ALM - Clave del almacén
+
+    private String warehouseName; // Nombre del almacén
 
     @Column(nullable = false)
-    private String productCode;
+    private String productCode; // CVE_ART - Clave del producto
 
-    private String productName;
+    private String productName; // DESCR - Descripción del producto
 
     @Column(nullable = false)
     private BigDecimal stock;

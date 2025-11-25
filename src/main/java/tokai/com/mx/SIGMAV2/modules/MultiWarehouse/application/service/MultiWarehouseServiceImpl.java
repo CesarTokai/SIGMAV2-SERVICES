@@ -201,9 +201,10 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 .collect(Collectors.toList());
 
             // Crear mapa de registros existentes para búsqueda rápida
+            // Usar warehouseKey en lugar de warehouseName para la identificación correcta
             Map<String, MultiWarehouseExistence> existingMap = existingRecords.stream()
                 .collect(Collectors.toMap(
-                    e -> e.getProductCode() + "|" + e.getWarehouseName(),
+                    e -> e.getProductCode() + "|" + e.getWarehouseKey(),
                     e -> e
                 ));
 
@@ -212,10 +213,10 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             Long maxId = multiWarehouseRepository.findMaxId().orElse(0L);
 
             for (MultiWarehouseExistence newData : parsedData) {
-                String key = newData.getProductCode() + "|" + newData.getWarehouseName();
+                String key = newData.getProductCode() + "|" + newData.getWarehouseKey();
 
-                // Asignar warehouseId basado en el mapa de almacenes
-                Long warehouseId = warehouseMap.get(newData.getWarehouseName());
+                // Asignar warehouseId basado en el mapa de almacenes (usa warehouseKey)
+                Long warehouseId = warehouseMap.get(newData.getWarehouseKey());
                 newData.setWarehouseId(warehouseId);
                 newData.setPeriodId(periodId);
 
@@ -225,6 +226,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     existing.setStock(newData.getStock());
                     existing.setStatus(newData.getStatus());
                     existing.setProductName(newData.getProductName());
+                    existing.setWarehouseName(newData.getWarehouseName()); // Actualizar nombre por si cambió
                     toSave.add(existing);
                     existingUpdated++;
                 } else {
@@ -236,11 +238,11 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
             // REGLA DE NEGOCIO 5: Marcar como "B" (baja) productos no presentes en Excel
             Set<String> excelKeys = parsedData.stream()
-                .map(e -> e.getProductCode() + "|" + e.getWarehouseName())
+                .map(e -> e.getProductCode() + "|" + e.getWarehouseKey())
                 .collect(Collectors.toSet());
 
             for (MultiWarehouseExistence existing : existingRecords) {
-                String key = existing.getProductCode() + "|" + existing.getWarehouseName();
+                String key = existing.getProductCode() + "|" + existing.getWarehouseKey();
                 if (!excelKeys.contains(key) && !"B".equals(existing.getStatus())) {
                     existing.setStatus("B");
                     toSave.add(existing);
@@ -313,13 +315,14 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         // Export filtered results to CSV
         Page<MultiWarehouseExistence> page = multiWarehouseRepository.findExistences(search, PageRequest.of(0, Integer.MAX_VALUE));
         List<MultiWarehouseExistence> list = page.getContent();
-        String header = "Almacen,Producto,Descripcion,Existencias,Estado";
+        String header = "Clave Producto,Producto,Clave Almacen,Almacen,Estado,Existencias";
         String rows = list.stream().map(e -> String.join(",",
-                safe(e.getWarehouseName()),
                 safe(e.getProductCode()),
                 safe(e.getProductName()),
-                e.getStock() == null ? "" : e.getStock().toPlainString(),
-                safe(e.getStatus())
+                safe(e.getWarehouseKey()),
+                safe(e.getWarehouseName()),
+                safe(e.getStatus()),
+                e.getStock() == null ? "" : e.getStock().toPlainString()
         )).collect(Collectors.joining("\n"));
         String csv = header + "\n" + rows + (rows.isEmpty() ? "" : "\n");
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
@@ -353,17 +356,17 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             String headerLine = br.readLine();
             if (headerLine == null) return list;
             String[] headers = headerLine.split(",");
-            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre","cve_alm","CVE_ALM"});
+            int iAlmacenKey = indexOf(headers, new String[]{"cve_alm","CVE_ALM","almacen_clave","warehouse_key"});
             int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
-            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
+            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name","descr","DESCR"});
             int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
             int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
 
             // Validar que se encontraron las columnas esenciales
-            if (iAlmacen < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
+            if (iAlmacenKey < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
                 throw new IllegalArgumentException("El archivo CSV no contiene todas las columnas requeridas. " +
                         "Columnas no encontradas: " +
-                        (iAlmacen < 0 ? "Almacén (CVE_ALM), " : "") +
+                        (iAlmacenKey < 0 ? "Clave Almacén (CVE_ALM), " : "") +
                         (iProducto < 0 ? "Producto (CVE_ART), " : "") +
                         (iExist < 0 ? "Existencias (EXIST), " : "") +
                         (iEstado < 0 ? "Estado (STATUS)" : ""));
@@ -374,13 +377,13 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 if (line.trim().isEmpty()) continue;
                 String[] cols = splitCsv(line);
                 MultiWarehouseExistence e = new MultiWarehouseExistence();
-                e.setWarehouseName(get(cols, iAlmacen));
-                e.setProductCode(get(cols, iProducto));
-                // La descripción puede ser opcional, si no se encuentra usamos el código de producto
+                e.setWarehouseKey(get(cols, iAlmacenKey)); // CVE_ALM
+                e.setProductCode(get(cols, iProducto)); // CVE_ART
+                // La descripción viene del inventario, pero si se proporciona en el Excel, la usamos temporalmente
                 e.setProductName(iDesc >= 0 ? get(cols, iDesc) : get(cols, iProducto));
-                e.setStock(parseDecimal(get(cols, iExist)));
+                e.setStock(parseDecimal(get(cols, iExist))); // EXIST
                 String st = get(cols, iEstado);
-                e.setStatus(normalizeStatus(st));
+                e.setStatus(normalizeStatus(st)); // STATUS
                 list.add(e);
             }
         }
@@ -398,17 +401,17 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             int cols = header.getLastCellNum();
             String[] headers = new String[cols];
             for (int i=0;i<cols;i++) headers[i] = getCellString(header.getCell(i));
-            int iAlmacen = indexOf(headers, new String[]{"almacen","almacén","warehouse","almacen_nombre","cve_alm","CVE_ALM"});
+            int iAlmacenKey = indexOf(headers, new String[]{"cve_alm","CVE_ALM","almacen_clave","warehouse_key"});
             int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
-            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name"});
+            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name","descr","DESCR"});
             int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
             int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
 
             // Validar que se encontraron las columnas esenciales
-            if (iAlmacen < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
+            if (iAlmacenKey < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
                 throw new IllegalArgumentException("El archivo Excel no contiene todas las columnas requeridas. " +
                         "Columnas no encontradas: " +
-                        (iAlmacen < 0 ? "Almacén (CVE_ALM), " : "") +
+                        (iAlmacenKey < 0 ? "Clave Almacén (CVE_ALM), " : "") +
                         (iProducto < 0 ? "Producto (CVE_ART), " : "") +
                         (iExist < 0 ? "Existencias (EXIST), " : "") +
                         (iEstado < 0 ? "Estado (STATUS)" : ""));
@@ -417,12 +420,12 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             while (it.hasNext()) {
                 org.apache.poi.ss.usermodel.Row row = it.next();
                 MultiWarehouseExistence e = new MultiWarehouseExistence();
-                e.setWarehouseName(getCellString(row.getCell(iAlmacen)));
-                e.setProductCode(getCellString(row.getCell(iProducto)));
-                // La descripción puede ser opcional, si no se encuentra usamos el código de producto
+                e.setWarehouseKey(getCellString(row.getCell(iAlmacenKey))); // CVE_ALM
+                e.setProductCode(getCellString(row.getCell(iProducto))); // CVE_ART
+                // La descripción viene del inventario, pero si se proporciona en el Excel, la usamos temporalmente
                 e.setProductName(iDesc >= 0 ? getCellString(row.getCell(iDesc)) : getCellString(row.getCell(iProducto)));
-                e.setStock(parseDecimal(getCellString(row.getCell(iExist))));
-                e.setStatus(normalizeStatus(getCellString(row.getCell(iEstado))));
+                e.setStock(parseDecimal(getCellString(row.getCell(iExist)))); // EXIST
+                e.setStatus(normalizeStatus(getCellString(row.getCell(iEstado)))); // STATUS
                 list.add(e);
             }
             wb.close();
@@ -514,33 +517,42 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
      * REGLA DE NEGOCIO 1: Crear almacenes que no existen
      * Si aparecen almacenes que no existen en el SIGMA, éstos serán creados automáticamente
      * y se les agregará la leyenda: "Este almacén no existía y fue creado en la importación"
+     *
+     * IMPORTANTE: CVE_ALM del Excel representa la clave del almacén (warehouse_key)
      */
     private Map<String, Long> createMissingWarehouses(List<MultiWarehouseExistence> parsedData) {
         Map<String, Long> warehouseMap = new HashMap<>();
 
         for (MultiWarehouseExistence data : parsedData) {
-            String warehouseName = data.getWarehouseName();
-            if (warehouseName == null || warehouseName.trim().isEmpty()) {
+            String warehouseKey = data.getWarehouseKey(); // CVE_ALM del Excel
+            if (warehouseKey == null || warehouseKey.trim().isEmpty()) {
                 continue;
             }
 
-            if (!warehouseMap.containsKey(warehouseName)) {
-                // Buscar almacén existente
-                Optional<WarehouseEntity> existing = warehouseRepository.findByNameWarehouseAndDeletedAtIsNull(warehouseName);
+            if (!warehouseMap.containsKey(warehouseKey)) {
+                // Buscar almacén existente por clave
+                Optional<WarehouseEntity> existing = warehouseRepository.findByWarehouseKeyAndDeletedAtIsNull(warehouseKey);
 
                 if (existing.isPresent()) {
-                    warehouseMap.put(warehouseName, existing.get().getId());
+                    warehouseMap.put(warehouseKey, existing.get().getId());
+                    // Actualizar el nombre del almacén en el objeto de datos
+                    data.setWarehouseName(existing.get().getNameWarehouse());
                 } else {
-                    // Crear nuevo almacén
+                    // Crear nuevo almacén - el nombre será el mismo que la clave si no se proporciona
+                    String warehouseName = data.getWarehouseName() != null && !data.getWarehouseName().trim().isEmpty()
+                        ? data.getWarehouseName()
+                        : warehouseKey;
+
                     WarehouseEntity newWarehouse = new WarehouseEntity();
-                    newWarehouse.setWarehouseKey(generateWarehouseKey(warehouseName));
+                    newWarehouse.setWarehouseKey(warehouseKey);
                     newWarehouse.setNameWarehouse(warehouseName);
                     newWarehouse.setObservations("Este almacén no existía y fue creado en la importación");
                     newWarehouse.setCreatedAt(LocalDateTime.now());
                     newWarehouse.setUpdatedAt(LocalDateTime.now());
 
                     WarehouseEntity saved = warehouseRepository.save(newWarehouse);
-                    warehouseMap.put(warehouseName, saved.getId());
+                    warehouseMap.put(warehouseKey, saved.getId());
+                    data.setWarehouseName(warehouseName);
                 }
             }
         }
@@ -552,12 +564,14 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
      * REGLA DE NEGOCIO 2: Crear productos que no existen en inventario
      * Si aparecen productos que no están en el inventario del periodo elegido,
      * éstos serán creados automáticamente con estado "A"
+     *
+     * IMPORTANTE: La descripción del producto (DESCR) viene del catálogo de inventario
      */
     private Map<String, Long> createMissingProducts(List<MultiWarehouseExistence> parsedData, Long periodId) {
         Map<String, Long> productMap = new HashMap<>();
 
         for (MultiWarehouseExistence data : parsedData) {
-            String productCode = data.getProductCode();
+            String productCode = data.getProductCode(); // CVE_ART
             if (productCode == null || productCode.trim().isEmpty()) {
                 continue;
             }
@@ -567,16 +581,24 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
                 if (existing.isPresent()) {
                     productMap.put(productCode, existing.get().getIdProduct());
+                    // Actualizar la descripción del producto desde el inventario
+                    data.setProductName(existing.get().getDescr());
                 } else {
+                    // Crear nuevo producto
                     ProductEntity newProduct = new ProductEntity();
                     newProduct.setCveArt(productCode);
-                    newProduct.setDescr(data.getProductName() != null ? data.getProductName() : productCode);
-                    newProduct.setStatus("A");
+                    // La descripción puede venir del Excel o usar el código como respaldo
+                    String description = data.getProductName() != null && !data.getProductName().trim().isEmpty()
+                        ? data.getProductName()
+                        : productCode;
+                    newProduct.setDescr(description);
+                    newProduct.setStatus("A"); // Estado Alta según regla de negocio
                     newProduct.setCreatedAt(LocalDateTime.now());
                     newProduct.setUniMed("PZA"); // Valor por defecto para uni_med
 
                     ProductEntity saved = productRepository.save(newProduct);
                     productMap.put(productCode, saved.getIdProduct());
+                    data.setProductName(description);
                 }
             }
         }
@@ -584,29 +606,6 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         return productMap;
     }
 
-    /**
-     * Genera una clave única para el almacén basada en el nombre
-     */
-    private String generateWarehouseKey(String warehouseName) {
-        if (warehouseName == null || warehouseName.trim().isEmpty()) {
-            return "ALM_" + System.currentTimeMillis();
-        }
-
-        // Generar clave basada en las primeras letras del nombre
-        String key = warehouseName.replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
-        if (key.length() > 10) {
-            key = key.substring(0, 10);
-        }
-
-        // Verificar unicidad
-        String baseKey = key;
-        int counter = 1;
-        while (warehouseRepository.existsByWarehouseKeyAndDeletedAtIsNull(key)) {
-            key = baseKey + "_" + counter++;
-        }
-
-        return key;
-    }
 
     // Calcula el hash SHA-256 de un archivo MultipartFile
     private String calculateSHA256(MultipartFile file) {

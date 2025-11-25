@@ -17,6 +17,7 @@ public interface MultiWarehouseRepository extends JpaRepository<MultiWarehouseEx
             "(:#{#search.periodId} IS NULL OR e.periodId = :#{#search.periodId}) AND " +
             "( :#{#search.search} IS NULL OR " +
             "LOWER(e.warehouseName) LIKE LOWER(CONCAT('%', :#{#search.search}, '%')) OR " +
+            "LOWER(e.warehouseKey) LIKE LOWER(CONCAT('%', :#{#search.search}, '%')) OR " +
             "LOWER(e.productCode) LIKE LOWER(CONCAT('%', :#{#search.search}, '%')) OR " +
             "LOWER(e.productName) LIKE LOWER(CONCAT('%', :#{#search.search}, '%')) OR " +
             "CAST(e.stock AS string) LIKE CONCAT('%', :#{#search.search}, '%') )")
@@ -29,12 +30,12 @@ public interface MultiWarehouseRepository extends JpaRepository<MultiWarehouseEx
     @Query("SELECT e FROM MultiWarehouseExistence e WHERE e.periodId = :periodId")
     List<MultiWarehouseExistence> findByPeriodId(@Param("periodId") Long periodId);
 
-    // Buscar por producto y almacén específico
+    // Buscar por producto y almacén específico (usando warehouse key)
     @Query("SELECT e FROM MultiWarehouseExistence e WHERE " +
-           "e.productCode = :productCode AND e.warehouseName = :warehouseName AND e.periodId = :periodId")
-    Optional<MultiWarehouseExistence> findByProductCodeAndWarehouseNameAndPeriodId(
+           "e.productCode = :productCode AND e.warehouseKey = :warehouseKey AND e.periodId = :periodId")
+    Optional<MultiWarehouseExistence> findByProductCodeAndWarehouseKeyAndPeriodId(
         @Param("productCode") String productCode,
-        @Param("warehouseName") String warehouseName,
+        @Param("warehouseKey") String warehouseKey,
         @Param("periodId") Long periodId);
 
     // Buscar registros existentes para actualización
