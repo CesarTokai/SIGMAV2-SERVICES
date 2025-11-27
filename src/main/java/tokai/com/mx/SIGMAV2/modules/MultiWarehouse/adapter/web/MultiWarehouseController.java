@@ -11,17 +11,30 @@ import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehous
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseWizardStepDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.application.service.MultiWarehouseService;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseExistence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/sigmav2/multi-warehouse")
 public class MultiWarehouseController {
 
+    private static final Logger log = LoggerFactory.getLogger(MultiWarehouseController.class);
+
     @Autowired
     private MultiWarehouseService multiWarehouseService;
 
-    @GetMapping("/existences")
-    public Page<MultiWarehouseExistence> getExistences(MultiWarehouseSearchDTO search, Pageable pageable) {
-        return multiWarehouseService.findExistences(search, pageable);
+    @PostMapping("/existences")
+    public Page<MultiWarehouseExistence> getExistences(
+            @RequestBody MultiWarehouseSearchDTO searchDTO,
+            Pageable pageable) {
+        log.info("POST /existences - Search params: periodId={}, period={}, search={}, pageSize={}, orderBy={}, ascending={}",
+                 searchDTO.getPeriodId(),
+                 searchDTO.getPeriod(),
+                 searchDTO.getSearch(),
+                 searchDTO.getPageSize(),
+                 searchDTO.getOrderBy(),
+                 searchDTO.getAscending());
+        return multiWarehouseService.findExistences(searchDTO, pageable);
     }
 
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -46,12 +59,12 @@ public class MultiWarehouseController {
         return multiWarehouseService.getImportLog(id);
     }
 
-    @GetMapping("/stock")
-    public ResponseEntity<?> getStock(
-        @RequestParam String productCode,
-        @RequestParam String warehouseKey,
-        @RequestParam Long periodId
-    ) {
-        return multiWarehouseService.getStock(productCode, warehouseKey, periodId);
+    @PostMapping("/stock")
+    public ResponseEntity<?> getStock(@RequestBody tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseStockRequestDTO request) {
+        return multiWarehouseService.getStock(
+            request.getProductCode(),
+            request.getWarehouseKey(),
+            request.getPeriodId()
+        );
     }
 }

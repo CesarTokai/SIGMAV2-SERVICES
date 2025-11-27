@@ -1,6 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.MultiWarehouse.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +38,8 @@ import java.io.InputStream;
 @Service
 @RequiredArgsConstructor
 public class MultiWarehouseServiceImpl implements MultiWarehouseService {
+    private static final Logger log = LoggerFactory.getLogger(MultiWarehouseServiceImpl.class);
+
     private final MultiWarehouseRepository multiWarehouseRepository;
     private final MultiWarehouseImportLogRepository importLogRepository;
     private final PeriodRepository periodRepository;
@@ -45,6 +49,15 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
     @Override
     public Page<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search, Pageable pageable) {
+        log.info("=== findExistences - Inicio ===");
+        log.info("Search DTO recibido: periodId={}, period={}, search={}, pageSize={}, orderBy={}, ascending={}",
+                 search != null ? search.getPeriodId() : null,
+                 search != null ? search.getPeriod() : null,
+                 search != null ? search.getSearch() : null,
+                 search != null ? search.getPageSize() : null,
+                 search != null ? search.getOrderBy() : null,
+                 search != null ? search.getAscending() : null);
+
         // Configurar paginación con tamaños específicos permitidos
         if (search != null && search.getPageSize() != null) {
             int size = search.getPageSize();
@@ -78,14 +91,28 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
         // Resolver periodo si se proporciona como string
         if (search != null && (search.getPeriodId() == null) && search.getPeriod() != null && !search.getPeriod().isBlank()) {
+            log.info("Intentando resolver periodo desde string: {}", search.getPeriod());
             LocalDate date = parsePeriod(search.getPeriod());
             if (date != null) {
                 Optional<Period> per = periodRepository.findByDate(date);
-                per.ifPresent(p -> search.setPeriodId(p.getId()));
+                if (per.isPresent()) {
+                    search.setPeriodId(per.get().getId());
+                    log.info("Periodo resuelto: date={}, periodId={}", date, search.getPeriodId());
+                } else {
+                    log.warn("No se encontró periodo para la fecha: {}", date);
+                }
+            } else {
+                log.warn("No se pudo parsear el periodo: {}", search.getPeriod());
             }
         }
 
-        return multiWarehouseRepository.findExistences(search, pageable);
+        log.info("Ejecutando búsqueda con periodId final: {}", search != null ? search.getPeriodId() : null);
+        Page<MultiWarehouseExistence> result = multiWarehouseRepository.findExistences(search, pageable);
+        log.info("Resultados encontrados: {} elementos, página {}/{}",
+                 result.getTotalElements(), result.getNumber() + 1, result.getTotalPages());
+        log.info("=== findExistences - Fin ===");
+
+        return result;
     }
 
     /**
@@ -566,7 +593,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     WarehouseEntity newWarehouse = new WarehouseEntity();
                     newWarehouse.setWarehouseKey(warehouseKey);
                     newWarehouse.setNameWarehouse(warehouseName);
-                    newWarehouse.setObservations("Este almacén no existía y fue creado en la importación");
+                    newWarehouse.setObservations("Este almacén no existía y fue creado en la importación el " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                     newWarehouse.setCreatedAt(LocalDateTime.now());
                     newWarehouse.setUpdatedAt(LocalDateTime.now());
 
