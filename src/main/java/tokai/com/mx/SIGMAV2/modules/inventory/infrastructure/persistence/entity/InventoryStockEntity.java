@@ -1,13 +1,23 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "inventory_stock")
+@Table(name = "inventory_stock",
+       uniqueConstraints = @UniqueConstraint(
+           columnNames = {"id_product", "id_warehouse", "id_period"}
+       ))
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class InventoryStockEntity {
 
     @Id
@@ -15,39 +25,49 @@ public class InventoryStockEntity {
     @Column(name = "id_stock")
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "id_product")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_product", nullable = false)
     private ProductEntity product;
 
-    @ManyToOne
-    @JoinColumn(name = "id_warehouse")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_warehouse", nullable = false)
     private WarehouseEntity warehouse;
 
-    @Column(name = "exist_qty")
-    private Integer existQty;
+    @Column(name = "id_period", nullable = false)
+    private Long periodId;
 
-    @Column(name = "status")
-    private String status;
+    @Column(name = "exist_qty", nullable = false, precision = 10, scale = 2)
+    private BigDecimal existQty;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 1)
+    private Status status;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Getters y setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public enum Status {
+        A, // Alta
+        B  // Baja
+    }
 
-    public ProductEntity getProduct() { return product; }
-    public void setProduct(ProductEntity product) { this.product = product; }
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        if (existQty == null) {
+            existQty = BigDecimal.ZERO;
+        }
+        if (status == null) {
+            status = Status.A;
+        }
+    }
 
-    public WarehouseEntity getWarehouse() { return warehouse; }
-    public void setWarehouse(WarehouseEntity warehouse) { this.warehouse = warehouse; }
-
-    public Integer getExistQty() { return existQty; }
-    public void setExistQty(Integer existQty) { this.existQty = existQty; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

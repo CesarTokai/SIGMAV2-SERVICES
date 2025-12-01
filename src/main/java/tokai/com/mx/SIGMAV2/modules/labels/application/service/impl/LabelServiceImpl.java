@@ -290,10 +290,10 @@ public class LabelServiceImpl implements LabelService {
 
         log.info("Encontrados {} marbetes generados para {} productos", labels.size(), generatedLabelsByProduct.size());
 
-        // IMPORTANTE: Obtener TODOS los productos del inventario que tienen existencias en este almacén
+        // IMPORTANTE: Obtener TODOS los productos del inventario que tienen existencias en este almacén y periodo
         // Esto asegura que se muestren todos los productos aunque no tengan solicitudes de marbetes
         List<InventoryStockEntity> allStockInWarehouse = inventoryStockRepository
-                .findByWarehouseIdWarehouse(warehouseId);
+                .findByWarehouseIdWarehouseAndPeriodId(warehouseId, periodId);
 
         log.info("Encontrados {} productos en el inventario del almacén {}", allStockInWarehouse.size(), warehouseId);
 
@@ -329,16 +329,16 @@ public class LabelServiceImpl implements LabelService {
                 int foliosSolicitados = request != null ? request.getRequestedLabels() : 0;
                 int foliosExistentes = generatedLabelsByProduct.getOrDefault(productId, 0L).intValue();
 
-                // Obtener existencias del inventario
+                // Obtener existencias del inventario (ahora incluyendo periodo)
                 Integer existencias = 0;
                 String estado = "SIN_STOCK";
                 try {
                     InventoryStockEntity stock = inventoryStockRepository
-                            .findByProductIdProductAndWarehouseIdWarehouse(productId, warehouseId)
+                            .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId)
                             .orElse(null);
                     if (stock != null) {
-                        existencias = stock.getExistQty() != null ? stock.getExistQty() : 0;
-                        estado = stock.getStatus() != null ? stock.getStatus() : "ACTIVO";
+                        existencias = stock.getExistQty() != null ? stock.getExistQty().intValue() : 0;
+                        estado = stock.getStatus() != null ? stock.getStatus().name() : "A";
                     }
                 } catch (Exception e) {
                     log.warn("No se pudieron obtener existencias para producto {}: {}", productId, e.getMessage());

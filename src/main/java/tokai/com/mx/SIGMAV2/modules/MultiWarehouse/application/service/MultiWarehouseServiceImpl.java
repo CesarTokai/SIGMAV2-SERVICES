@@ -247,6 +247,9 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 newData.setWarehouseId(warehouseId);
                 newData.setPeriodId(periodId);
 
+                // Obtener productId desde el mapa de productos
+                Long productId = productMap.get(newData.getProductCode());
+
                 if (existingMap.containsKey(key)) {
                     // REGLA 4: Actualizar registro existente
                     MultiWarehouseExistence existing = existingMap.get(key);
@@ -261,6 +264,9 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     newData.setId(++maxId);
                     toSave.add(newData);
                 }
+
+                // IMPORTANTE: Sincronizar con inventory_stock
+                syncToInventoryStock(productId, warehouseId, periodId, newData.getStock(), newData.getStatus());
             }
 
             // REGLA DE NEGOCIO 5: Marcar como "B" (baja) productos no presentes en Excel
@@ -681,4 +687,80 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             return ResponseEntity.status(404).body("No se encontró stock para ese producto, almacén y periodo.");
         }
     }
+
+    /**
+     * Sincroniza datos de MultiWarehouse con la tabla inventory_stock
+     * Este método crea o actualiza registros en inventory_stock cuando se importa MultiWarehouse
+     *
+     * @param productId ID del producto
+     * @param warehouseId ID del almacén
+     * @param periodId ID del periodo
+     * @param stock Cantidad de existencias
+     * @param status Estado del producto (A/B)
+     */
+    private void syncToInventoryStock(Long productId, Long warehouseId, Long periodId,
+                                      java.math.BigDecimal stock, String status) {
+        if (productId == null || warehouseId == null || periodId == null) {
+            log.warn("No se puede sincronizar inventory_stock: productId={}, warehouseId={}, periodId={}",
+                     productId, warehouseId, periodId);
+            return;
+        }
+
+        try {
+            // Buscar registro existente en inventory_stock
+            var existingStock = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId);
+
+            if (existingStock.isPresent()) {
+                // Actualizar existente
+                var stockEntity = existingStock.get();
+                stockEntity.setExistQty(stock != null ? stock : java.math.BigDecimal.ZERO);
+                stockEntity.setStatus(toInventoryStockStatus(status));
+                stockEntity.setUpdatedAt(LocalDateTime.now());
+                inventoryStockRepository.save(stockEntity);
+                log.debug("inventory_stock actualizado: productId={}, warehouseId={}, periodId={}, qty={}",
+                         productId, warehouseId, periodId, stock);
+            } else {
+                // Crear nuevo registro
+                var newStock = new tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity();
+
+                // Establecer relaciones
+                var product = new ProductEntity();
+                product.setIdProduct(productId);
+                newStock.setProduct(product);
+
+                var warehouse = new tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity();
+                warehouse.setIdWarehouse(warehouseId);
+                newStock.setWarehouse(warehouse);
+
+                newStock.setPeriodId(periodId);
+                newStock.setExistQty(stock != null ? stock : java.math.BigDecimal.ZERO);
+                newStock.setStatus(toInventoryStockStatus(status));
+                newStock.setCreatedAt(LocalDateTime.now());
+                newStock.setUpdatedAt(LocalDateTime.now());
+
+                inventoryStockRepository.save(newStock);
+                log.debug("inventory_stock creado: productId={}, warehouseId={}, periodId={}, qty={}",
+                         productId, warehouseId, periodId, stock);
+            }
+        } catch (Exception e) {
+            log.error("Error al sincronizar inventory_stock para productId={}, warehouseId={}, periodId={}: {}",
+                     productId, warehouseId, periodId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Convierte el status de MultiWarehouse (String) al enum de InventoryStockEntity
+     */
+    private tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity.Status
+            toInventoryStockStatus(String status) {
+        if ("A".equalsIgnoreCase(status)) {
+            return tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity.Status.A;
+        } else if ("B".equalsIgnoreCase(status)) {
+            return tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity.Status.B;
+        }
+        // Por defecto, si es null o desconocido, usar A (Alta)
+        return tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity.Status.A;
+    }
 }
+

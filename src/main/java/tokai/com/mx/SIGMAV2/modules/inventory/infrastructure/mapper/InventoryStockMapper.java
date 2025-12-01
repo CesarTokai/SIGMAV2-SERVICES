@@ -20,8 +20,10 @@ public class InventoryStockMapper {
                 .id(entity.getId())
                 .productId(entity.getProduct() != null ? entity.getProduct().getIdProduct() : null)
                 .warehouseId(entity.getWarehouse() != null ? entity.getWarehouse().getIdWarehouse() : null)
-                .existQty(entity.getExistQty() != null ? new BigDecimal(entity.getExistQty()) : null)
-                .status(entity.getStatus())
+                .periodId(entity.getPeriodId())
+                .existQty(entity.getExistQty() != null ? entity.getExistQty() : BigDecimal.ZERO)
+                .status(entity.getStatus() != null ? entity.getStatus().name() : InventoryStock.STATUS_ACTIVE)
+                .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
@@ -45,11 +47,17 @@ public class InventoryStockMapper {
             entity.setWarehouse(warehouseEntity);
         }
 
-        if (domain.getExistQty() != null) {
-            entity.setExistQty(domain.getExistQty().intValue());
+        entity.setPeriodId(domain.getPeriodId());
+        entity.setExistQty(domain.getExistQty() != null ? domain.getExistQty() : BigDecimal.ZERO);
+
+        // Convertir String a Enum
+        if (domain.getStatus() != null) {
+            entity.setStatus(InventoryStockEntity.Status.valueOf(domain.getStatus()));
+        } else {
+            entity.setStatus(InventoryStockEntity.Status.A);
         }
 
-        entity.setStatus(domain.getStatus());
+        entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
 
         return entity;
