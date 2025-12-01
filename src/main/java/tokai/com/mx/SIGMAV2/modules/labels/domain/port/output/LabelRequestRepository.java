@@ -10,6 +10,8 @@ public interface LabelRequestRepository {
 
     Optional<LabelRequest> findByProductWarehousePeriod(Long productId, Long warehouseId, Long periodId);
 
+    void delete(LabelRequest request);
+
     boolean existsGeneratedUnprintedForProductWarehousePeriod(Long productId, Long warehouseId, Long periodId);
 
 }

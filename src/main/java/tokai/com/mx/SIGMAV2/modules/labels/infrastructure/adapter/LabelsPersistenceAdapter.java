@@ -79,6 +79,11 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     @Override
+    public void delete(LabelRequest request) {
+        jpaLabelRequestRepository.delete(request);
+    }
+
+    @Override
     public boolean existsGeneratedUnprintedForProductWarehousePeriod(Long productId, Long warehouseId, Long periodId) {
         return jpaLabelRepository.existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(productId, warehouseId, periodId, Label.State.GENERADO);
     }

@@ -53,23 +53,83 @@ public class LabelServiceImpl implements LabelService {
         // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // Validación: no permitir solicitar si existen marbetes GENERADOS sin imprimir
-        boolean exists = persistence.existsGeneratedUnprintedForProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-        if (exists) {
-            throw new InvalidLabelStateException("Existen marbetes GENERADOS sin imprimir para este producto/almacén/periodo.");
+        // REGLA DE NEGOCIO: Validar que la cantidad sea numérica entera (ya validado por DTO)
+        // El DTO debe tener validación @Min(0) o similar
+
+        // Buscar si ya existe una solicitud para este producto/almacén/periodo
+        Optional<LabelRequest> existingRequest = persistence.findByProductWarehousePeriod(
+            dto.getProductId(),
+            dto.getWarehouseId(),
+            dto.getPeriodId()
+        );
+
+        // REGLA DE NEGOCIO: Si la cantidad es 0, significa que ya no desea generar folios
+        if (dto.getRequestedLabels() == 0) {
+            if (existingRequest.isPresent()) {
+                LabelRequest req = existingRequest.get();
+
+                // Solo permitir eliminar/cancelar si NO se han generado folios aún
+                if (req.getFoliosGenerados() == 0) {
+                    persistence.delete(req);
+                    log.info("Solicitud cancelada (cantidad=0) para producto {} en almacén {} periodo {}",
+                        dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+                } else {
+                    throw new InvalidLabelStateException(
+                        "No se puede cancelar la solicitud porque ya se generaron " +
+                        req.getFoliosGenerados() + " folios. Debe imprimirlos primero.");
+                }
+            }
+            // Si no existe solicitud y la cantidad es 0, no hacer nada
+            return;
         }
 
-        // Crear y guardar la solicitud
-        LabelRequest req = new LabelRequest();
-        req.setProductId(dto.getProductId());
-        req.setWarehouseId(dto.getWarehouseId());
-        req.setPeriodId(dto.getPeriodId());
-        req.setRequestedLabels(dto.getRequestedLabels());
-        req.setFoliosGenerados(0);
-        req.setCreatedBy(userId);
-        req.setCreatedAt(LocalDateTime.now());
+        // REGLA DE NEGOCIO: No permitir solicitar si existen marbetes GENERADOS sin imprimir
+        // Esta validación solo aplica para solicitudes NUEVAS o al INCREMENTAR la cantidad
+        if (existingRequest.isPresent()) {
+            LabelRequest existing = existingRequest.get();
 
-        persistence.save(req);
+            // Si ya se generaron folios, verificar que no haya sin imprimir
+            if (existing.getFoliosGenerados() > 0) {
+                boolean hasUnprinted = persistence.existsGeneratedUnprintedForProductWarehousePeriod(
+                    dto.getProductId(),
+                    dto.getWarehouseId(),
+                    dto.getPeriodId()
+                );
+                if (hasUnprinted) {
+                    throw new InvalidLabelStateException(
+                        "Existen marbetes GENERADOS sin imprimir para este producto/almacén/periodo. " +
+                        "Por favor imprima los marbetes existentes antes de solicitar más.");
+                }
+            }
+
+            // REGLA DE NEGOCIO: Mientras no haya ejecutado "Generar marbetes",
+            // podrá cambiar la cantidad las veces que desee
+            log.info("Actualizando solicitud existente de {} a {} folios para producto {} en almacén {} periodo {}",
+                existing.getRequestedLabels(), dto.getRequestedLabels(),
+                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+            existing.setRequestedLabels(dto.getRequestedLabels());
+            persistence.save(existing);
+
+        } else {
+            // CREAR nueva solicitud
+            log.info("Creando nueva solicitud de {} folios para producto {} en almacén {} periodo {}",
+                dto.getRequestedLabels(), dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+            LabelRequest req = new LabelRequest();
+            req.setProductId(dto.getProductId());
+            req.setWarehouseId(dto.getWarehouseId());
+            req.setPeriodId(dto.getPeriodId());
+            req.setRequestedLabels(dto.getRequestedLabels());
+            req.setFoliosGenerados(0);
+            req.setCreatedBy(userId);
+            req.setCreatedAt(LocalDateTime.now());
+
+            persistence.save(req);
+        }
+
+        // REGLA DE NEGOCIO CUMPLIDA: Los datos se guardan automáticamente en BD,
+        // puede cambiar de módulo sin temor a perder el dato
     }
 
     @Override
