@@ -42,11 +42,13 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
         Period period = Period.builder()
                 .date(normalizedDate)
                 .comments(comments)
-                .state(Period.PeriodState.DRAFT)
+                .state(Period.PeriodState.OPEN)
                 .build();
 
         return periodRepository.save(period);
     }
+
+
 
     @Override
     public Period findById(Long id) {
