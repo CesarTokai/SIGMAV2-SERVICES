@@ -1,12 +1,21 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventoryStockRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
@@ -14,24 +23,36 @@ import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
+import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LabelServiceImpl implements LabelService {
 
     private final LabelsPersistenceAdapter persistence;
+    private final WarehouseAccessService warehouseAccessService;
+    private final JpaProductRepository productRepository;
+    private final JpaWarehouseRepository warehouseRepository;
+    private final JpaInventoryStockRepository inventoryStockRepository;
+    private final JpaLabelRequestRepository labelRequestRepository;
 
     @Override
     @Transactional
-    public void requestLabels(LabelRequestDTO dto, Long userId) {
+    public void requestLabels(LabelRequestDTO dto, Long userId, String userRole) {
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
         // Validación: no permitir solicitar si existen marbetes GENERADOS sin imprimir
         boolean exists = persistence.existsGeneratedUnprintedForProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (exists) {
@@ -53,7 +74,10 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public void generateBatch(GenerateBatchDTO dto, Long userId) {
+    public void generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
         // Buscar solicitud existente
         Optional<LabelRequest> opt = persistence.findByProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (opt.isEmpty()) {
@@ -94,8 +118,12 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public LabelPrint printLabels(PrintRequestDTO dto, Long userId) {
-        // Aquí podrían ir validaciones RBAC (permiso sobre almacén) y verificación de catálogos cargados
+    public LabelPrint printLabels(PrintRequestDTO dto, Long userId, String userRole) {
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
+        // TODO: Agregar validación de catálogos cargados (inventario y multialmacén)
+
         return persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), dto.getStartFolio(), dto.getEndFolio(), userId);
     }
 
@@ -117,6 +145,10 @@ public class LabelServiceImpl implements LabelService {
             throw new LabelNotFoundException("El folio no existe");
         }
         Label label = optLabel.get();
+
+        // Validar acceso al almacén del marbete
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
         }
@@ -156,6 +188,10 @@ public class LabelServiceImpl implements LabelService {
             throw new LabelNotFoundException("El folio no existe");
         }
         Label label = optLabel.get();
+
+        // Validar acceso al almacén del marbete
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
         }
@@ -177,5 +213,238 @@ public class LabelServiceImpl implements LabelService {
         try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR_DE_CONTEO; }
 
         return persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole) {
+        log.info("getLabelSummary - Inicio: periodId={}, warehouseId={}, page={}, size={}, searchText={}, sortBy={}, sortDirection={}, userId={}, userRole={}",
+            dto.getPeriodId(), dto.getWarehouseId(), dto.getPage(), dto.getSize(),
+            dto.getSearchText(), dto.getSortBy(), dto.getSortDirection(), userId, userRole);
+
+        // Si no se especifica periodo, obtener el último creado
+        final Long periodId;
+        if (dto.getPeriodId() == null) {
+            periodId = persistence.findLastCreatedPeriodId()
+                .orElseThrow(() -> new RuntimeException("No hay periodos registrados"));
+            log.info("Usando periodo por default (último creado): {}", periodId);
+        } else {
+            periodId = dto.getPeriodId();
+        }
+
+        // Si no se especifica almacén, obtener el primero
+        final Long warehouseId;
+        if (dto.getWarehouseId() == null) {
+            warehouseId = warehouseRepository.findFirstByOrderByIdWarehouseAsc()
+                .map(WarehouseEntity::getIdWarehouse)
+                .orElseThrow(() -> new RuntimeException("No hay almacenes registrados"));
+            log.info("Usando almacén por default (primero): {}", warehouseId);
+        } else {
+            warehouseId = dto.getWarehouseId();
+        }
+
+        try {
+            // Validar acceso al almacén (solo si no es ADMINISTRADOR o AUXILIAR)
+            log.info("Validando acceso al almacén...");
+            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+            log.info("Acceso validado correctamente");
+        } catch (Exception e) {
+            log.warn("Error en validateWarehouseAccess: {}", e.getMessage());
+            // Si falla la validación pero es ADMINISTRADOR o AUXILIAR, permitir acceso
+            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
+                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
+            } else {
+                log.error("Usuario sin acceso al almacén", e);
+                throw e; // Re-lanzar la excepción si no tiene permisos
+            }
+        }
+
+        // Obtener información del almacén
+        WarehouseEntity warehouseEntity = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Almacén no encontrado: " + warehouseId));
+
+        String claveAlmacen = warehouseEntity.getWarehouseKey();
+        String nombreAlmacen = warehouseEntity.getNameWarehouse();
+
+        log.info("Almacén encontrado: {} - {}", claveAlmacen, nombreAlmacen);
+
+        // Obtener todas las solicitudes de marbetes para este periodo y almacén
+        List<LabelRequest> allRequests = labelRequestRepository.findAll();
+        Map<Long, LabelRequest> requestsByProduct = allRequests.stream()
+                .filter(req -> req.getPeriodId() != null && req.getPeriodId().equals(periodId) &&
+                              req.getWarehouseId() != null && req.getWarehouseId().equals(warehouseId))
+                .collect(Collectors.toMap(
+                    LabelRequest::getProductId,
+                    req -> req,
+                    (existing, replacement) -> existing
+                ));
+
+        log.info("Encontradas {} solicitudes de productos", requestsByProduct.size());
+
+        // Obtener todos los marbetes generados para este periodo y almacén
+        List<Label> labels = persistence.findByPeriodIdAndWarehouseId(periodId, warehouseId, 0, 100000);
+
+        // Agrupar marbetes por producto y contar
+        Map<Long, Long> generatedLabelsByProduct = labels.stream()
+                .collect(Collectors.groupingBy(Label::getProductId, Collectors.counting()));
+
+        log.info("Encontrados {} marbetes generados para {} productos", labels.size(), generatedLabelsByProduct.size());
+
+        // IMPORTANTE: Obtener TODOS los productos del inventario que tienen existencias en este almacén
+        // Esto asegura que se muestren todos los productos aunque no tengan solicitudes de marbetes
+        List<InventoryStockEntity> allStockInWarehouse = inventoryStockRepository
+                .findByWarehouseIdWarehouse(warehouseId);
+
+        log.info("Encontrados {} productos en el inventario del almacén {}", allStockInWarehouse.size(), warehouseId);
+
+        // Construir la lista completa de productos (inventario + solicitudes + marbetes)
+        Set<Long> allProductIds = new HashSet<>();
+
+        // Agregar todos los productos del inventario del almacén
+        allStockInWarehouse.stream()
+                .filter(stock -> stock.getProduct() != null)
+                .forEach(stock -> allProductIds.add(stock.getProduct().getIdProduct()));
+
+        // Agregar productos con solicitudes
+        allProductIds.addAll(requestsByProduct.keySet());
+
+        // Agregar productos con marbetes generados
+        allProductIds.addAll(generatedLabelsByProduct.keySet());
+
+        log.info("Total de productos únicos a mostrar: {}", allProductIds.size());
+
+        List<LabelSummaryResponseDTO> allResults = new ArrayList<>();
+
+        for (Long productId : allProductIds) {
+            try {
+                // Obtener información del producto
+                ProductEntity product = productRepository.findById(productId).orElse(null);
+                if (product == null) {
+                    log.warn("Producto no encontrado: {}", productId);
+                    continue;
+                }
+
+                // Obtener la solicitud de marbetes para este producto
+                LabelRequest request = requestsByProduct.get(productId);
+                int foliosSolicitados = request != null ? request.getRequestedLabels() : 0;
+                int foliosExistentes = generatedLabelsByProduct.getOrDefault(productId, 0L).intValue();
+
+                // Obtener existencias del inventario
+                Integer existencias = 0;
+                String estado = "SIN_STOCK";
+                try {
+                    InventoryStockEntity stock = inventoryStockRepository
+                            .findByProductIdProductAndWarehouseIdWarehouse(productId, warehouseId)
+                            .orElse(null);
+                    if (stock != null) {
+                        existencias = stock.getExistQty() != null ? stock.getExistQty() : 0;
+                        estado = stock.getStatus() != null ? stock.getStatus() : "ACTIVO";
+                    }
+                } catch (Exception e) {
+                    log.warn("No se pudieron obtener existencias para producto {}: {}", productId, e.getMessage());
+                }
+
+                // Construir el DTO de respuesta
+                LabelSummaryResponseDTO summary = LabelSummaryResponseDTO.builder()
+                        .productId(productId)
+                        .claveProducto(product.getCveArt())
+                        .nombreProducto(product.getDescr())
+                        .claveAlmacen(claveAlmacen)
+                        .nombreAlmacen(nombreAlmacen)
+                        .foliosSolicitados(foliosSolicitados)
+                        .foliosExistentes(foliosExistentes)
+                        .estado(estado)
+                        .existencias(existencias)
+                        .build();
+
+                allResults.add(summary);
+
+            } catch (Exception e) {
+                log.error("Error procesando producto {}: {}", productId, e.getMessage(), e);
+            }
+        }
+
+        log.info("Construidos {} registros totales", allResults.size());
+
+        // Aplicar filtro de búsqueda (case-insensitive según requerimientos)
+        List<LabelSummaryResponseDTO> filteredResults = allResults;
+        if (dto.getSearchText() != null && !dto.getSearchText().trim().isEmpty()) {
+            String searchLower = dto.getSearchText().toLowerCase();
+            filteredResults = allResults.stream()
+                .filter(item -> {
+                    // Búsqueda en: Clave de producto, Producto, Clave de almacén, Almacén, Estado, Existencias
+                    return (item.getClaveProducto() != null && item.getClaveProducto().toLowerCase().contains(searchLower)) ||
+                           (item.getNombreProducto() != null && item.getNombreProducto().toLowerCase().contains(searchLower)) ||
+                           (item.getClaveAlmacen() != null && item.getClaveAlmacen().toLowerCase().contains(searchLower)) ||
+                           (item.getNombreAlmacen() != null && item.getNombreAlmacen().toLowerCase().contains(searchLower)) ||
+                           (item.getEstado() != null && item.getEstado().toLowerCase().contains(searchLower)) ||
+                           String.valueOf(item.getExistencias()).contains(searchLower);
+                })
+                .collect(Collectors.toList());
+            log.info("Búsqueda aplicada: '{}', resultados filtrados: {}", dto.getSearchText(), filteredResults.size());
+        }
+
+        // Aplicar ordenamiento personalizado
+        Comparator<LabelSummaryResponseDTO> comparator = getComparator(dto.getSortBy());
+        if ("DESC".equalsIgnoreCase(dto.getSortDirection())) {
+            comparator = comparator.reversed();
+        }
+        filteredResults.sort(comparator);
+        log.info("Ordenamiento aplicado: {} {}", dto.getSortBy(), dto.getSortDirection());
+
+        // Aplicar paginación
+        int totalFiltered = filteredResults.size();
+        int start = dto.getPage() * dto.getSize();
+        int end = Math.min(start + dto.getSize(), totalFiltered);
+
+        if (start >= totalFiltered && totalFiltered > 0) {
+            log.warn("Página {} fuera de rango (total: {}), devolviendo lista vacía", dto.getPage(), totalFiltered);
+            return new ArrayList<>();
+        }
+
+        List<LabelSummaryResponseDTO> paginatedResults = start < totalFiltered ?
+            filteredResults.subList(start, end) : new ArrayList<>();
+
+        log.info("Paginación aplicada: página {}, tamaño {}, devolviendo {} registros de {} totales filtrados",
+            dto.getPage(), dto.getSize(), paginatedResults.size(), totalFiltered);
+
+        return paginatedResults;
+    }
+
+    /**
+     * Método auxiliar para obtener el comparador según la columna seleccionada.
+     * Columnas soportadas: foliosExistentes, claveProducto, producto/nombreProducto,
+     * claveAlmacen, almacen/nombreAlmacen, estado, existencias
+     */
+    private Comparator<LabelSummaryResponseDTO> getComparator(String sortBy) {
+        if (sortBy == null) sortBy = "claveProducto";
+
+        switch (sortBy.toLowerCase()) {
+            case "foliosexistentes":
+                return Comparator.comparing(LabelSummaryResponseDTO::getFoliosExistentes);
+            case "claveproducto":
+                return Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "producto":
+            case "nombreproducto":
+                return Comparator.comparing(LabelSummaryResponseDTO::getNombreProducto,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "clavealmacen":
+                return Comparator.comparing(LabelSummaryResponseDTO::getClaveAlmacen,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "almacen":
+            case "nombrealmacen":
+                return Comparator.comparing(LabelSummaryResponseDTO::getNombreAlmacen,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "estado":
+                return Comparator.comparing(LabelSummaryResponseDTO::getEstado,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "existencias":
+                return Comparator.comparing(LabelSummaryResponseDTO::getExistencias);
+            default:
+                // Por defecto, ordenar por clave de producto
+                return Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        }
     }
 }

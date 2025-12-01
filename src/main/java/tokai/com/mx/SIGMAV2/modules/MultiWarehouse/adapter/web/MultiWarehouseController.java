@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseSearchDTO;
+import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseStockRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseWizardStepDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.application.service.MultiWarehouseService;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseExistence;
@@ -60,7 +61,7 @@ public class MultiWarehouseController {
     }
 
     @PostMapping("/stock")
-    public ResponseEntity<?> getStock(@RequestBody tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseStockRequestDTO request) {
+    public ResponseEntity<?> getStock(@RequestBody MultiWarehouseStockRequestDTO request) {
         return multiWarehouseService.getStock(
             request.getProductCode(),
             request.getWarehouseKey(),

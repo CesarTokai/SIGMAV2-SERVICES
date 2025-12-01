@@ -140,11 +140,10 @@ public class UserWarehouseServiceImpl implements UserWarehouseService {
         if (entity == null) return null;
 
         return UserWarehouseAssignment.builder()
-                .id(entity.getId())
                 .userId(entity.getUserId())
+                .warehouseId(entity.getWarehouse().getId())
                 .assignedBy(entity.getAssignedBy())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
+                .assignedAt(entity.getCreatedAt())
                 .build();
     }
 }

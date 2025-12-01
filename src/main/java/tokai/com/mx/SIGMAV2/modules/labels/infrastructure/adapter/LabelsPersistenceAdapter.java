@@ -18,6 +18,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelFo
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelGenerationBatchRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository;
+import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     private final JpaLabelGenerationBatchRepository jpaLabelGenerationBatchRepository;
     private final JpaLabelPrintRepository jpaLabelPrintRepository;
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
+    private final JpaPeriodRepository jpaPeriodRepository;
 
     @Override
     public Label save(Label label) {
@@ -212,6 +214,12 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
     public java.util.List<LabelCountEvent> findAllCountEvents(Long folio) {
         return jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+    }
+
+    // Método para obtener el último periodo creado (ordenado por fecha descendente)
+    public Optional<Long> findLastCreatedPeriodId() {
+        return jpaPeriodRepository.findLatestPeriod()
+                .map(periodEntity -> periodEntity.getId());
     }
 
 }
