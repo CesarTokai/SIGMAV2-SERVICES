@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.service;
 
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
@@ -15,6 +16,8 @@ public interface LabelService {
     void requestLabels(LabelRequestDTO dto, Long userId, String userRole);
 
     void generateBatch(GenerateBatchDTO dto, Long userId, String userRole);
+
+    void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole);
 
     LabelPrint printLabels(PrintRequestDTO dto, Long userId, String userRole);
 

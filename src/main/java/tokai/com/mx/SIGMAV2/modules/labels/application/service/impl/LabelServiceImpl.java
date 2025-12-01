@@ -11,6 +11,8 @@ import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.Product
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.ProductBatchDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
@@ -390,7 +392,7 @@ public class LabelServiceImpl implements LabelService {
                 int foliosExistentes = generatedLabelsByProduct.getOrDefault(productId, 0L).intValue();
 
                 // Obtener existencias del inventario (ahora incluyendo periodo)
-                Integer existencias = 0;
+                int existencias = 0;
                 String estado = "SIN_STOCK";
                 try {
                     InventoryStockEntity stock = inventoryStockRepository
@@ -479,32 +481,43 @@ public class LabelServiceImpl implements LabelService {
     private Comparator<LabelSummaryResponseDTO> getComparator(String sortBy) {
         if (sortBy == null) sortBy = "claveProducto";
 
-        switch (sortBy.toLowerCase()) {
-            case "foliosexistentes":
-                return Comparator.comparing(LabelSummaryResponseDTO::getFoliosExistentes);
-            case "claveproducto":
-                return Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
+        return switch (sortBy.toLowerCase()) {
+            case "foliosexistentes" -> Comparator.comparing(LabelSummaryResponseDTO::getFoliosExistentes);
+            case "claveproducto" -> Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "producto":
-            case "nombreproducto":
-                return Comparator.comparing(LabelSummaryResponseDTO::getNombreProducto,
+            case "producto", "nombreproducto" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreProducto,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "clavealmacen":
-                return Comparator.comparing(LabelSummaryResponseDTO::getClaveAlmacen,
+            case "clavealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getClaveAlmacen,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "almacen":
-            case "nombrealmacen":
-                return Comparator.comparing(LabelSummaryResponseDTO::getNombreAlmacen,
+            case "almacen", "nombrealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreAlmacen,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "estado":
-                return Comparator.comparing(LabelSummaryResponseDTO::getEstado,
+            case "estado" -> Comparator.comparing(LabelSummaryResponseDTO::getEstado,
                     Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "existencias":
-                return Comparator.comparing(LabelSummaryResponseDTO::getExistencias);
-            default:
+            case "existencias" -> Comparator.comparing(LabelSummaryResponseDTO::getExistencias);
+            default ->
                 // Por defecto, ordenar por clave de producto
-                return Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
+                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        };
+    }
+
+    @Override
+    @Transactional
+    public void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole) {
+        // Validar acceso al almacén una sola vez
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        for (ProductBatchDTO product : dto.getProducts()) {
+            try {
+                GenerateBatchDTO single = new GenerateBatchDTO();
+                single.setProductId(product.getProductId());
+                single.setWarehouseId(dto.getWarehouseId());
+                single.setPeriodId(dto.getPeriodId());
+                single.setLabelsToGenerate(product.getLabelsToGenerate());
+                this.generateBatch(single, userId, userRole);
+            } catch (Exception e) {
+                log.error("Error generando marbetes para producto {}: {}", product.getProductId(), e.getMessage());
+                // Aquí podrías recolectar errores individuales si quieres devolver un resumen
+            }
         }
     }
 }

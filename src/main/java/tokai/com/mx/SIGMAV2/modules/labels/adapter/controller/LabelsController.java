@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
@@ -126,5 +127,15 @@ public class LabelsController {
         List<LabelSummaryResponseDTO> summary = labelService.getLabelSummary(dto, userId, userRole);
         log.info("Returning {} items", summary.size());
         return ResponseEntity.ok(summary);
+    }
+
+    // Generar marbetes para múltiples productos
+    @PostMapping("/generate/batch")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<?> generateBatchList(@Valid @RequestBody GenerateBatchListDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+        labelService.generateBatchList(dto, userId, userRole);
+        return ResponseEntity.ok().build();
     }
 }
