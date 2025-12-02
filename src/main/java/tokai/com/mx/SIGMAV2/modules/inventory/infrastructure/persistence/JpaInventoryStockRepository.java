@@ -69,4 +69,9 @@ public interface JpaInventoryStockRepository extends JpaRepository<InventoryStoc
      */
     @Query("SELECT COUNT(s) FROM InventoryStockEntity s WHERE s.warehouse.idWarehouse = :warehouseId AND s.periodId = :periodId")
     long countByWarehouseIdAndPeriodId(@Param("warehouseId") Long warehouseId, @Param("periodId") Long periodId);
+
+    /**
+     * Verificar si existen datos de inventario para un almacén y periodo específico
+     */
+    boolean existsByWarehouseIdWarehouseAndPeriodId(Long warehouseId, Long periodId);
 }

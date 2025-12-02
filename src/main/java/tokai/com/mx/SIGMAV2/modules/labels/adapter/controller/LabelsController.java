@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -80,11 +82,29 @@ public class LabelsController {
     // Imprimir / Reimprimir rango de marbetes
     @PostMapping("/print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<LabelPrint> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
+    public ResponseEntity<byte[]> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
-        LabelPrint printed = labelService.printLabels(dto, userId, userRole);
-        return ResponseEntity.ok(printed);
+
+        log.info("Endpoint /print llamado por usuario {} con rol {}", userId, userRole);
+
+        // Generar el PDF
+        byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
+
+        // Construir nombre del archivo
+        String filename = String.format("marbetes_%d_%d.pdf", dto.getStartFolio(), dto.getEndFolio());
+
+        // Configurar headers para descarga del PDF
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", filename);
+        headers.setContentLength(pdfBytes.length);
+
+        log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
+
+        return ResponseEntity.ok()
+            .headers(headers)
+            .body(pdfBytes);
     }
 
     // Registrar Conteo C1

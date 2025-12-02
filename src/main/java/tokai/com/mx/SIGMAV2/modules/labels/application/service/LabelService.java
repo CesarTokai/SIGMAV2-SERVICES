@@ -19,7 +19,7 @@ public interface LabelService {
 
     void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole);
 
-    LabelPrint printLabels(PrintRequestDTO dto, Long userId, String userRole);
+    byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole);
 
     LabelCountEvent registerCountC1(CountEventDTO dto, Long userId, String userRole);
 

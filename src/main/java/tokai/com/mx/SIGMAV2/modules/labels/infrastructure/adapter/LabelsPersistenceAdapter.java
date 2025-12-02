@@ -191,6 +191,18 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return saved;
     }
 
+    /**
+     * Obtiene los marbetes de un rango específico de folios para un periodo y almacén
+     */
+    public List<Label> findByFolioRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio) {
+        List<Label> allLabels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio);
+
+        // Filtrar solo los que pertenecen al periodo y almacén especificados
+        return allLabels.stream()
+            .filter(l -> l.getPeriodId().equals(periodId) && l.getWarehouseId().equals(warehouseId))
+            .collect(Collectors.toList());
+    }
+
     @Transactional
     public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
         LabelCountEvent ev = new LabelCountEvent();

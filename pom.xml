@@ -132,6 +132,18 @@
             <scope>provided</scope>
         </dependency>
 
+		<!-- JasperReports for PDF generation -->
+		<dependency>
+			<groupId>net.sf.jasperreports</groupId>
+			<artifactId>jasperreports</artifactId>
+			<version>6.20.6</version>
+		</dependency>
+		<dependency>
+			<groupId>net.sf.jasperreports</groupId>
+			<artifactId>jasperreports-fonts</artifactId>
+			<version>6.20.6</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

@@ -19,6 +19,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
@@ -48,6 +49,7 @@ public class LabelServiceImpl implements LabelService {
     private final JpaWarehouseRepository warehouseRepository;
     private final JpaInventoryStockRepository inventoryStockRepository;
     private final JpaLabelRequestRepository labelRequestRepository;
+    private final JasperLabelPrintService jasperLabelPrintService;
 
     @Override
     @Transactional
@@ -180,13 +182,97 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public LabelPrint printLabels(PrintRequestDTO dto, Long userId, String userRole) {
-        // Validar acceso al almacén
-        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+    public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
+        log.info("Iniciando impresión de marbetes: periodId={}, warehouseId={}, startFolio={}, endFolio={}, userId={}, userRole={}",
+            dto.getPeriodId(), dto.getWarehouseId(), dto.getStartFolio(), dto.getEndFolio(), userId, userRole);
 
-        // TODO: Agregar validación de catálogos cargados (inventario y multialmacén)
+        // REGLA DE NEGOCIO: Esta operación delimita el contexto según usuario y almacén asignado,
+        // PERO si el usuario tiene rol "ADMINISTRADOR" o "AUXILIAR", puede cambiar de almacén
+        if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
+            log.info("Usuario {} tiene rol {} - puede imprimir en cualquier almacén", userId, userRole);
+            // Los administradores y auxiliares pueden imprimir en cualquier almacén sin validación restrictiva
+        } else {
+            // Para otros roles, validar acceso estricto al almacén
+            warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        }
 
-        return persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), dto.getStartFolio(), dto.getEndFolio(), userId);
+        // REGLA DE NEGOCIO: Se podrán imprimir marbetes siempre y cuando se hayan importado datos
+        // de los catálogos de inventario y multialmacén
+        boolean hasInventoryData = inventoryStockRepository.existsByWarehouseIdWarehouseAndPeriodId(
+            dto.getWarehouseId(), dto.getPeriodId());
+
+        if (!hasInventoryData) {
+            throw new tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException(
+                "No se pueden imprimir marbetes porque no se han cargado los catálogos de inventario " +
+                "y multialmacén para el periodo y almacén seleccionados. " +
+                "Por favor, importe los datos antes de continuar.");
+        }
+
+        // REGLA DE NEGOCIO: Validar que el rango de folios sea válido
+        if (dto.getStartFolio() > dto.getEndFolio()) {
+            throw new InvalidLabelStateException(
+                "El folio inicial no puede ser mayor que el folio final.");
+        }
+
+        // REGLA DE NEGOCIO: Verificar que los folios solicitados existan y estén generados
+        long foliosCount = dto.getEndFolio() - dto.getStartFolio() + 1;
+        log.info("Intentando imprimir {} folio(s) desde {} hasta {}",
+            foliosCount, dto.getStartFolio(), dto.getEndFolio());
+
+        // Obtener los marbetes del rango especificado
+        List<Label> labelsToProcess = persistence.findByFolioRange(
+            dto.getPeriodId(),
+            dto.getWarehouseId(),
+            dto.getStartFolio(),
+            dto.getEndFolio()
+        );
+
+        if (labelsToProcess.isEmpty()) {
+            throw new InvalidLabelStateException(
+                "No se encontraron marbetes en el rango especificado");
+        }
+
+        // Validar que no haya marbetes CANCELADOS
+        long cancelledCount = labelsToProcess.stream()
+            .filter(l -> l.getEstado() == Label.State.CANCELADO)
+            .count();
+
+        if (cancelledCount > 0) {
+            throw new InvalidLabelStateException(
+                String.format("No se pueden imprimir los marbetes: %d folios están CANCELADOS", cancelledCount));
+        }
+
+        // REGLA DE NEGOCIO: Soportar dos escenarios de impresión:
+        // 1. Impresión normal: Impresión inmediata de marbetes recién generados (GENERADOS)
+        // 2. Impresión extraordinaria: Reimpresión de marbetes previamente impresos (IMPRESOS)
+
+        try {
+            // Marcar como impresos y registrar en la tabla label_print
+            LabelPrint result = persistence.printLabelsRange(
+                dto.getPeriodId(),
+                dto.getWarehouseId(),
+                dto.getStartFolio(),
+                dto.getEndFolio(),
+                userId
+            );
+
+            log.info("Impresión registrada exitosamente: {} folio(s) del {} al {}",
+                result.getCantidadImpresa(), result.getFolioInicial(), result.getFolioFinal());
+
+            // Generar el PDF con JasperReports
+            log.info("Generando PDF con {} marbetes...", labelsToProcess.size());
+            byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labelsToProcess);
+
+            log.info("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
+            return pdfBytes;
+
+        } catch (IllegalArgumentException e) {
+            log.error("Error de validación en impresión: {}", e.getMessage());
+            throw new InvalidLabelStateException(e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Error de estado en impresión: {}", e.getMessage());
+            throw new InvalidLabelStateException(e.getMessage());
+        }
     }
 
     @Override
