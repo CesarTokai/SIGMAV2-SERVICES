@@ -5,16 +5,18 @@ import lombok.Data;
 
 @Data
 @Builder
-public class LabelSummaryResponseDTO {
+public class LabelStatusResponseDTO {
+    private Long folio;
     private Long productId;
     private String claveProducto;
     private String nombreProducto;
+    private Long warehouseId;
     private String claveAlmacen;
     private String nombreAlmacen;
-    private Integer foliosSolicitados;
-    private Integer foliosExistentes;
+    private Long periodId;
     private String estado;
-    private Integer existencias;
-    private Boolean impreso; // true si está impreso
-    private String fechaImpresion; // fecha de impresión en formato ISO
+    private Boolean impreso;
+    private String fechaImpresion;
+    private String mensaje;
 }
+

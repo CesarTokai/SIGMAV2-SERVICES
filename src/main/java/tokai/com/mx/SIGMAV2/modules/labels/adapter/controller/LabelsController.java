@@ -158,4 +158,20 @@ public class LabelsController {
         labelService.generateBatchList(dto, userId, userRole);
         return ResponseEntity.ok().build();
     }
+
+    // Consultar estado de marbete
+    @GetMapping("/status")
+    public ResponseEntity<?> getLabelStatus(@RequestParam Long folio,
+                                            @RequestParam Long periodId,
+                                            @RequestParam Long warehouseId) {
+        Long userId = getUserIdFromToken();
+        // El rol puede ser útil para validaciones futuras
+        String userRole = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null && !auth.getAuthorities().isEmpty()) {
+            userRole = auth.getAuthorities().iterator().next().getAuthority();
+        }
+        var status = labelService.getLabelStatus(folio, periodId, warehouseId, userId, userRole);
+        return ResponseEntity.ok(status);
+    }
 }

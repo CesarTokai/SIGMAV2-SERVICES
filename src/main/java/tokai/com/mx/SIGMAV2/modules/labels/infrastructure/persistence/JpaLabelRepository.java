@@ -21,4 +21,5 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     List<Label> findByFolioBetween(Long startFolio, Long endFolio);
 
+    List<Label> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);
 }

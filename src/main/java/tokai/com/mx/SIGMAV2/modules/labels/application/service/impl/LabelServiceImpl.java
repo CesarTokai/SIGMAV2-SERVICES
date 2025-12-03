@@ -492,6 +492,20 @@ public class LabelServiceImpl implements LabelService {
                     log.warn("No se pudieron obtener existencias para producto {}: {}", productId, e.getMessage());
                 }
 
+                // Buscar registros de impresión para este producto, periodo y almacén
+                List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(productId, periodId, warehouseId);
+                boolean impreso = !prints.isEmpty();
+                String fechaImpresion = null;
+                if (impreso) {
+                    // Tomar la fecha más reciente
+                    fechaImpresion = prints.stream()
+                        .map(LabelPrint::getPrintedAt)
+                        .filter(java.util.Objects::nonNull)
+                        .max(java.time.LocalDateTime::compareTo)
+                        .map(java.time.LocalDateTime::toString)
+                        .orElse(null);
+                }
+
                 // Construir el DTO de respuesta
                 LabelSummaryResponseDTO summary = LabelSummaryResponseDTO.builder()
                         .productId(productId)
@@ -503,6 +517,8 @@ public class LabelServiceImpl implements LabelService {
                         .foliosExistentes(foliosExistentes)
                         .estado(estado)
                         .existencias(existencias)
+                        .impreso(impreso)
+                        .fechaImpresion(fechaImpresion)
                         .build();
 
                 allResults.add(summary);
@@ -605,5 +621,69 @@ public class LabelServiceImpl implements LabelService {
                 // Aquí podrías recolectar errores individuales si quieres devolver un resumen
             }
         }
+    }
+
+    @Override
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
+        var builder = tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO.builder();
+        builder.folio(folio).periodId(periodId).warehouseId(warehouseId);
+        String mensaje = "";
+        try {
+            // Buscar el marbete
+            var optLabel = persistence.findByFolio(folio);
+            if (optLabel.isEmpty()) {
+                builder.estado("NO_EXISTE");
+                builder.impreso(false);
+                builder.mensaje("El folio no existe");
+                return builder.build();
+            }
+            var label = optLabel.get();
+            builder.productId(label.getProductId());
+            builder.estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO");
+            // Buscar producto
+            var product = productRepository.findById(label.getProductId()).orElse(null);
+            if (product != null) {
+                builder.claveProducto(product.getCveArt());
+                builder.nombreProducto(product.getDescr());
+            }
+            // Buscar almacén
+            var warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+            if (warehouse != null) {
+                builder.claveAlmacen(warehouse.getWarehouseKey());
+                builder.nombreAlmacen(warehouse.getNameWarehouse());
+            }
+            // Buscar impresiones
+            var prints = persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, warehouseId);
+            boolean impreso = !prints.isEmpty();
+            String fechaImpresion = null;
+            if (impreso) {
+                fechaImpresion = prints.stream()
+                    .map(LabelPrint::getPrintedAt)
+                    .filter(java.util.Objects::nonNull)
+                    .max(java.time.LocalDateTime::compareTo)
+                    .map(java.time.LocalDateTime::toString)
+                    .orElse(null);
+            }
+            builder.impreso(impreso);
+            builder.fechaImpresion(fechaImpresion);
+            // Mensaje de ayuda
+            if (label.getEstado() == null) {
+                mensaje = "El marbete no tiene estado definido.";
+            } else if (label.getEstado().name().equals("CANCELADO")) {
+                mensaje = "El marbete está CANCELADO y no puede imprimirse.";
+            } else if (label.getEstado().name().equals("IMPRESO")) {
+                mensaje = "El marbete ya fue impreso. Puedes reimprimir si lo necesitas.";
+            } else if (label.getEstado().name().equals("GENERADO")) {
+                mensaje = "El marbete está listo para imprimir.";
+            } else {
+                mensaje = "Estado actual: " + label.getEstado().name();
+            }
+            builder.mensaje(mensaje);
+        } catch (Exception e) {
+            builder.estado("ERROR");
+            builder.impreso(false);
+            builder.mensaje("Error al consultar el estado: " + e.getMessage());
+        }
+        return builder.build();
     }
 }

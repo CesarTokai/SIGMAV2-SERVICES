@@ -26,4 +26,6 @@ public interface LabelService {
     LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole);
 
     List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
+
+    tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole);
 }

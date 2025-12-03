@@ -239,4 +239,16 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
                 .map(periodEntity -> periodEntity.getId());
     }
 
+    public List<LabelPrint> findLabelPrintsByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
+        // Buscar todos los marbetes generados para este producto, periodo y almacén
+        List<Label> labels = jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
+        List<LabelPrint> prints = new ArrayList<>();
+        for (Label label : labels) {
+            prints.addAll(jpaLabelPrintRepository.findByPeriodIdAndWarehouseIdAndFolioInicialLessThanEqualAndFolioFinalGreaterThanEqual(
+                periodId, warehouseId, label.getFolio(), label.getFolio()
+            ));
+        }
+        return prints;
+    }
+
 }
