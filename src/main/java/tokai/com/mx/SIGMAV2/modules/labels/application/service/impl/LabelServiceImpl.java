@@ -578,6 +578,24 @@ public class LabelServiceImpl implements LabelService {
                         .orElse(null);
                 }
 
+                // NUEVO: Obtener rangos de folios y lista de folios individuales
+                List<Label> productLabels = labels.stream()
+                    .filter(l -> l.getProductId().equals(productId))
+                    .sorted(java.util.Comparator.comparing(Label::getFolio))
+                    .collect(Collectors.toList());
+
+                Long primerFolio = null;
+                Long ultimoFolio = null;
+                List<Long> foliosList = new ArrayList<>();
+
+                if (!productLabels.isEmpty()) {
+                    primerFolio = productLabels.get(0).getFolio();
+                    ultimoFolio = productLabels.get(productLabels.size() - 1).getFolio();
+                    foliosList = productLabels.stream()
+                        .map(Label::getFolio)
+                        .collect(Collectors.toList());
+                }
+
                 // Construir el DTO de respuesta
                 LabelSummaryResponseDTO summary = LabelSummaryResponseDTO.builder()
                         .productId(productId)
@@ -591,6 +609,9 @@ public class LabelServiceImpl implements LabelService {
                         .existencias(existencias)
                         .impreso(impreso)
                         .fechaImpresion(fechaImpresion)
+                        .primerFolio(primerFolio)
+                        .ultimoFolio(ultimoFolio)
+                        .folios(foliosList)
                         .build();
 
                 allResults.add(summary);
@@ -891,5 +912,71 @@ public class LabelServiceImpl implements LabelService {
             .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
             .notas(cancelled.getNotas())
             .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> getLabelsByProduct(
+            Long productId, Long periodId, Long warehouseId, Long userId, String userRole) {
+        log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
+            productId, periodId, warehouseId);
+
+        // Validar acceso al almacén
+        try {
+            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        } catch (Exception e) {
+            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
+                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
+            } else {
+                throw e;
+            }
+        }
+
+        // Obtener información del producto
+        ProductEntity product = productRepository.findById(productId)
+            .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        // Obtener información del almacén
+        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
+            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+
+        // Obtener existencias
+        Integer existencias = 0;
+        try {
+            var stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId);
+            if (stockOpt.isPresent()) {
+                existencias = stockOpt.get().getExistQty() != null ?
+                    stockOpt.get().getExistQty().intValue() : 0;
+            }
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener existencias: {}", e.getMessage());
+        }
+
+        // Obtener todos los marbetes de este producto
+        List<Label> labels = persistence.findByProductPeriodWarehouse(productId, periodId, warehouseId);
+        log.info("Encontrados {} marbetes para el producto", labels.size());
+
+        // Convertir a DTOs
+        final Integer existenciasFinal = existencias;
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> dtos = labels.stream()
+            .map(label -> tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO.builder()
+                .folio(label.getFolio())
+                .productId(label.getProductId())
+                .claveProducto(product.getCveArt())
+                .nombreProducto(product.getDescr())
+                .warehouseId(label.getWarehouseId())
+                .claveAlmacen(warehouse.getWarehouseKey())
+                .nombreAlmacen(warehouse.getNameWarehouse())
+                .periodId(label.getPeriodId())
+                .estado(label.getEstado().name())
+                .createdAt(label.getCreatedAt() != null ? label.getCreatedAt().toString() : null)
+                .impresoAt(label.getImpresoAt() != null ? label.getImpresoAt().toString() : null)
+                .existencias(existenciasFinal)
+                .build())
+            .sorted(java.util.Comparator.comparing(tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO::getFolio))
+            .collect(Collectors.toList());
+
+        return dtos;
     }
 }

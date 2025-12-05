@@ -315,4 +315,9 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     public LabelCancelled saveCancelled(LabelCancelled cancelled) {
         return jpaLabelCancelledRepository.save(cancelled);
     }
+
+    // Método para obtener marbetes de un producto específico
+    public List<Label> findByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
+    }
 }

@@ -239,4 +239,23 @@ public class LabelsController {
 
         return ResponseEntity.ok(updated);
     }
+
+    // Obtener detalles de marbetes de un producto
+    @GetMapping("/product/{productId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO>> getLabelsByProduct(
+            @PathVariable Long productId,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
+            productId, periodId, warehouseId);
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> labels =
+            labelService.getLabelsByProduct(productId, periodId, warehouseId, userId, userRole);
+
+        return ResponseEntity.ok(labels);
+    }
 }
