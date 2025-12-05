@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +11,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
@@ -18,6 +20,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelFo
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelGenerationBatchRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 
 import java.time.LocalDateTime;
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRepository {
 
     private final JpaLabelRepository jpaLabelRepository;
@@ -37,6 +41,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     private final JpaLabelPrintRepository jpaLabelPrintRepository;
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
+    private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
 
     @Override
     public Label save(Label label) {
@@ -115,6 +120,10 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
     @Transactional
     public void saveLabelsBatch(Long requestId, Long periodId, Long warehouseId, Long productId, long primer, long ultimo, Long createdBy) {
+        log.info("=== saveLabelsBatch INICIO ===");
+        log.info("Parámetros: requestId={}, periodId={}, warehouseId={}, productId={}, primer={}, ultimo={}, createdBy={}",
+            requestId, periodId, warehouseId, productId, primer, ultimo, createdBy);
+
         List<Label> labels = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
         for (long f = primer; f <= ultimo; f++) {
@@ -129,7 +138,49 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
             l.setCreatedAt(now);
             labels.add(l);
         }
+        log.info("Creados {} objetos Label en memoria, procediendo a guardar en BD...", labels.size());
         jpaLabelRepository.saveAll(labels);
+        log.info("Guardados {} marbetes en la base de datos exitosamente", labels.size());
+
+        // Verificar que se guardaron
+        long count = jpaLabelRepository.countByPeriodIdAndWarehouseId(periodId, warehouseId);
+        log.info("Verificación: Total de marbetes en BD para periodId={}, warehouseId={}: {}", periodId, warehouseId, count);
+        log.info("=== saveLabelsBatch FIN ===");
+    }
+
+    @Transactional
+    public void saveLabelsBatchAsCancelled(Long requestId, Long periodId, Long warehouseId, Long productId, long primer, long ultimo, Long createdBy, Integer existencias) {
+        log.info("=== saveLabelsBatchAsCancelled INICIO ===");
+        log.info("Parámetros: requestId={}, periodId={}, warehouseId={}, productId={}, primer={}, ultimo={}, createdBy={}, existencias={}",
+            requestId, periodId, warehouseId, productId, primer, ultimo, createdBy, existencias);
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled> cancelledLabels = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (long f = primer; f <= ultimo; f++) {
+            tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled lc = new tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled();
+            lc.setFolio(f);
+            lc.setLabelRequestId(requestId);
+            lc.setPeriodId(periodId);
+            lc.setWarehouseId(warehouseId);
+            lc.setProductId(productId);
+            lc.setExistenciasAlCancelar(existencias != null ? existencias : 0);
+            lc.setExistenciasActuales(existencias != null ? existencias : 0);
+            lc.setMotivoCancelacion("Sin existencias al momento de generación");
+            lc.setCanceladoAt(now);
+            lc.setCanceladoBy(createdBy);
+            lc.setReactivado(false);
+            cancelledLabels.add(lc);
+        }
+
+        log.info("Creados {} objetos LabelCancelled en memoria, procediendo a guardar en BD...", cancelledLabels.size());
+        jpaLabelCancelledRepository.saveAll(cancelledLabels);
+        log.info("Guardados {} marbetes cancelados en la base de datos exitosamente", cancelledLabels.size());
+
+        // Verificar que se guardaron
+        long count = jpaLabelCancelledRepository.countByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, false);
+        log.info("Verificación: Total de marbetes cancelados en BD para periodId={}, warehouseId={}: {}", periodId, warehouseId, count);
+        log.info("=== saveLabelsBatchAsCancelled FIN ===");
     }
 
     // Nueva operación: impresión de rango de marbetes
@@ -251,4 +302,17 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return prints;
     }
 
+    // Métodos para marbetes cancelados
+    public List<LabelCancelled> findCancelledByPeriodAndWarehouse(Long periodId, Long warehouseId, Boolean reactivado) {
+        return jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, reactivado);
+    }
+
+    public Optional<LabelCancelled> findCancelledByFolio(Long folio) {
+        return jpaLabelCancelledRepository.findByFolio(folio);
+    }
+
+    @Transactional
+    public LabelCancelled saveCancelled(LabelCancelled cancelled) {
+        return jpaLabelCancelledRepository.save(cancelled);
+    }
 }

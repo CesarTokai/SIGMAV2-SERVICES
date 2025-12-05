@@ -138,29 +138,81 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public void generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
+        log.info("=== INICIO generateBatch ===");
+        log.info("DTO recibido: productId={}, warehouseId={}, periodId={}, labelsToGenerate={}",
+            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId(), dto.getLabelsToGenerate());
+        log.info("Usuario: userId={}, userRole={}", userId, userRole);
+
         // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        log.info("Acceso al almacén validado correctamente");
 
         // Buscar solicitud existente
         Optional<LabelRequest> opt = persistence.findByProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (opt.isEmpty()) {
+            log.error("No se encontró solicitud para producto={}, warehouse={}, period={}",
+                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
             throw new LabelNotFoundException("No existe una solicitud para el producto/almacén/periodo.");
         }
         LabelRequest req = opt.get();
+        log.info("Solicitud encontrada: id={}, requestedLabels={}, foliosGenerados={}",
+            req.getIdLabelRequest(), req.getRequestedLabels(), req.getFoliosGenerados());
+
         int remaining = req.getRequestedLabels() - req.getFoliosGenerados();
         if (remaining <= 0) {
+            log.error("No hay folios restantes para generar. Solicitados={}, Generados={}",
+                req.getRequestedLabels(), req.getFoliosGenerados());
             throw new InvalidLabelStateException("No hay folios solicitados para generar.");
         }
         int toGenerate = Math.min(remaining, dto.getLabelsToGenerate());
+        log.info("Se generarán {} marbetes (restantes={}, solicitados en lote={})",
+            toGenerate, remaining, dto.getLabelsToGenerate());
+
+        // NUEVA REGLA DE NEGOCIO: Verificar existencias del producto
+        log.info("Verificando existencias del producto {} en almacén {} periodo {}",
+            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+        Integer existencias = 0;
+        try {
+            var stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+            if (stockOpt.isPresent()) {
+                existencias = stockOpt.get().getExistQty() != null ?
+                    stockOpt.get().getExistQty().intValue() : 0;
+            }
+            log.info("Existencias encontradas: {}", existencias);
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener existencias: {}", e.getMessage());
+        }
 
         // Allocación de rango de folios (transaccional)
         long[] range = persistence.allocateFolioRange(dto.getPeriodId(), toGenerate);
         long primer = range[0];
         long ultimo = range[1];
+        log.info("Rango de folios asignado: {} a {}", primer, ultimo);
 
-        // Guardar marbetes individuales
-        persistence.saveLabelsBatch(req.getIdLabelRequest(), dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId);
+        // Guardar marbetes individuales con validación de existencias
+        log.info("Guardando {} marbetes en la base de datos...", toGenerate);
+
+        int generadosConExistencias = 0;
+        int generadosSinExistencias = 0;
+
+        if (existencias > 0) {
+            // Producto CON existencias - generar normalmente
+            persistence.saveLabelsBatch(req.getIdLabelRequest(), dto.getPeriodId(),
+                dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId);
+            generadosConExistencias = toGenerate;
+            log.info("Marbetes guardados exitosamente con estado GENERADO");
+        } else {
+            // Producto SIN existencias - crear como CANCELADO
+            persistence.saveLabelsBatchAsCancelled(req.getIdLabelRequest(), dto.getPeriodId(),
+                dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId, existencias);
+            generadosSinExistencias = toGenerate;
+            log.warn("Marbetes guardados con estado CANCELADO por falta de existencias");
+        }
 
         // Registrar lote
         LabelGenerationBatch batch = new LabelGenerationBatch();
@@ -174,10 +226,30 @@ public class LabelServiceImpl implements LabelService {
         batch.setGeneradoAt(LocalDateTime.now());
 
         persistence.saveGenerationBatch(batch);
+        log.info("Lote de generación registrado: batchId será asignado por BD");
 
         // Actualizar la solicitud
-        req.setFoliosGenerados(req.getFoliosGenerados() + toGenerate);
+        int nuevosFoliosGenerados = req.getFoliosGenerados() + toGenerate;
+        req.setFoliosGenerados(nuevosFoliosGenerados);
         persistence.save(req);
+        log.info("Solicitud actualizada: foliosGenerados={}/{}", nuevosFoliosGenerados, req.getRequestedLabels());
+        log.info("=== FIN generateBatch EXITOSO ===");
+
+        // Construir respuesta con detalles
+        String mensaje = String.format(
+            "Generación completada: %d marbete(s) total. " +
+            "%d con existencias (GENERADOS), %d sin existencias (CANCELADOS)",
+            toGenerate, generadosConExistencias, generadosSinExistencias
+        );
+
+        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO.builder()
+            .totalGenerados(toGenerate)
+            .generadosConExistencias(generadosConExistencias)
+            .generadosSinExistencias(generadosSinExistencias)
+            .primerFolio(primer)
+            .ultimoFolio(ultimo)
+            .mensaje(mensaje)
+            .build();
     }
 
     @Override
@@ -685,5 +757,139 @@ public class LabelServiceImpl implements LabelService {
             builder.mensaje("Error al consultar el estado: " + e.getMessage());
         }
         return builder.build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countLabelsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
+        log.info("Contando marbetes para periodId={}, warehouseId={}", periodId, warehouseId);
+        long count = persistence.countByPeriodIdAndWarehouseId(periodId, warehouseId);
+        log.info("Total de marbetes encontrados: {}", count);
+        return count;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> getCancelledLabels(Long periodId, Long warehouseId, Long userId, String userRole) {
+        log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}", periodId, warehouseId);
+
+        // Validar acceso al almacén
+        try {
+            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        } catch (Exception e) {
+            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
+                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
+            } else {
+                throw e;
+            }
+        }
+
+        // Obtener marbetes cancelados no reactivados
+        List<tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled> cancelledLabels =
+            persistence.findCancelledByPeriodAndWarehouse(periodId, warehouseId, false);
+
+        log.info("Encontrados {} marbetes cancelados", cancelledLabels.size());
+
+        // Obtener información de almacén
+        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
+            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+
+        // Convertir a DTOs
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> dtos = new ArrayList<>();
+        for (tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled cancelled : cancelledLabels) {
+            ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
+            if (product == null) continue;
+
+            tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO dto =
+                tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO.builder()
+                    .idLabelCancelled(cancelled.getIdLabelCancelled())
+                    .folio(cancelled.getFolio())
+                    .productId(cancelled.getProductId())
+                    .claveProducto(product.getCveArt())
+                    .nombreProducto(product.getDescr())
+                    .warehouseId(cancelled.getWarehouseId())
+                    .claveAlmacen(warehouse.getWarehouseKey())
+                    .nombreAlmacen(warehouse.getNameWarehouse())
+                    .periodId(cancelled.getPeriodId())
+                    .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
+                    .existenciasActuales(cancelled.getExistenciasActuales())
+                    .motivoCancelacion(cancelled.getMotivoCancelacion())
+                    .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
+                    .reactivado(cancelled.getReactivado())
+                    .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
+                    .notas(cancelled.getNotas())
+                    .build();
+            dtos.add(dto);
+        }
+
+        return dtos;
+    }
+
+    @Override
+    @Transactional
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO updateCancelledStock(
+            tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCancelledStockDTO dto, Long userId, String userRole) {
+        log.info("Actualizando existencias de marbete cancelado: folio={}, nuevasExistencias={}",
+            dto.getFolio(), dto.getExistenciasActuales());
+
+        // Buscar el marbete cancelado
+        tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled cancelled =
+            persistence.findCancelledByFolio(dto.getFolio())
+                .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado con folio: " + dto.getFolio()));
+
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, cancelled.getWarehouseId(), userRole);
+
+        // Actualizar existencias
+        cancelled.setExistenciasActuales(dto.getExistenciasActuales());
+        if (dto.getNotas() != null) {
+            cancelled.setNotas(dto.getNotas());
+        }
+
+        // Si ahora tiene existencias, reactivar el marbete
+        if (dto.getExistenciasActuales() > 0 && !cancelled.getReactivado()) {
+            cancelled.setReactivado(true);
+            cancelled.setReactivadoAt(LocalDateTime.now());
+            cancelled.setReactivadoBy(userId);
+            log.info("Marbete folio {} reactivado por tener existencias", dto.getFolio());
+
+            // Crear el marbete normal
+            Label label = new Label();
+            label.setFolio(cancelled.getFolio());
+            label.setLabelRequestId(cancelled.getLabelRequestId());
+            label.setPeriodId(cancelled.getPeriodId());
+            label.setWarehouseId(cancelled.getWarehouseId());
+            label.setProductId(cancelled.getProductId());
+            label.setEstado(Label.State.GENERADO);
+            label.setCreatedBy(userId);
+            label.setCreatedAt(LocalDateTime.now());
+            persistence.save(label);
+            log.info("Marbete creado en tabla labels con estado GENERADO");
+        }
+
+        persistence.saveCancelled(cancelled);
+
+        // Construir respuesta
+        ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
+        WarehouseEntity warehouse = warehouseRepository.findById(cancelled.getWarehouseId()).orElse(null);
+
+        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO.builder()
+            .idLabelCancelled(cancelled.getIdLabelCancelled())
+            .folio(cancelled.getFolio())
+            .productId(cancelled.getProductId())
+            .claveProducto(product != null ? product.getCveArt() : null)
+            .nombreProducto(product != null ? product.getDescr() : null)
+            .warehouseId(cancelled.getWarehouseId())
+            .claveAlmacen(warehouse != null ? warehouse.getWarehouseKey() : null)
+            .nombreAlmacen(warehouse != null ? warehouse.getNameWarehouse() : null)
+            .periodId(cancelled.getPeriodId())
+            .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
+            .existenciasActuales(cancelled.getExistenciasActuales())
+            .motivoCancelacion(cancelled.getMotivoCancelacion())
+            .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
+            .reactivado(cancelled.getReactivado())
+            .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
+            .notas(cancelled.getNotas())
+            .build();
     }
 }

@@ -72,11 +72,18 @@ public class LabelsController {
     // Generar marbetes a partir de una solicitud
     @PostMapping("/generate")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<Void> generateBatch(@Valid @RequestBody GenerateBatchDTO dto) {
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO> generateBatch(@Valid @RequestBody GenerateBatchDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
-        labelService.generateBatch(dto, userId, userRole);
-        return ResponseEntity.ok().build();
+        log.info("Generando marbetes para usuario {} con rol {}", userId, userRole);
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO response =
+            labelService.generateBatch(dto, userId, userRole);
+
+        log.info("Generación completada: {} total, {} con existencias, {} sin existencias",
+            response.getTotalGenerados(), response.getGeneradosConExistencias(), response.getGeneradosSinExistencias());
+
+        return ResponseEntity.ok(response);
     }
 
     // Imprimir / Reimprimir rango de marbetes
@@ -173,5 +180,63 @@ public class LabelsController {
         }
         var status = labelService.getLabelStatus(folio, periodId, warehouseId, userId, userRole);
         return ResponseEntity.ok(status);
+    }
+
+    // Endpoint de diagnóstico para verificar marbetes generados
+    @GetMapping("/debug/count")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<?> getLabelsCount(@RequestParam Long periodId,
+                                            @RequestParam Long warehouseId) {
+        log.info("Endpoint /debug/count llamado para periodId={}, warehouseId={}", periodId, warehouseId);
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        // Consultar directamente cuántos marbetes existen
+        long count = labelService.countLabelsByPeriodAndWarehouse(periodId, warehouseId);
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("periodId", periodId);
+        response.put("warehouseId", warehouseId);
+        response.put("totalLabels", count);
+        response.put("userId", userId);
+        response.put("userRole", userRole);
+
+        log.info("Total de marbetes encontrados: {}", count);
+        return ResponseEntity.ok(response);
+    }
+
+    // Consultar marbetes cancelados
+    @GetMapping("/cancelled")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO>> getCancelledLabels(
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}, userId={}",
+            periodId, warehouseId, userId);
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> cancelledLabels =
+            labelService.getCancelledLabels(periodId, warehouseId, userId, userRole);
+
+        return ResponseEntity.ok(cancelledLabels);
+    }
+
+    // Actualizar existencias de marbete cancelado
+    @PutMapping("/cancelled/update-stock")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> updateCancelledStock(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCancelledStockDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Actualizando existencias de marbete cancelado folio={}, userId={}",
+            dto.getFolio(), userId);
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO updated =
+            labelService.updateCancelledStock(dto, userId, userRole);
+
+        return ResponseEntity.ok(updated);
     }
 }
