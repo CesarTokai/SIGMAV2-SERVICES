@@ -10,14 +10,9 @@ import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProd
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.ProductBatchDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
@@ -25,6 +20,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
@@ -32,7 +28,9 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelSta
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelledException;
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -50,6 +48,11 @@ public class LabelServiceImpl implements LabelService {
     private final JpaInventoryStockRepository inventoryStockRepository;
     private final JpaLabelRequestRepository labelRequestRepository;
     private final JasperLabelPrintService jasperLabelPrintService;
+    private final JpaUserRepository userRepository;
+    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository jpaLabelRepository;
+    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository jpaLabelCancelledRepository;
+    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository jpaLabelCountEventRepository;
+    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository jpaLabelPrintRepository;
 
     @Override
     @Transactional
@@ -791,7 +794,7 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> getCancelledLabels(Long periodId, Long warehouseId, Long userId, String userRole) {
+    public List< LabelCancelledDTO> getCancelledLabels(Long periodId, Long warehouseId, Long userId, String userRole) {
         log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}", periodId, warehouseId);
 
         // Validar acceso al almacén
@@ -848,8 +851,8 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO updateCancelledStock(
-            tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCancelledStockDTO dto, Long userId, String userRole) {
+    public LabelCancelledDTO updateCancelledStock(
+            UpdateCancelledStockDTO dto, Long userId, String userRole) {
         log.info("Actualizando existencias de marbete cancelado: folio={}, nuevasExistencias={}",
             dto.getFolio(), dto.getExistenciasActuales());
 
@@ -916,7 +919,7 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> getLabelsByProduct(
+    public List<LabelDetailDTO> getLabelsByProduct(
             Long productId, Long periodId, Long warehouseId, Long userId, String userRole) {
         log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
             productId, periodId, warehouseId);
@@ -979,4 +982,589 @@ public class LabelServiceImpl implements LabelService {
 
         return dtos;
     }
+
+    @Override
+    @Transactional
+    public void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole) {
+        log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
+        // Buscar el marbete
+        Label label = jpaLabelRepository.findById(dto.getFolio())
+            .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
+
+        // Validar que pertenece al periodo y almacén especificado
+        if (!label.getPeriodId().equals(dto.getPeriodId()) || !label.getWarehouseId().equals(dto.getWarehouseId())) {
+            throw new InvalidLabelStateException("El marbete no pertenece al periodo/almacén especificado");
+        }
+
+        // Validar que no esté ya cancelado
+        if (label.getEstado() == Label.State.CANCELADO) {
+            throw new LabelAlreadyCancelledException(dto.getFolio());
+        }
+
+        // Cambiar estado a CANCELADO
+        label.setEstado(Label.State.CANCELADO);
+        jpaLabelRepository.save(label);
+
+        // Registrar en labels_cancelled
+        LabelCancelled cancelled = new LabelCancelled();
+        cancelled.setFolio(dto.getFolio());
+        cancelled.setLabelRequestId(label.getLabelRequestId());
+        cancelled.setPeriodId(label.getPeriodId());
+        cancelled.setWarehouseId(label.getWarehouseId());
+        cancelled.setProductId(label.getProductId());
+        cancelled.setMotivoCancelacion(dto.getMotivoCancelacion() != null ? dto.getMotivoCancelacion() : "Cancelado manualmente");
+        cancelled.setCanceladoAt(LocalDateTime.now());
+        cancelled.setCanceladoBy(userId);
+        cancelled.setReactivado(false);
+
+        // Obtener existencias actuales
+        try {
+            var stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            if (stockOpt.isPresent()) {
+                int existencias = stockOpt.get().getExistQty() != null ?
+                    stockOpt.get().getExistQty().intValue() : 0;
+                cancelled.setExistenciasAlCancelar(existencias);
+                cancelled.setExistenciasActuales(existencias);
+            }
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener existencias para el marbete cancelado: {}", e.getMessage());
+            cancelled.setExistenciasAlCancelar(0);
+            cancelled.setExistenciasActuales(0);
+        }
+
+        jpaLabelCancelledRepository.save(cancelled);
+
+        log.info("Marbete {} cancelado exitosamente", dto.getFolio());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de distribución para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso si se especifica almacén
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes impresos
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findPrintedLabelsByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findPrintedLabelsByPeriod(filter.getPeriodId());
+
+        // Agrupar por almacén y usuario que creó
+        Map<String, List<Label>> groupedByWarehouse = labels.stream()
+            .collect(Collectors.groupingBy(l -> l.getWarehouseId() + "_" + l.getCreatedBy()));
+
+        List<DistributionReportDTO> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<Label>> entry : groupedByWarehouse.entrySet()) {
+            List<Label> labelGroup = entry.getValue();
+            if (labelGroup.isEmpty()) continue;
+
+            Label first = labelGroup.get(0);
+
+            // Obtener información del almacén
+            WarehouseEntity warehouse = warehouseRepository.findById(first.getWarehouseId())
+                .orElse(null);
+
+            // Obtener información del usuario
+            var user = userRepository.findById(first.getCreatedBy()).orElse(null);
+            String userName = user != null ? user.getEmail() : "Usuario " + first.getCreatedBy();
+
+            // Calcular primer y último folio
+            Long minFolio = labelGroup.stream().map(Label::getFolio).min(Long::compareTo).orElse(0L);
+            Long maxFolio = labelGroup.stream().map(Label::getFolio).max(Long::compareTo).orElse(0L);
+
+            result.add(new DistributionReportDTO(
+                userName,
+                warehouse != null ? warehouse.getWarehouseKey() : String.valueOf(first.getWarehouseId()),
+                warehouse != null ? warehouse.getNameWarehouse() : "Almacén " + first.getWarehouseId(),
+                minFolio,
+                maxFolio,
+                labelGroup.size()
+            ));
+        }
+
+        log.info("Reporte de distribución generado con {} registros", result.size());
+        return result.stream().sorted(Comparator.comparing(DistributionReportDTO::getClaveAlmacen)).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de listado de marbetes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        // Obtener eventos de conteo para todos los folios
+        List<Long> folios = labels.stream().map(Label::getFolio).collect(Collectors.toList());
+        Map<Long, List<LabelCountEvent>> countEventsByFolio = new HashMap<>();
+
+        for (Long folio : folios) {
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+            countEventsByFolio.put(folio, events);
+        }
+
+        List<LabelListReportDTO> result = labels.stream().map(label -> {
+            // Obtener producto
+            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+
+            // Obtener almacén
+            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+
+            // Obtener conteos
+            List<LabelCountEvent> events = countEventsByFolio.get(label.getFolio());
+            java.math.BigDecimal conteo1 = null;
+            java.math.BigDecimal conteo2 = null;
+
+            if (events != null && !events.isEmpty()) {
+                for (LabelCountEvent event : events) {
+                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+                }
+            }
+
+            return new LabelListReportDTO(
+                label.getFolio(),
+                product != null ? product.getCveArt() : "",
+                product != null ? product.getDescr() : "",
+                product != null ? product.getUniMed() : "",
+                warehouse != null ? warehouse.getWarehouseKey() : "",
+                warehouse != null ? warehouse.getNameWarehouse() : "",
+                conteo1,
+                conteo2,
+                label.getEstado().name(),
+                label.getEstado() == Label.State.CANCELADO
+            );
+        }).sorted(Comparator.comparing(LabelListReportDTO::getNumeroMarbete))
+          .collect(Collectors.toList());
+
+        log.info("Reporte de listado generado con {} registros", result.size());
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de marbetes pendientes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes no cancelados
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        // Filtrar solo los que no están cancelados
+        labels = labels.stream()
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)
+            .collect(Collectors.toList());
+
+        List<PendingLabelsReportDTO> result = new ArrayList<>();
+
+        for (Label label : labels) {
+            // Obtener conteos
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal conteo1 = null;
+            java.math.BigDecimal conteo2 = null;
+
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+            }
+
+            // Si falta algún conteo, es pendiente
+            if (conteo1 == null || conteo2 == null) {
+                ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+                WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+
+                result.add(new PendingLabelsReportDTO(
+                    label.getFolio(),
+                    product != null ? product.getCveArt() : "",
+                    product != null ? product.getDescr() : "",
+                    product != null ? product.getUniMed() : "",
+                    warehouse != null ? warehouse.getWarehouseKey() : "",
+                    warehouse != null ? warehouse.getNameWarehouse() : "",
+                    conteo1,
+                    conteo2,
+                    label.getEstado().name()
+                ));
+            }
+        }
+
+        log.info("Reporte de marbetes pendientes generado con {} registros", result.size());
+        return result.stream().sorted(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete)).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DifferencesReportDTO> getDifferencesReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de marbetes con diferencias para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes no cancelados
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        labels = labels.stream()
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)
+            .collect(Collectors.toList());
+
+        List<DifferencesReportDTO> result = new ArrayList<>();
+
+        for (Label label : labels) {
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal conteo1 = null;
+            java.math.BigDecimal conteo2 = null;
+
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+            }
+
+            // Si ambos conteos existen y son diferentes
+            if (conteo1 != null && conteo2 != null && conteo1.compareTo(conteo2) != 0) {
+                ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+                WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+
+                java.math.BigDecimal diferencia = conteo1.subtract(conteo2).abs();
+
+                result.add(new DifferencesReportDTO(
+                    label.getFolio(),
+                    product != null ? product.getCveArt() : "",
+                    product != null ? product.getDescr() : "",
+                    product != null ? product.getUniMed() : "",
+                    warehouse != null ? warehouse.getWarehouseKey() : "",
+                    warehouse != null ? warehouse.getNameWarehouse() : "",
+                    conteo1,
+                    conteo2,
+                    diferencia,
+                    label.getEstado().name()
+                ));
+            }
+        }
+
+        log.info("Reporte de marbetes con diferencias generado con {} registros", result.size());
+        return result.stream().sorted(Comparator.comparing(DifferencesReportDTO::getNumeroMarbete)).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CancelledLabelsReportDTO> getCancelledLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de marbetes cancelados para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes cancelados
+        List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null ?
+            jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(filter.getPeriodId(), filter.getWarehouseId(), false) :
+            jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false);
+
+        List<CancelledLabelsReportDTO> result = cancelledLabels.stream().map(cancelled -> {
+            // Obtener producto
+            ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
+
+            // Obtener almacén
+            WarehouseEntity warehouse = warehouseRepository.findById(cancelled.getWarehouseId()).orElse(null);
+
+            // Obtener usuario que canceló
+            var user = userRepository.findById(cancelled.getCanceladoBy()).orElse(null);
+            String userName = user != null ? user.getEmail() : "Usuario " + cancelled.getCanceladoBy();
+
+            // Obtener conteos si existen
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(cancelled.getFolio());
+            java.math.BigDecimal conteo1 = null;
+            java.math.BigDecimal conteo2 = null;
+
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+            }
+
+            return new CancelledLabelsReportDTO(
+                cancelled.getFolio(),
+                product != null ? product.getCveArt() : "",
+                product != null ? product.getDescr() : "",
+                product != null ? product.getUniMed() : "",
+                warehouse != null ? warehouse.getWarehouseKey() : "",
+                warehouse != null ? warehouse.getNameWarehouse() : "",
+                conteo1,
+                conteo2,
+                cancelled.getMotivoCancelacion(),
+                cancelled.getCanceladoAt(),
+                userName
+            );
+        }).sorted(Comparator.comparing(CancelledLabelsReportDTO::getNumeroMarbete))
+          .collect(Collectors.toList());
+
+        log.info("Reporte de marbetes cancelados generado con {} registros", result.size());
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte comparativo para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes no cancelados
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        labels = labels.stream()
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)
+            .collect(Collectors.toList());
+
+        // Agrupar por producto y almacén
+        Map<String, List<Label>> groupedByProductWarehouse = labels.stream()
+            .collect(Collectors.groupingBy(l -> l.getProductId() + "_" + l.getWarehouseId()));
+
+        List<ComparativeReportDTO> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<Label>> entry : groupedByProductWarehouse.entrySet()) {
+            List<Label> labelGroup = entry.getValue();
+            if (labelGroup.isEmpty()) continue;
+
+            Label first = labelGroup.get(0);
+
+            // Calcular existencias físicas (suma de conteo2, o conteo1 si no hay conteo2)
+            java.math.BigDecimal existenciasFisicas = java.math.BigDecimal.ZERO;
+
+            for (Label label : labelGroup) {
+                List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+                java.math.BigDecimal conteo1 = null;
+                java.math.BigDecimal conteo2 = null;
+
+                for (LabelCountEvent event : events) {
+                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+                }
+
+                // Preferir conteo2, si no existe usar conteo1
+                if (conteo2 != null) {
+                    existenciasFisicas = existenciasFisicas.add(conteo2);
+                } else if (conteo1 != null) {
+                    existenciasFisicas = existenciasFisicas.add(conteo1);
+                }
+            }
+
+            // Obtener existencias teóricas de inventory_stock
+            java.math.BigDecimal existenciasTeoricas = java.math.BigDecimal.ZERO;
+            try {
+                var stockOpt = inventoryStockRepository
+                    .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                        first.getProductId(), first.getWarehouseId(), first.getPeriodId());
+                if (stockOpt.isPresent() && stockOpt.get().getExistQty() != null) {
+                    existenciasTeoricas = stockOpt.get().getExistQty();
+                }
+            } catch (Exception e) {
+                log.warn("No se pudieron obtener existencias teóricas: {}", e.getMessage());
+            }
+
+            // Calcular diferencia
+            java.math.BigDecimal diferencia = existenciasFisicas.subtract(existenciasTeoricas);
+
+            // Calcular porcentaje de diferencia
+            java.math.BigDecimal porcentaje = java.math.BigDecimal.ZERO;
+            if (existenciasTeoricas.compareTo(java.math.BigDecimal.ZERO) != 0) {
+                porcentaje = diferencia.divide(existenciasTeoricas, 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(new java.math.BigDecimal("100"));
+            }
+
+            // Obtener información del producto y almacén
+            ProductEntity product = productRepository.findById(first.getProductId()).orElse(null);
+            WarehouseEntity warehouse = warehouseRepository.findById(first.getWarehouseId()).orElse(null);
+
+            result.add(new ComparativeReportDTO(
+                warehouse != null ? warehouse.getWarehouseKey() : "",
+                warehouse != null ? warehouse.getNameWarehouse() : "",
+                product != null ? product.getCveArt() : "",
+                product != null ? product.getDescr() : "",
+                product != null ? product.getUniMed() : "",
+                existenciasFisicas,
+                existenciasTeoricas,
+                diferencia,
+                porcentaje
+            ));
+        }
+
+        log.info("Reporte comparativo generado con {} registros", result.size());
+        return result.stream()
+            .sorted(Comparator.comparing(ComparativeReportDTO::getClaveAlmacen)
+                .thenComparing(ComparativeReportDTO::getClaveProducto))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de almacén con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        List<WarehouseDetailReportDTO> result = labels.stream().map(label -> {
+            // Obtener producto
+            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+
+            // Obtener almacén
+            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+
+            // Obtener conteos
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
+
+            // Usar conteo2 si existe, sino conteo1
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 2) {
+                    cantidad = event.getCountedValue();
+                    break;
+                } else if (event.getCountNumber() == 1) {
+                    cantidad = event.getCountedValue();
+                }
+            }
+
+            return new WarehouseDetailReportDTO(
+                warehouse != null ? warehouse.getWarehouseKey() : "",
+                warehouse != null ? warehouse.getNameWarehouse() : "",
+                product != null ? product.getCveArt() : "",
+                product != null ? product.getDescr() : "",
+                product != null ? product.getUniMed() : "",
+                label.getFolio(),
+                cantidad,
+                label.getEstado().name(),
+                label.getEstado() == Label.State.CANCELADO
+            );
+        }).sorted(Comparator.comparing(WarehouseDetailReportDTO::getClaveAlmacen)
+            .thenComparing(WarehouseDetailReportDTO::getClaveProducto)
+            .thenComparing(WarehouseDetailReportDTO::getNumeroMarbete))
+          .collect(Collectors.toList());
+
+        log.info("Reporte de almacén con detalle generado con {} registros", result.size());
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Generando reporte de producto con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso si se especifica almacén
+        if (filter.getWarehouseId() != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        // Obtener marbetes no cancelados
+        List<Label> labels = filter.getWarehouseId() != null ?
+            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        labels = labels.stream()
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)
+            .collect(Collectors.toList());
+
+        // Calcular totales por producto
+        Map<Long, java.math.BigDecimal> totalsByProduct = new HashMap<>();
+
+        for (Label label : labels) {
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
+
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 2) {
+                    cantidad = event.getCountedValue();
+                    break;
+                } else if (event.getCountNumber() == 1) {
+                    cantidad = event.getCountedValue();
+                }
+            }
+
+            totalsByProduct.merge(label.getProductId(), cantidad, java.math.BigDecimal::add);
+        }
+
+        List<ProductDetailReportDTO> result = labels.stream().map(label -> {
+            // Obtener producto
+            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+
+            // Obtener almacén
+            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
+
+            // Obtener conteos
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
+
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 2) {
+                    existencias = event.getCountedValue();
+                    break;
+                } else if (event.getCountNumber() == 1) {
+                    existencias = event.getCountedValue();
+                }
+            }
+
+            java.math.BigDecimal total = totalsByProduct.get(label.getProductId());
+
+            return new ProductDetailReportDTO(
+                product != null ? product.getCveArt() : "",
+                product != null ? product.getDescr() : "",
+                product != null ? product.getUniMed() : "",
+                warehouse != null ? warehouse.getWarehouseKey() : "",
+                warehouse != null ? warehouse.getNameWarehouse() : "",
+                label.getFolio(),
+                existencias,
+                total
+            );
+        }).sorted(Comparator.comparing(ProductDetailReportDTO::getClaveProducto)
+            .thenComparing(ProductDetailReportDTO::getClaveAlmacen)
+            .thenComparing(ProductDetailReportDTO::getNumeroMarbete))
+          .collect(Collectors.toList());
+
+        log.info("Reporte de producto con detalle generado con {} registros", result.size());
+        return result;
+    }
 }
+

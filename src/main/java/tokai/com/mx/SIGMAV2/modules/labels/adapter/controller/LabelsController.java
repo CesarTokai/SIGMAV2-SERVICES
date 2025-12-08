@@ -16,7 +16,6 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
@@ -258,4 +257,150 @@ public class LabelsController {
 
         return ResponseEntity.ok(labels);
     }
+
+    // Cancelar un marbete
+    @PostMapping("/cancel")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<Void> cancelLabel(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.CancelLabelRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+
+        labelService.cancelLabel(dto, userId, userRole);
+
+        return ResponseEntity.ok().build();
+    }
+
+    // ==================== REPORTES ====================
+
+    // Reporte de Distribución de Marbetes
+    @PostMapping("/reports/distribution")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO>> getDistributionReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de distribución para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO> report =
+            labelService.getDistributionReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Listado de Marbetes
+    @PostMapping("/reports/list")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO>> getLabelListReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de listado para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO> report =
+            labelService.getLabelListReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Marbetes Pendientes
+    @PostMapping("/reports/pending")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO>> getPendingLabelsReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de marbetes pendientes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO> report =
+            labelService.getPendingLabelsReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Marbetes con Diferencias
+    @PostMapping("/reports/with-differences")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO>> getDifferencesReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de marbetes con diferencias para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO> report =
+            labelService.getDifferencesReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Marbetes Cancelados
+    @PostMapping("/reports/cancelled")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO>> getCancelledLabelsReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de marbetes cancelados para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO> report =
+            labelService.getCancelledLabelsReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte Comparativo
+    @PostMapping("/reports/comparative")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO>> getComparativeReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte comparativo para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO> report =
+            labelService.getComparativeReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Almacén con Detalle
+    @PostMapping("/reports/warehouse-detail")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO>> getWarehouseDetailReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de almacén con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO> report =
+            labelService.getWarehouseDetailReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
+
+    // Reporte de Producto con Detalle
+    @PostMapping("/reports/product-detail")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO>> getProductDetailReport(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando reporte de producto con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO> report =
+            labelService.getProductDetailReport(filter, userId, userRole);
+
+        return ResponseEntity.ok(report);
+    }
 }
+
+
