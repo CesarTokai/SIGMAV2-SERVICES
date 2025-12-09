@@ -141,7 +141,7 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
+    public GenerateBatchResponseDTO generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
         log.info("=== INICIO generateBatch ===");
         log.info("DTO recibido: productId={}, warehouseId={}, periodId={}, labelsToGenerate={}",
             dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId(), dto.getLabelsToGenerate());
@@ -401,7 +401,10 @@ public class LabelServiceImpl implements LabelService {
             throw new PermissionDeniedException("Role de usuario requerido para registrar C2");
         }
         String roleUpper = userRole.toUpperCase();
-        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+        // Permitir a todos los roles registrar C2 según requerimientos funcionales
+        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") ||
+                         roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
+        if (!allowed) {
             throw new PermissionDeniedException("No tiene permiso para registrar C2");
         }
 
@@ -436,6 +439,104 @@ public class LabelServiceImpl implements LabelService {
         try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR_DE_CONTEO; }
 
         return persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+    }
+
+    @Override
+    @Transactional
+    public LabelCountEvent updateCountC1(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole) {
+        log.info("Actualizando conteo C1 para folio {}", dto.getFolio());
+
+        if (userRole == null) {
+            throw new PermissionDeniedException("Role de usuario requerido para actualizar C1");
+        }
+
+        String roleUpper = userRole.toUpperCase();
+        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") ||
+                         roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
+        if (!allowed) {
+            throw new PermissionDeniedException("No tiene permiso para actualizar C1");
+        }
+
+        // Verificar que el marbete exista
+        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
+        if (optLabel.isEmpty()) {
+            throw new LabelNotFoundException("El folio no existe");
+        }
+        Label label = optLabel.get();
+
+        // Validar acceso al almacén del marbete
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+        if (label.getEstado() == Label.State.CANCELADO) {
+            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
+        }
+        if (label.getEstado() != Label.State.IMPRESO) {
+            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
+        }
+
+        // Buscar el evento de conteo C1 existente
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        LabelCountEvent eventC1 = events.stream()
+            .filter(e -> e.getCountNumber() == 1)
+            .findFirst()
+            .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C1 para actualizar"));
+
+        // Actualizar el valor
+        eventC1.setCountedValue(dto.getCountedValue());
+
+        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
+        log.info("Conteo C1 actualizado exitosamente para folio {}", dto.getFolio());
+
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole) {
+        log.info("Actualizando conteo C2 para folio {}", dto.getFolio());
+
+        if (userRole == null) {
+            throw new PermissionDeniedException("Role de usuario requerido para actualizar C2");
+        }
+
+        String roleUpper = userRole.toUpperCase();
+        // Para C2, permitir actualización a ADMINISTRADOR y AUXILIAR_DE_CONTEO
+        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
+        if (!allowed) {
+            throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
+        }
+
+        // Verificar que el marbete exista
+        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
+        if (optLabel.isEmpty()) {
+            throw new LabelNotFoundException("El folio no existe");
+        }
+        Label label = optLabel.get();
+
+        // Validar acceso al almacén del marbete
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+        if (label.getEstado() == Label.State.CANCELADO) {
+            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
+        }
+        if (label.getEstado() != Label.State.IMPRESO) {
+            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
+        }
+
+        // Buscar el evento de conteo C2 existente
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        LabelCountEvent eventC2 = events.stream()
+            .filter(e -> e.getCountNumber() == 2)
+            .findFirst()
+            .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C2 para actualizar"));
+
+        // Actualizar el valor
+        eventC2.setCountedValue(dto.getCountedValue());
+
+        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
+        log.info("Conteo C2 actualizado exitosamente para folio {}", dto.getFolio());
+
+        return updated;
     }
 
     @Override
@@ -1041,6 +1142,190 @@ public class LabelServiceImpl implements LabelService {
         jpaLabelCancelledRepository.save(cancelled);
 
         log.info("Marbete {} cancelado exitosamente", dto.getFolio());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
+        log.info("Obteniendo información del marbete {} para conteo", folio);
+
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+
+        // Buscar el marbete por folio
+        Label label = jpaLabelRepository.findById(folio)
+            .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+
+        // Validar que pertenece al periodo y almacén especificado
+        if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
+            throw new InvalidLabelStateException("El marbete no pertenece al periodo/almacén especificado");
+        }
+
+        // Obtener información del producto
+        ProductEntity product = productRepository.findById(label.getProductId())
+            .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        // Obtener información del almacén
+        WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId())
+            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+
+        // Obtener los conteos registrados
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+
+        java.math.BigDecimal conteo1 = null;
+        java.math.BigDecimal conteo2 = null;
+
+        for (LabelCountEvent event : events) {
+            if (event.getCountNumber() == 1) {
+                conteo1 = event.getCountedValue();
+            }
+            if (event.getCountNumber() == 2) {
+                conteo2 = event.getCountedValue();
+            }
+        }
+
+        // Calcular diferencia si ambos conteos existen
+        java.math.BigDecimal diferencia = null;
+        if (conteo1 != null && conteo2 != null) {
+            diferencia = conteo2.subtract(conteo1);
+        }
+
+        // Verificar si el marbete está impreso
+        List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(
+            label.getProductId(), periodId, warehouseId);
+        boolean impreso = !prints.isEmpty();
+
+        // Verificar si está cancelado
+        boolean cancelado = label.getEstado() == Label.State.CANCELADO;
+
+        // Construir mensaje informativo
+        String mensaje = "";
+        if (cancelado) {
+            mensaje = "Este marbete está CANCELADO y no puede ser usado para conteo";
+        } else if (conteo1 != null && conteo2 != null) {
+            mensaje = "Ambos conteos ya están registrados";
+        } else if (conteo1 != null) {
+            mensaje = "Primer conteo registrado, falta el segundo conteo";
+        } else {
+            mensaje = "Listo para registrar el primer conteo";
+        }
+
+        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
+            .folio(label.getFolio())
+            .periodId(label.getPeriodId())
+            .warehouseId(label.getWarehouseId())
+            .claveAlmacen(warehouse.getWarehouseKey())
+            .nombreAlmacen(warehouse.getNameWarehouse())
+            .claveProducto(product.getCveArt())
+            .descripcionProducto(product.getDescr())
+            .unidadMedida(product.getUniMed())
+            .cancelado(cancelado)
+            .conteo1(conteo1)
+            .conteo2(conteo2)
+            .diferencia(diferencia)
+            .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
+            .impreso(impreso)
+            .mensaje(mensaje)
+            .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole) {
+        log.info("Listando marbetes disponibles para conteo en periodo {} y almacén {}", periodId, warehouseId);
+
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+
+        // Obtener información del almacén
+        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
+            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+
+        // Obtener todos los marbetes IMPRESOS (no cancelados) del periodo y almacén
+        List<Label> labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId)
+            .stream()
+            .filter(l -> l.getEstado() == Label.State.IMPRESO)
+            .sorted(java.util.Comparator.comparing(Label::getFolio))
+            .collect(Collectors.toList());
+
+        log.info("Encontrados {} marbetes impresos disponibles para conteo", labels.size());
+
+        if (labels.isEmpty()) {
+            log.warn("No se encontraron marbetes impresos para el periodo {} y almacén {}", periodId, warehouseId);
+            return new ArrayList<>();
+        }
+
+        // Convertir cada marbete a DTO
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> result = new ArrayList<>();
+
+        for (Label label : labels) {
+            try {
+                // Obtener información del producto
+                ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
+                if (product == null) {
+                    log.warn("Producto no encontrado para marbete folio {}", label.getFolio());
+                    continue;
+                }
+
+                // Obtener los conteos registrados
+                List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+                java.math.BigDecimal conteo1 = null;
+                java.math.BigDecimal conteo2 = null;
+
+                for (LabelCountEvent event : events) {
+                    if (event.getCountNumber() == 1) {
+                        conteo1 = event.getCountedValue();
+                    }
+                    if (event.getCountNumber() == 2) {
+                        conteo2 = event.getCountedValue();
+                    }
+                }
+
+                // Calcular diferencia si ambos conteos existen
+                java.math.BigDecimal diferencia = null;
+                if (conteo1 != null && conteo2 != null) {
+                    diferencia = conteo2.subtract(conteo1);
+                }
+
+                // Construir mensaje informativo
+                String mensaje = "";
+                if (conteo1 != null && conteo2 != null) {
+                    mensaje = "Completo";
+                } else if (conteo1 != null) {
+                    mensaje = "Pendiente C2";
+                } else {
+                    mensaje = "Pendiente C1";
+                }
+
+                tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO dto =
+                    tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
+                        .folio(label.getFolio())
+                        .periodId(label.getPeriodId())
+                        .warehouseId(label.getWarehouseId())
+                        .claveAlmacen(warehouse.getWarehouseKey())
+                        .nombreAlmacen(warehouse.getNameWarehouse())
+                        .claveProducto(product.getCveArt())
+                        .descripcionProducto(product.getDescr())
+                        .unidadMedida(product.getUniMed())
+                        .cancelado(false)
+                        .conteo1(conteo1)
+                        .conteo2(conteo2)
+                        .diferencia(diferencia)
+                        .estado(label.getEstado().name())
+                        .impreso(true)
+                        .mensaje(mensaje)
+                        .build();
+
+                result.add(dto);
+
+            } catch (Exception e) {
+                log.error("Error procesando marbete folio {}: {}", label.getFolio(), e.getMessage());
+            }
+        }
+
+        log.info("Devolviendo {} marbetes para la interfaz de conteo", result.size());
+        return result;
     }
 
     @Override

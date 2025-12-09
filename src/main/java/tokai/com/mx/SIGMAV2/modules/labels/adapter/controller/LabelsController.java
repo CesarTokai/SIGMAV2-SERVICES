@@ -125,11 +125,37 @@ public class LabelsController {
 
     // Registrar Conteo C2
     @PostMapping("/counts/c2")
-    @PreAuthorize("hasRole('AUXILIAR_DE_CONTEO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC2(@Valid @RequestBody CountEventDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
         LabelCountEvent ev = labelService.registerCountC2(dto, userId, userRole);
+        return ResponseEntity.ok(ev);
+    }
+
+    // Actualizar Conteo C1
+    @PutMapping("/counts/c1")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Actualizando conteo C1 para folio {} por usuario {}", dto.getFolio(), userId);
+
+        LabelCountEvent ev = labelService.updateCountC1(dto, userId, userRole);
+        return ResponseEntity.ok(ev);
+    }
+
+    // Actualizar Conteo C2
+    @PutMapping("/counts/c2")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Actualizando conteo C2 para folio {} por usuario {}", dto.getFolio(), userId);
+
+        LabelCountEvent ev = labelService.updateCountC2(dto, userId, userRole);
         return ResponseEntity.ok(ev);
     }
 
@@ -272,6 +298,41 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
+    // Obtener información de un marbete para la interfaz de conteo
+    @GetMapping("/for-count")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCount(
+            @RequestParam Long folio,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Consultando marbete {} para conteo en periodo {} y almacén {}", folio, periodId, warehouseId);
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
+            labelService.getLabelForCount(folio, periodId, warehouseId, userId, userRole);
+
+        return ResponseEntity.ok(label);
+    }
+
+    // Listar todos los marbetes disponibles para conteo en un periodo/almacén
+    @PostMapping("/for-count/list")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO>> getLabelsForCountList(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCountListRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Listando marbetes disponibles para conteo en periodo {} y almacén {}", dto.getPeriodId(), dto.getWarehouseId());
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> labels =
+            labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+
+        log.info("Devolviendo {} marbetes disponibles para conteo", labels.size());
+        return ResponseEntity.ok(labels);
+    }
+
     // ==================== REPORTES ====================
 
     // Reporte de Distribución de Marbetes
@@ -402,5 +463,4 @@ public class LabelsController {
         return ResponseEntity.ok(report);
     }
 }
-
 

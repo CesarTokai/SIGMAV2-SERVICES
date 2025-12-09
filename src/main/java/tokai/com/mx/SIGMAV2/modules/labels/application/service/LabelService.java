@@ -27,6 +27,11 @@ public interface LabelService {
 
     LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole);
 
+    // Métodos para actualizar conteos existentes
+    LabelCountEvent updateCountC1(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
+
+    LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
+
     List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
 
     tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole);
@@ -43,6 +48,12 @@ public interface LabelService {
 
     // Método para cancelar un marbete
     void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole);
+
+    // Método para obtener un marbete por folio para la interfaz de conteo
+    tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole);
+
+    // Método para listar todos los marbetes disponibles para conteo en un periodo/almacén
+    List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole);
 
     // Métodos de reportes
     List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole);
