@@ -316,6 +316,22 @@ public class LabelsController {
         return ResponseEntity.ok(label);
     }
 
+    // Buscar marbete por folio, periodo y almacén usando POST y body
+    @PostMapping("/for-count")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCountByBody(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Consultando marbete {} para conteo en periodo {} y almacén {} (POST)", dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId());
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
+            labelService.getLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+
+        return ResponseEntity.ok(label);
+    }
+
     // Listar todos los marbetes disponibles para conteo en un periodo/almacén
     @PostMapping("/for-count/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")

@@ -1107,6 +1107,22 @@ public class LabelServiceImpl implements LabelService {
             throw new LabelAlreadyCancelledException(dto.getFolio());
         }
 
+        // Validar que el marbete tenga existencias físicas
+        java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
+        try {
+            var stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            if (stockOpt.isPresent() && stockOpt.get().getExistQty() != null) {
+                existencias = stockOpt.get().getExistQty();
+            }
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener existencias para el marbete: {}", e.getMessage());
+        }
+        if (existencias.compareTo(java.math.BigDecimal.ZERO) == 0) {
+            throw new InvalidLabelStateException("No se puede cancelar un marbete sin existencias físicas.");
+        }
+
         // Cambiar estado a CANCELADO
         label.setEstado(Label.State.CANCELADO);
         jpaLabelRepository.save(label);
