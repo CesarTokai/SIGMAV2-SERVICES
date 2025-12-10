@@ -462,5 +462,24 @@ public class LabelsController {
 
         return ResponseEntity.ok(report);
     }
+
+    // ==================== GENERAR ARCHIVO TXT ====================
+
+    // Generar archivo TXT de existencias
+    @PostMapping("/generate-file")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO> generateInventoryFile(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Generando archivo TXT de existencias para periodo {} por usuario {}", dto.getPeriodId(), userId);
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO response =
+            labelService.generateInventoryFile(dto.getPeriodId(), userId, userRole);
+
+        log.info("Archivo generado: {}", response.getFileName());
+        return ResponseEntity.ok(response);
+    }
 }
 

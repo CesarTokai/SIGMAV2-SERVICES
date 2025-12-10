@@ -53,6 +53,7 @@ public class LabelServiceImpl implements LabelService {
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository jpaLabelCancelledRepository;
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository jpaLabelPrintRepository;
+    private final tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository jpaPeriodRepository;
 
     @Override
     @Transactional
@@ -1850,6 +1851,121 @@ public class LabelServiceImpl implements LabelService {
 
         log.info("Reporte de producto con detalle generado con {} registros", result.size());
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole) {
+        log.info("Generando archivo TXT de existencias para periodo {}", periodId);
+
+        // Obtener información del periodo
+        var periodEntity = jpaPeriodRepository.findById(periodId)
+            .orElseThrow(() -> new RuntimeException("Periodo no encontrado"));
+
+        // Formatear el nombre del periodo (ejemplo: "Diciembre2016")
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", new java.util.Locale("es", "ES"));
+        String periodName = periodEntity.getDate().format(formatter);
+        periodName = periodName.substring(0, 1).toUpperCase() + periodName.substring(1).replace(" ", "");
+
+        // Obtener todos los marbetes no cancelados del periodo
+        List<Label> labels = jpaLabelRepository.findByPeriodId(periodId).stream()
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)
+            .collect(Collectors.toList());
+
+        // Agrupar por producto y sumar existencias físicas
+        Map<Long, ProductExistencias> productoExistencias = new HashMap<>();
+
+        for (Label label : labels) {
+            // Obtener conteos
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+
+            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
+
+            // Usar conteo2 si existe, sino conteo1
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 2) {
+                    cantidad = event.getCountedValue();
+                    break;
+                } else if (event.getCountNumber() == 1) {
+                    cantidad = event.getCountedValue();
+                }
+            }
+
+            // Acumular existencias por producto
+            productoExistencias.computeIfAbsent(label.getProductId(), k -> {
+                ProductEntity product = productRepository.findById(k).orElse(null);
+                return new ProductExistencias(
+                    product != null ? product.getCveArt() : "",
+                    product != null ? product.getDescr() : "",
+                    java.math.BigDecimal.ZERO
+                );
+            }).sumarExistencias(cantidad);
+        }
+
+        // Ordenar alfabéticamente por clave de producto
+        List<ProductExistencias> productosList = new ArrayList<>(productoExistencias.values());
+        productosList.sort(Comparator.comparing(ProductExistencias::getClaveProducto));
+
+        // Crear directorio si no existe
+        String directoryPath = "C:\\Sistemas\\SIGMA\\Documentos";
+        java.io.File directory = new java.io.File(directoryPath);
+        if (!directory.exists()) {
+            directory.mkdirs();
+            log.info("Directorio creado: {}", directoryPath);
+        }
+
+        // Generar nombre del archivo
+        String fileName = "Existencias_" + periodName + ".txt";
+        String filePath = directoryPath + "\\" + fileName;
+
+        // Escribir archivo TXT
+        try (java.io.BufferedWriter writer = new java.io.BufferedWriter(
+                new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(filePath),
+                    java.nio.charset.StandardCharsets.UTF_8))) {
+
+            // Escribir encabezado
+            writer.write("CLAVE_PRODUCTO\tDESCRIPCION\tEXISTENCIAS");
+            writer.newLine();
+            writer.write("========================================");
+            writer.newLine();
+
+            // Escribir datos de productos
+            for (ProductExistencias producto : productosList) {
+                String line = String.format("%s\t%s\t%s",
+                    producto.getClaveProducto(),
+                    producto.getDescripcion(),
+                    producto.getExistencias().stripTrailingZeros().toPlainString());
+                writer.write(line);
+                writer.newLine();
+            }
+
+            log.info("Archivo generado exitosamente: {}", filePath);
+
+            return new tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO(
+                fileName,
+                filePath,
+                productosList.size(),
+                "Archivo generado exitosamente"
+            );
+
+        } catch (java.io.IOException e) {
+            log.error("Error al generar archivo TXT: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al generar archivo: " + e.getMessage());
+        }
+    }
+
+    // Clase auxiliar para agrupar existencias por producto
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    private static class ProductExistencias {
+        private String claveProducto;
+        private String descripcion;
+        private java.math.BigDecimal existencias;
+
+        public void sumarExistencias(java.math.BigDecimal cantidad) {
+            this.existencias = this.existencias.add(cantidad);
+        }
     }
 }
 
