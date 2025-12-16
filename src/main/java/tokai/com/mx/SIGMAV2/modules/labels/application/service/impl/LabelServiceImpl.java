@@ -72,15 +72,34 @@ public class LabelServiceImpl implements LabelService {
         );
 
         // REGLA DE NEGOCIO: Si la cantidad es 0, significa que ya no desea generar folios
+        // NUEVA VALIDACIÓN: No permitir 0 folios si el producto existe en el inventario
         if (dto.getRequestedLabels() == 0) {
+            // Verificar si el producto existe en el inventario del almacén
+            Optional<InventoryStockEntity> stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+            if (stockOpt.isPresent()) {
+                // El producto EXISTE en el inventario
+                // No permitir solicitar 0 folios para productos en inventario
+                log.error("Intento de solicitar 0 folios para producto {} que existe en inventario",
+                    dto.getProductId());
+                throw new InvalidLabelStateException(
+                    "No se puede solicitar 0 folios para un producto que existe en el inventario. " +
+                    "Debe solicitar al menos 1 folio para permitir el conteo físico, " +
+                    "incluso si las existencias actuales son 0. " +
+                    "Esto permite detectar discrepancias entre el inventario del sistema y el físico.");
+            }
+
+            // El producto NO existe en el inventario - permitir cancelar la solicitud
             if (existingRequest.isPresent()) {
                 LabelRequest req = existingRequest.get();
 
                 // Solo permitir eliminar/cancelar si NO se han generado folios aún
                 if (req.getFoliosGenerados() == 0) {
                     persistence.delete(req);
-                    log.info("Solicitud cancelada (cantidad=0) para producto {} en almacén {} periodo {}",
-                        dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+                    log.info("Solicitud cancelada (cantidad=0) para producto {} que NO existe en inventario",
+                        dto.getProductId());
                 } else {
                     throw new InvalidLabelStateException(
                         "No se puede cancelar la solicitud porque ya se generaron " +
