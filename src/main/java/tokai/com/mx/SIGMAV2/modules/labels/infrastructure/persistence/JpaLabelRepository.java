@@ -25,6 +25,8 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     List<Label> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);
 
+    java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
+
     // Métodos para reportes
     List<Label> findByPeriodId(Long periodId);
 

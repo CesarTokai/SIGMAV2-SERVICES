@@ -320,4 +320,34 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     public List<Label> findByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
         return jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
     }
+
+    /**
+     * Busca un marbete específico por folio, periodo y almacén
+     */
+    public Optional<Label> findByFolioAndPeriodAndWarehouse(Long folio, Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId);
+    }
+
+    /**
+     * Encuentra todos los marbetes pendientes de impresión (estado GENERADO)
+     * para un periodo y almacén específicos
+     */
+    public List<Label> findPendingLabelsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.GENERADO);
+    }
+
+    /**
+     * Encuentra todos los marbetes pendientes de impresión para un producto específico
+     */
+    public List<Label> findPendingLabelsByPeriodWarehouseAndProduct(Long periodId, Long warehouseId, Long productId) {
+        List<Label> allPending = jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.GENERADO);
+
+        return allPending.stream()
+            .filter(l -> l.getProductId().equals(productId))
+            .collect(Collectors.toList());
+    }
 }
+
+

@@ -35,6 +35,7 @@ import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepo
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -52,7 +53,6 @@ public class LabelServiceImpl implements LabelService {
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository jpaLabelRepository;
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository jpaLabelCancelledRepository;
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository jpaLabelCountEventRepository;
-    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository jpaLabelPrintRepository;
     private final tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository jpaPeriodRepository;
 
     @Override
@@ -177,7 +177,7 @@ public class LabelServiceImpl implements LabelService {
         log.info("Verificando existencias del producto {} en almacén {} periodo {}",
             dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
 
-        Integer existencias = 0;
+        int existencias = 0;
         try {
             var stockOpt = inventoryStockRepository
                 .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
@@ -259,8 +259,8 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
-        log.info("Iniciando impresión de marbetes: periodId={}, warehouseId={}, startFolio={}, endFolio={}, userId={}, userRole={}",
-            dto.getPeriodId(), dto.getWarehouseId(), dto.getStartFolio(), dto.getEndFolio(), userId, userRole);
+        log.info("Iniciando impresión de marbetes: periodId={}, warehouseId={}, userId={}, userRole={}",
+            dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
 
         // REGLA DE NEGOCIO: Esta operación delimita el contexto según usuario y almacén asignado,
         // PERO si el usuario tiene rol "ADMINISTRADOR" o "AUXILIAR", puede cambiar de almacén
@@ -284,51 +284,89 @@ public class LabelServiceImpl implements LabelService {
                 "Por favor, importe los datos antes de continuar.");
         }
 
-        // REGLA DE NEGOCIO: Validar que el rango de folios sea válido
-        if (dto.getStartFolio() > dto.getEndFolio()) {
-            throw new InvalidLabelStateException(
-                "El folio inicial no puede ser mayor que el folio final.");
+        List<Label> labelsToProcess;
+
+        // Determinar qué marbetes imprimir según los parámetros
+        if (dto.getFolios() != null && !dto.getFolios().isEmpty()) {
+            // MODO SELECTIVO: Imprimir folios específicos (para reimpresión)
+            log.info("Modo selectivo: Imprimiendo {} folios específicos", dto.getFolios().size());
+            labelsToProcess = new ArrayList<>();
+
+            for (Long folio : dto.getFolios()) {
+                Optional<Label> optLabel = persistence.findByFolioAndPeriodAndWarehouse(
+                    folio, dto.getPeriodId(), dto.getWarehouseId());
+
+                if (optLabel.isEmpty()) {
+                    throw new LabelNotFoundException(
+                        String.format("Folio %d no encontrado para periodo %d y almacén %d",
+                            folio, dto.getPeriodId(), dto.getWarehouseId()));
+                }
+
+                Label label = optLabel.get();
+
+                // Validar que no esté cancelado
+                if (label.getEstado() == Label.State.CANCELADO) {
+                    throw new InvalidLabelStateException(
+                        String.format("El folio %d está CANCELADO y no se puede imprimir", folio));
+                }
+
+                // Si no se fuerza reimpresión, validar que no esté ya impreso
+                if (!Boolean.TRUE.equals(dto.getForceReprint()) && label.getEstado() == Label.State.IMPRESO) {
+                    throw new InvalidLabelStateException(
+                        String.format("El folio %d ya está IMPRESO. Use forceReprint=true para reimprimir", folio));
+                }
+
+                labelsToProcess.add(label);
+            }
+
+        } else {
+            // MODO AUTOMÁTICO: Imprimir todos los marbetes pendientes (no impresos)
+            log.info("Modo automático: Imprimiendo todos los marbetes pendientes");
+
+            if (dto.getProductId() != null) {
+                // Filtrar por producto específico
+                log.info("Filtrando por producto ID: {}", dto.getProductId());
+                labelsToProcess = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
+                    dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+            } else {
+                // Todos los marbetes pendientes del periodo/almacén
+                labelsToProcess = persistence.findPendingLabelsByPeriodAndWarehouse(
+                    dto.getPeriodId(), dto.getWarehouseId());
+            }
+
+            if (labelsToProcess.isEmpty()) {
+                throw new InvalidLabelStateException(
+                    "No hay marbetes pendientes de impresión para el periodo y almacén especificados");
+            }
+
+            log.info("Encontrados {} marbetes pendientes de impresión", labelsToProcess.size());
         }
 
-        // REGLA DE NEGOCIO: Verificar que los folios solicitados existan y estén generados
-        long foliosCount = dto.getEndFolio() - dto.getStartFolio() + 1;
-        log.info("Intentando imprimir {} folio(s) desde {} hasta {}",
-            foliosCount, dto.getStartFolio(), dto.getEndFolio());
-
-        // Obtener los marbetes del rango especificado
-        List<Label> labelsToProcess = persistence.findByFolioRange(
-            dto.getPeriodId(),
-            dto.getWarehouseId(),
-            dto.getStartFolio(),
-            dto.getEndFolio()
-        );
-
-        if (labelsToProcess.isEmpty()) {
-            throw new InvalidLabelStateException(
-                "No se encontraron marbetes en el rango especificado");
-        }
-
-        // Validar que no haya marbetes CANCELADOS
-        long cancelledCount = labelsToProcess.stream()
-            .filter(l -> l.getEstado() == Label.State.CANCELADO)
-            .count();
-
-        if (cancelledCount > 0) {
-            throw new InvalidLabelStateException(
-                String.format("No se pueden imprimir los marbetes: %d folios están CANCELADOS", cancelledCount));
-        }
+        // Ordenar por folio para impresión secuencial
+        labelsToProcess.sort(Comparator.comparing(Label::getFolio));
 
         // REGLA DE NEGOCIO: Soportar dos escenarios de impresión:
         // 1. Impresión normal: Impresión inmediata de marbetes recién generados (GENERADOS)
         // 2. Impresión extraordinaria: Reimpresión de marbetes previamente impresos (IMPRESOS)
 
         try {
+            // Obtener rango de folios para registro
+            Long minFolio = labelsToProcess.stream()
+                .map(Label::getFolio)
+                .min(Long::compareTo)
+                .orElseThrow();
+
+            Long maxFolio = labelsToProcess.stream()
+                .map(Label::getFolio)
+                .max(Long::compareTo)
+                .orElseThrow();
+
             // Marcar como impresos y registrar en la tabla label_print
             LabelPrint result = persistence.printLabelsRange(
                 dto.getPeriodId(),
                 dto.getWarehouseId(),
-                dto.getStartFolio(),
-                dto.getEndFolio(),
+                minFolio,
+                maxFolio,
                 userId
             );
 
@@ -349,6 +387,75 @@ public class LabelServiceImpl implements LabelService {
             log.error("Error de estado en impresión: {}", e.getMessage());
             throw new InvalidLabelStateException(e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO getPendingPrintCount(
+            tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto,
+            Long userId,
+            String userRole) {
+
+        log.info("Contando marbetes pendientes: periodId={}, warehouseId={}, productId={}",
+            dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+
+        // Validar acceso al almacén
+        if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
+            log.debug("Usuario {} con rol {} puede consultar cualquier almacén", userId, userRole);
+        } else {
+            warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        }
+
+        // Contar marbetes pendientes
+        List<Label> pendingLabels;
+
+        if (dto.getProductId() != null) {
+            // Filtrar por producto
+            pendingLabels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
+                dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+        } else {
+            // Todos los pendientes del periodo/almacén
+            pendingLabels = persistence.findPendingLabelsByPeriodAndWarehouse(
+                dto.getPeriodId(), dto.getWarehouseId());
+        }
+
+        long count = pendingLabels.size();
+
+        // Obtener información del almacén y periodo
+        String warehouseName = null;
+        String periodName = null;
+
+        try {
+            var warehouse = warehouseRepository.findById(dto.getWarehouseId());
+            if (warehouse.isPresent()) {
+                warehouseName = warehouse.get().getNameWarehouse();
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener nombre del almacén: {}", e.getMessage());
+        }
+
+        try {
+            var period = jpaPeriodRepository.findById(dto.getPeriodId());
+            if (period.isPresent()) {
+                // Formatear la fecha del periodo
+                java.time.LocalDate date = period.get().getDate();
+                if (date != null) {
+                    periodName = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener nombre del periodo: {}", e.getMessage());
+        }
+
+        log.info("Marbetes pendientes encontrados: {}", count);
+
+        return new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO(
+            count,
+            dto.getPeriodId(),
+            dto.getWarehouseId(),
+            warehouseName,
+            periodName
+        );
     }
 
     @Override
@@ -687,18 +794,18 @@ public class LabelServiceImpl implements LabelService {
                 List<Label> productLabels = labels.stream()
                     .filter(l -> l.getProductId().equals(productId))
                     .sorted(java.util.Comparator.comparing(Label::getFolio))
-                    .collect(Collectors.toList());
+                .toList();
 
-                Long primerFolio = null;
-                Long ultimoFolio = null;
+        Long primerFolio = null;
+        Long ultimoFolio = null;
                 List<Long> foliosList = new ArrayList<>();
 
                 if (!productLabels.isEmpty()) {
-                    primerFolio = productLabels.get(0).getFolio();
-                    ultimoFolio = productLabels.get(productLabels.size() - 1).getFolio();
+                    primerFolio = productLabels.getFirst().getFolio();
+                    ultimoFolio = productLabels.getLast().getFolio();
                     foliosList = productLabels.stream()
                         .map(Label::getFolio)
-                        .collect(Collectors.toList());
+                        .toList();
                 }
 
                 // Construir el DTO de respuesta
@@ -825,7 +932,7 @@ public class LabelServiceImpl implements LabelService {
     public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         var builder = tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO.builder();
         builder.folio(folio).periodId(periodId).warehouseId(warehouseId);
-        String mensaje = "";
+        String mensaje;
         try {
             // Buscar el marbete
             var optLabel = persistence.findByFolio(folio);
@@ -1064,7 +1171,7 @@ public class LabelServiceImpl implements LabelService {
 
         // Convertir a DTOs
         final Integer existenciasFinal = existencias;
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> dtos = labels.stream()
+        return labels.stream()
             .map(label -> tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO.builder()
                 .folio(label.getFolio())
                 .productId(label.getProductId())
@@ -1080,9 +1187,7 @@ public class LabelServiceImpl implements LabelService {
                 .existencias(existenciasFinal)
                 .build())
             .sorted(java.util.Comparator.comparing(tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO::getFolio))
-            .collect(Collectors.toList());
-
-        return dtos;
+            .toList();
     }
 
     @Override
@@ -1106,6 +1211,21 @@ public class LabelServiceImpl implements LabelService {
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new LabelAlreadyCancelledException(dto.getFolio());
         }
+
+        // REGLA DE NEGOCIO: No se pueden cancelar marbetes sin folios asignados
+        // Obtener el LabelRequest para verificar la cantidad de folios
+        LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId())
+            .orElseThrow(() -> new RuntimeException("LabelRequest no encontrado para el marbete"));
+
+        if (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0) {
+            throw new InvalidLabelStateException(
+                "No se puede cancelar un marbete sin folios asignados. " +
+                "Este marbete tiene 0 folios solicitados y no debe ser cancelado."
+            );
+        }
+
+        log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
+            dto.getFolio(), labelRequest.getRequestedLabels());
 
         // Validar que el marbete tenga existencias físicas
         java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
@@ -1145,10 +1265,10 @@ public class LabelServiceImpl implements LabelService {
                 .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
                     label.getProductId(), label.getWarehouseId(), label.getPeriodId());
             if (stockOpt.isPresent()) {
-                int existencias = stockOpt.get().getExistQty() != null ?
+                int existenciasActuales = stockOpt.get().getExistQty() != null ?
                     stockOpt.get().getExistQty().intValue() : 0;
-                cancelled.setExistenciasAlCancelar(existencias);
-                cancelled.setExistenciasActuales(existencias);
+                cancelled.setExistenciasAlCancelar(existenciasActuales);
+                cancelled.setExistenciasActuales(existenciasActuales);
             }
         } catch (Exception e) {
             log.warn("No se pudieron obtener existencias para el marbete cancelado: {}", e.getMessage());
@@ -1263,7 +1383,7 @@ public class LabelServiceImpl implements LabelService {
             .stream()
             .filter(l -> l.getEstado() == Label.State.IMPRESO)
             .sorted(java.util.Comparator.comparing(Label::getFolio))
-            .collect(Collectors.toList());
+            .toList();
 
         log.info("Encontrados {} marbetes impresos disponibles para conteo", labels.size());
 
@@ -1414,7 +1534,7 @@ public class LabelServiceImpl implements LabelService {
             jpaLabelRepository.findByPeriodId(filter.getPeriodId());
 
         // Obtener eventos de conteo para todos los folios
-        List<Long> folios = labels.stream().map(Label::getFolio).collect(Collectors.toList());
+        List<Long> folios = labels.stream().map(Label::getFolio).toList();
         Map<Long, List<LabelCountEvent>> countEventsByFolio = new HashMap<>();
 
         for (Long folio : folios) {
@@ -1534,7 +1654,7 @@ public class LabelServiceImpl implements LabelService {
 
         labels = labels.stream()
             .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .collect(Collectors.toList());
+            .toList();
 
         List<DifferencesReportDTO> result = new ArrayList<>();
 
@@ -1805,7 +1925,7 @@ public class LabelServiceImpl implements LabelService {
 
         labels = labels.stream()
             .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .collect(Collectors.toList());
+            .toList();
 
         // Calcular totales por producto
         Map<Long, java.math.BigDecimal> totalsByProduct = new HashMap<>();
@@ -1879,14 +1999,14 @@ public class LabelServiceImpl implements LabelService {
             .orElseThrow(() -> new RuntimeException("Periodo no encontrado"));
 
         // Formatear el nombre del periodo (ejemplo: "Diciembre2016")
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", new java.util.Locale("es", "ES"));
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.of("es", "ES"));
         String periodName = periodEntity.getDate().format(formatter);
         periodName = periodName.substring(0, 1).toUpperCase() + periodName.substring(1).replace(" ", "");
 
         // Obtener todos los marbetes no cancelados del periodo
         List<Label> labels = jpaLabelRepository.findByPeriodId(periodId).stream()
             .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .collect(Collectors.toList());
+            .toList();
 
         // Agrupar por producto y sumar existencias físicas
         Map<Long, ProductExistencias> productoExistencias = new HashMap<>();
@@ -1926,8 +2046,11 @@ public class LabelServiceImpl implements LabelService {
         String directoryPath = "C:\\Sistemas\\SIGMA\\Documentos";
         java.io.File directory = new java.io.File(directoryPath);
         if (!directory.exists()) {
-            directory.mkdirs();
-            log.info("Directorio creado: {}", directoryPath);
+            if (directory.mkdirs()) {
+                log.info("Directorio creado: {}", directoryPath);
+            } else {
+                log.warn("No se pudo crear el directorio: {}", directoryPath);
+            }
         }
 
         // Generar nombre del archivo

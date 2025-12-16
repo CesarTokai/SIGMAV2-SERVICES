@@ -23,6 +23,13 @@ public interface LabelService {
 
     byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole);
 
+    // Contar marbetes pendientes de impresión
+    tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO getPendingPrintCount(
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto,
+        Long userId,
+        String userRole
+    );
+
     LabelCountEvent registerCountC1(CountEventDTO dto, Long userId, String userRole);
 
     LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole);

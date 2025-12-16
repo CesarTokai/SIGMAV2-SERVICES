@@ -97,8 +97,11 @@ public class LabelsController {
         // Generar el PDF
         byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
 
-        // Construir nombre del archivo
-        String filename = String.format("marbetes_%d_%d.pdf", dto.getStartFolio(), dto.getEndFolio());
+        // Construir nombre del archivo más descriptivo
+        String timestamp = java.time.LocalDateTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String filename = String.format("marbetes_P%d_A%d_%s.pdf",
+            dto.getPeriodId(), dto.getWarehouseId(), timestamp);
 
         // Configurar headers para descarga del PDF
         HttpHeaders headers = new HttpHeaders();
@@ -111,6 +114,26 @@ public class LabelsController {
         return ResponseEntity.ok()
             .headers(headers)
             .body(pdfBytes);
+    }
+
+    // Contar marbetes pendientes de impresión
+    @PostMapping("/pending-print-count")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO> getPendingPrintCount(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto) {
+
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Endpoint /pending-print-count llamado por usuario {} con rol {}", userId, userRole);
+
+        tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO response =
+            labelService.getPendingPrintCount(dto, userId, userRole);
+
+        log.info("Marbetes pendientes: {} para periodo {} y almacén {}",
+            response.getCount(), dto.getPeriodId(), dto.getWarehouseId());
+
+        return ResponseEntity.ok(response);
     }
 
     // Registrar Conteo C1
