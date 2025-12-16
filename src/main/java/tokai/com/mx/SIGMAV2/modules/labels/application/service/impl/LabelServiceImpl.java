@@ -198,25 +198,14 @@ public class LabelServiceImpl implements LabelService {
         long ultimo = range[1];
         log.info("Rango de folios asignado: {} a {}", primer, ultimo);
 
-        // Guardar marbetes individuales con validación de existencias
+        // Guardar marbetes individuales - TODOS se generan sin importar existencias
         log.info("Guardando {} marbetes en la base de datos...", toGenerate);
 
-        int generadosConExistencias = 0;
-        int generadosSinExistencias = 0;
+        // Generar TODOS los marbetes con estado GENERADO (sin validar existencias)
+        persistence.saveLabelsBatch(req.getIdLabelRequest(), dto.getPeriodId(),
+            dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId);
 
-        if (existencias > 0) {
-            // Producto CON existencias - generar normalmente
-            persistence.saveLabelsBatch(req.getIdLabelRequest(), dto.getPeriodId(),
-                dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId);
-            generadosConExistencias = toGenerate;
-            log.info("Marbetes guardados exitosamente con estado GENERADO");
-        } else {
-            // Producto SIN existencias - crear como CANCELADO
-            persistence.saveLabelsBatchAsCancelled(req.getIdLabelRequest(), dto.getPeriodId(),
-                dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId, existencias);
-            generadosSinExistencias = toGenerate;
-            log.warn("Marbetes guardados con estado CANCELADO por falta de existencias");
-        }
+        log.info("Marbetes guardados exitosamente con estado GENERADO (existencias: {})", existencias);
 
         // Registrar lote
         LabelGenerationBatch batch = new LabelGenerationBatch();
@@ -239,17 +228,16 @@ public class LabelServiceImpl implements LabelService {
         log.info("Solicitud actualizada: foliosGenerados={}/{}", nuevosFoliosGenerados, req.getRequestedLabels());
         log.info("=== FIN generateBatch EXITOSO ===");
 
-        // Construir respuesta con detalles
+        // Construir respuesta
         String mensaje = String.format(
-            "Generación completada: %d marbete(s) total. " +
-            "%d con existencias (GENERADOS), %d sin existencias (CANCELADOS)",
-            toGenerate, generadosConExistencias, generadosSinExistencias
+            "Generación completada: %d marbete(s) generados exitosamente",
+            toGenerate
         );
 
         return tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO.builder()
             .totalGenerados(toGenerate)
-            .generadosConExistencias(generadosConExistencias)
-            .generadosSinExistencias(generadosSinExistencias)
+            .generadosConExistencias(toGenerate)  // Todos se consideran generados
+            .generadosSinExistencias(0)  // Ya no se cancelan automáticamente
             .primerFolio(primer)
             .ultimoFolio(ultimo)
             .mensaje(mensaje)
@@ -1227,21 +1215,6 @@ public class LabelServiceImpl implements LabelService {
         log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
             dto.getFolio(), labelRequest.getRequestedLabels());
 
-        // Validar que el marbete tenga existencias físicas
-        java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
-        try {
-            var stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
-            if (stockOpt.isPresent() && stockOpt.get().getExistQty() != null) {
-                existencias = stockOpt.get().getExistQty();
-            }
-        } catch (Exception e) {
-            log.warn("No se pudieron obtener existencias para el marbete: {}", e.getMessage());
-        }
-        if (existencias.compareTo(java.math.BigDecimal.ZERO) == 0) {
-            throw new InvalidLabelStateException("No se puede cancelar un marbete sin existencias físicas.");
-        }
 
         // Cambiar estado a CANCELADO
         label.setEstado(Label.State.CANCELADO);

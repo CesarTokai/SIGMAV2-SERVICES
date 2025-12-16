@@ -9,7 +9,7 @@ public class LabelSummaryRequestDTO {
 
     // Paginación
     private Integer page = 0;
-    private Integer size = 10; // Default 10 registros por página (10, 25, 50, 100)
+     private Integer size = 10000; // Default devolver todos los productos
 
     // Búsqueda
     private String searchText;

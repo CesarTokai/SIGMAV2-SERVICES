@@ -7,11 +7,12 @@
 
 ## 📊 Resumen Ejecutivo
 
-Se implementaron **TRES mejoras importantes** en el sistema de marbetes:
+Se implementaron **CUATRO mejoras importantes** en el sistema de marbetes:
 
 1. ✅ **Impresión Automática** - Elimina rangos manuales
 2. ✅ **API Pending Print Count** - Cuenta marbetes pendientes
 3. ✅ **Validación Cancelación** - Previene cancelar sin folios
+4. ✅ **Eliminación Cancelación Auto** - Ya NO se cancelan automáticamente marbetes sin existencias ⭐ NUEVO
 
 ---
 
