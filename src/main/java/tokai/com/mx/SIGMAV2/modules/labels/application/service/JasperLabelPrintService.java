@@ -52,6 +52,19 @@ public class JasperLabelPrintService {
 
             log.info("DataSource construido con {} registros", dataSource.size());
 
+            // Validar que el datasource no esté vacío
+            if (dataSource.isEmpty()) {
+                log.error("El datasource está vacío. No se puede generar el PDF.");
+                log.error("Esto puede ocurrir si:");
+                log.error("- Los productos asociados a los marbetes no existen en la base de datos");
+                log.error("- Los almacenes asociados a los marbetes no existen en la base de datos");
+                log.error("- Hay datos huérfanos en la tabla labels");
+                throw new RuntimeException(
+                    "No se puede generar el PDF: El datasource está vacío. " +
+                    "Verifique que todos los productos y almacenes asociados a los marbetes existan en la base de datos."
+                );
+            }
+
             // Llenar el reporte con los datos
             JRBeanCollectionDataSource jrDataSource = new JRBeanCollectionDataSource(dataSource);
             JasperPrint jasperPrint = JasperFillManager.fillReport(

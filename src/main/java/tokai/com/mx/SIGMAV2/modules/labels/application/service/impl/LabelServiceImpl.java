@@ -368,7 +368,22 @@ public class LabelServiceImpl implements LabelService {
                 .max(Long::compareTo)
                 .orElseThrow();
 
-            // Marcar como impresos y registrar en la tabla label_print
+            // CAMBIO IMPORTANTE: Primero generar el PDF, luego marcar como impreso
+            // Esto evita que los marbetes queden marcados como impresos si falla la generación del PDF
+
+            // Generar el PDF con JasperReports
+            log.info("Generando PDF con {} marbetes...", labelsToProcess.size());
+            byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labelsToProcess);
+
+            // Validar que el PDF se generó correctamente
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.error("El PDF generado está vacío o es null");
+                throw new RuntimeException("Error: El PDF generado está vacío. Verifique que los datos de productos y almacenes existan.");
+            }
+
+            log.info("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
+
+            // Solo si el PDF se generó exitosamente, marcar como impresos y registrar
             LabelPrint result = persistence.printLabelsRange(
                 dto.getPeriodId(),
                 dto.getWarehouseId(),
@@ -380,11 +395,6 @@ public class LabelServiceImpl implements LabelService {
             log.info("Impresión registrada exitosamente: {} folio(s) del {} al {}",
                 result.getCantidadImpresa(), result.getFolioInicial(), result.getFolioFinal());
 
-            // Generar el PDF con JasperReports
-            log.info("Generando PDF con {} marbetes...", labelsToProcess.size());
-            byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labelsToProcess);
-
-            log.info("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
             return pdfBytes;
 
         } catch (IllegalArgumentException e) {
@@ -393,6 +403,9 @@ public class LabelServiceImpl implements LabelService {
         } catch (IllegalStateException e) {
             log.error("Error de estado en impresión: {}", e.getMessage());
             throw new InvalidLabelStateException(e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Error generando PDF: {}", e.getMessage());
+            throw new InvalidLabelStateException("Error al generar el PDF de marbetes: " + e.getMessage());
         }
     }
 
