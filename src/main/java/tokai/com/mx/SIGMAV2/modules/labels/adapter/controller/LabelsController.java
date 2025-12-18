@@ -171,7 +171,7 @@ public class LabelsController {
 
     // Actualizar Conteo C2
     @PutMapping("/counts/c2")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR_DE_CONTEO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();

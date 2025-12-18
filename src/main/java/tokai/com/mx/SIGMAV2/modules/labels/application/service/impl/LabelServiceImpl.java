@@ -628,10 +628,12 @@ public class LabelServiceImpl implements LabelService {
         }
 
         String roleUpper = userRole.toUpperCase();
-        // Para C2, permitir actualización a ADMINISTRADOR y AUXILIAR_DE_CONTEO
-        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
+        // Para C2, permitir actualización a ADMINISTRADOR, ALMACENISTA y AUXILIAR_DE_CONTEO
+        boolean allowed = roleUpper.equals("ADMINISTRADOR") ||
+                         roleUpper.equals("ALMACENISTA") ||
+                         roleUpper.equals("AUXILIAR_DE_CONTEO");
         if (!allowed) {
-            throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
+            throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR, ALMACENISTA o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
         }
 
         // Verificar que el marbete exista
