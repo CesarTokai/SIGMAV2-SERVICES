@@ -13,7 +13,7 @@ public class BeanPersonalInformationMapper {
         entity.setComments(bean.getComments());
         // Mapear el userId correctamente
         if (bean.getUser() != null) {
-            entity.setUserId(bean.getUser().getUserId());
+            entity.setUserId(bean.getUser().getId());
         }
         return entity;
     }

@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
@@ -71,8 +71,8 @@ public class BeanPersonalInformation {
         nullable = false,
         foreignKey = @ForeignKey(name = "fk_pi_user")
     )
-    private UserEntity user;
-    
+    private BeanUser user;
+
     public String getComments() {
         return comments;
     }

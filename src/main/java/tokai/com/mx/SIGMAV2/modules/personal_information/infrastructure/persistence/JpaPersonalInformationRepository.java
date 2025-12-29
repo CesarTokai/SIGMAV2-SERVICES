@@ -15,15 +15,15 @@ public interface JpaPersonalInformationRepository extends JpaRepository<BeanPers
     /**
      * Busca información personal por ID de usuario
      */
-    Optional<BeanPersonalInformation> findByUser_UserId(Long userId);
-    
+    Optional<BeanPersonalInformation> findByUser_Id(Long userId);
+
     /**
      * Verifica si existe información personal para un usuario
      */
-    boolean existsByUser_UserId(Long userId);
-    
+    boolean existsByUser_Id(Long userId);
+
     /**
      * Elimina información personal por ID de usuario
      */
-    void deleteByUser_UserId(Long userId);
+    void deleteByUser_Id(Long userId);
 }

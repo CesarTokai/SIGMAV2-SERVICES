@@ -69,7 +69,7 @@ public class AuditAspect {
                 if (bu.isPresent()) {
                     BeanUser beanUser = bu.get();
                     Long userId = beanUser.getId();
-                    Optional<BeanPersonalInformation> pi = personalRepo.findByUser_UserId(userId);
+                    Optional<BeanPersonalInformation> pi = personalRepo.findByUser_Id(userId);
                     if (pi.isPresent()) {
                         BeanPersonalInformation info = pi.get();
                         StringBuilder full = new StringBuilder();

@@ -31,7 +31,7 @@ public class PersonalInformationRepositoryAdapter implements PersonalInformation
 
     @Override
     public Optional<PersonalInformation> findByUserId(Long userId) {
-        return jpaRepository.findByUser_UserId(userId)
+        return jpaRepository.findByUser_Id(userId)
                 .map(mapper::toDomain);
     }
 
@@ -43,11 +43,11 @@ public class PersonalInformationRepositoryAdapter implements PersonalInformation
 
     @Override
     public boolean existsByUserId(Long userId) {
-        return jpaRepository.existsByUser_UserId(userId);
+        return jpaRepository.existsByUser_Id(userId);
     }
 
     @Override
     public void deleteByUserId(Long userId) {
-        jpaRepository.deleteByUser_UserId(userId);
+        jpaRepository.deleteByUser_Id(userId);
     }
 }

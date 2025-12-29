@@ -18,7 +18,8 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanR
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanRequestStatus;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
-import tokai.com.mx.SIGMAV2.modules.users.port.out.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserDomainMapper;
 import tokai.com.mx.SIGMAV2.security.SecurityCode;
 import tokai.com.mx.SIGMAV2.security.SessionInformation;
 import tokai.com.mx.SIGMAV2.shared.exception.CustomException;
@@ -36,6 +37,7 @@ public class RequestRecoveryPasswordService {
     final MailSenderImpl mailSenderImpl;
     final UserRepository userRepository;
     final PasswordEncoder passwordEncoder;
+    final UserDomainMapper userMapper;
 
     private static final Logger logger = LoggerFactory.getLogger(RequestRecoveryPasswordService.class);
 
@@ -43,12 +45,14 @@ public class RequestRecoveryPasswordService {
             IRequestRecoveryPassword requestRecoveryPasswordRepository,
             MailSenderImpl mailService,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            UserDomainMapper userMapper
     ) {
         this.requestRecoveryPasswordRepository = requestRecoveryPasswordRepository;
         this.mailSenderImpl = mailService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userMapper = userMapper;
     }
 
     @Transactional
@@ -59,8 +63,8 @@ public class RequestRecoveryPasswordService {
         log.info("Buscando solicitudes de recuperación para usuario: {} con rol: {}", email, role);
 
         // Validar que el usuario existe
-        Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty()) {
+        var userDomain = userRepository.findByEmail(email);
+        if(userDomain.isEmpty()) {
             log.error("Usuario no encontrado en sesión: {}", email);
             throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
         }
@@ -111,11 +115,12 @@ public class RequestRecoveryPasswordService {
         }
 
         // Validar que el usuario existe
-        Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty()) {
+        var userDomain = userRepository.findByEmail(email);
+        if(userDomain.isEmpty()) {
             log.error("Usuario no encontrado en sesión: {}", email);
             throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
         }
+        BeanUser user = userMapper.toEntity(userDomain.get());
 
         // Validar autorización
         if(role == null || role.trim().isEmpty()) {
@@ -135,7 +140,7 @@ public class RequestRecoveryPasswordService {
 
         // Validación de rol
         if(!role.equals("ADMINISTRADOR")){
-            if(!user.get().getRole().equals(request.get().getUser().getRole()))
+            if(!user.getRole().equals(request.get().getUser().getRole()))
                 throw new CustomException("Something went wrong");
         }else{
             if(!request.get().getUser().getRole().equals(ERole.ALMACENISTA))
@@ -149,7 +154,7 @@ public class RequestRecoveryPasswordService {
         String newPass = SecurityCode.generateAlphanumeric();
         String encodedPass = passwordEncoder.encode(newPass);
         userToUpdate.setPasswordHash(encodedPass);
-        userRepository.save(userToUpdate);
+        userRepository.save(userMapper.toDomain(userToUpdate));
         request.get().setStatus(BeanRequestStatus.ACCEPTED);
         requestRecoveryPasswordRepository.save(request.get());
         // Devolver la contraseña generada para mostrar en el frontend
@@ -161,9 +166,10 @@ public class RequestRecoveryPasswordService {
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
 
-        Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty())
+        var userDomain = userRepository.findByEmail(email);
+        if(userDomain.isEmpty())
             throw new CustomException("Something went wrong");
+        BeanUser user = userMapper.toEntity(userDomain.get());
 
         if(payload.getRequestId() == null)
             throw new CustomException("Something went wrong");
@@ -179,7 +185,7 @@ public class RequestRecoveryPasswordService {
             throw new CustomException("The request was rejected by the user");
 
         if(!role.equals("ADMINISTRADOR")){
-            if(!user.get().getRole().equals(request.get().getUser().getRole()))
+            if(!user.getRole().equals(request.get().getUser().getRole()))
                 throw new CustomException("Something went wrong");
         }else{
             if(!request.get().getUser().getRole().equals(ERole.ALMACENISTA))
@@ -195,12 +201,12 @@ public class RequestRecoveryPasswordService {
     @Transactional
     public boolean createRequest(String email) {
         logger.debug("createRequest invoked for email={}", email);
-        Optional<BeanUser> user = userRepository.findByEmail(email);
-        if (user.isEmpty()) {
+        var userDomain = userRepository.findByEmail(email);
+        if (userDomain.isEmpty()) {
             logger.debug("Usuario no existe: {}", email);
             throw new IllegalArgumentException("El usuario no existe.");
         }
-        BeanUser existingUser = user.get();
+        BeanUser existingUser = userMapper.toEntity(userDomain.get());
         int pendingRequests = requestRecoveryPasswordRepository.countAllByUserAndStatus(existingUser, BeanRequestStatus.PENDING);
         logger.debug("Pending requests for user {} = {}", email, pendingRequests);
         if (pendingRequests > 0) {
@@ -219,7 +225,7 @@ public class RequestRecoveryPasswordService {
 
     @Transactional(readOnly = true)
     public boolean verifyUser(String email) {
-        Optional<BeanUser> user = userRepository.findByEmail(email);
+        var user = userRepository.findByEmail(email);
         return user.isPresent();
     }
 
@@ -230,8 +236,8 @@ public class RequestRecoveryPasswordService {
         log.info("Buscando historial de solicitudes para usuario: {} con rol: {}", email, role);
 
         // Validar que el usuario existe
-        Optional<BeanUser> user = userRepository.findByEmail(email);
-        if(user.isEmpty()) {
+        var userDomain = userRepository.findByEmail(email);
+        if(userDomain.isEmpty()) {
             log.error("Usuario no encontrado en sesión: {}", email);
             throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
         }

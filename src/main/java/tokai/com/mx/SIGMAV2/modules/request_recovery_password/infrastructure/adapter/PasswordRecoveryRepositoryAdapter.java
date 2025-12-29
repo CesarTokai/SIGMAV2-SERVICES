@@ -14,18 +14,22 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.map
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
-import tokai.com.mx.SIGMAV2.modules.users.port.out.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserDomainMapper;
 
 @Repository
 public class PasswordRecoveryRepositoryAdapter implements PasswordRecoveryRepository {
 
     private final IRequestRecoveryPassword requestRecoveryPasswordRepository;
     private final UserRepository userRepository;
+    private final UserDomainMapper userMapper;
 
     public PasswordRecoveryRepositoryAdapter(IRequestRecoveryPassword requestRecoveryPasswordRepository, 
-                                           UserRepository userRepository) {
+                                           UserRepository userRepository,
+                                           UserDomainMapper userMapper) {
         this.requestRecoveryPasswordRepository = requestRecoveryPasswordRepository;
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -35,7 +39,8 @@ public class PasswordRecoveryRepositoryAdapter implements PasswordRecoveryReposi
 
     @Override
     public Optional<BeanUser> findUserInfoById(Long userId) {
-        return userRepository.findById(userId);
+        return userRepository.findById(userId)
+                .map(userMapper::toEntity);
     }
 
     @Override

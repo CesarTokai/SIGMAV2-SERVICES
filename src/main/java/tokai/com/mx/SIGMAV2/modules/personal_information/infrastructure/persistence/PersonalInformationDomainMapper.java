@@ -3,7 +3,7 @@ package tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persist
 import org.springframework.stereotype.Component;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.UserEntity;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 /**
  * Mapper para convertir entre entidades de dominio y de persistencia
@@ -21,7 +21,7 @@ public class PersonalInformationDomainMapper {
 
         return new PersonalInformation(
                 entity.getPersonalInformationId(),
-                entity.getUser() != null ? entity.getUser().getUserId() : null,
+                entity.getUser() != null ? entity.getUser().getId() : null,
                 entity.getName(),
                 entity.getFirstLastName(),
                 entity.getSecondLastName(),
@@ -49,10 +49,10 @@ public class PersonalInformationDomainMapper {
         entity.setPhoneNumber(domain.getPhoneNumber());
         entity.setImage(domain.getImage());
 
-        // Crear UserEntity con el userId
+        // Crear BeanUser con el userId
         if (domain.getUserId() != null) {
-            UserEntity userEntity = new UserEntity();
-            userEntity.setUserId(domain.getUserId());
+            BeanUser userEntity = new BeanUser();
+            userEntity.setId(domain.getUserId());
             entity.setUser(userEntity);
         }
 

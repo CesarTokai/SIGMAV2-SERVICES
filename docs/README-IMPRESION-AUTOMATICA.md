@@ -72,18 +72,18 @@ fetch('/api/sigmav2/labels/print', {
 
 | Documento | Para Quién | Descripción |
 |-----------|------------|-------------|
-| [RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md](./RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md) | Todos | Resumen ejecutivo |
-| [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](./MEJORA-IMPRESION-AUTOMATICA-MARBETES.md) | Desarrolladores | Documentación técnica completa |
-| [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](./GUIA-FRONTEND-NUEVA-API-IMPRESION.md) | Frontend Devs | Guía de integración |
-| [COMPARATIVA-SISTEMA-IMPRESION.md](./COMPARATIVA-SISTEMA-IMPRESION.md) | Product Owners | Antes vs Ahora |
-| [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](./PLAN-MIGRACION-IMPRESION-AUTOMATICA.md) | Equipo Completo | Plan de despliegue |
-| [EJEMPLOS-RESPUESTAS-API-IMPRESION.md](./EJEMPLOS-RESPUESTAS-API-IMPRESION.md) | Desarrolladores | Debugging & Testing |
+| [RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md](RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md) | Todos | Resumen ejecutivo |
+| [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](MEJORA-IMPRESION-AUTOMATICA-MARBETES.md) | Desarrolladores | Documentación técnica completa |
+| [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](GUIA-FRONTEND-NUEVA-API-IMPRESION.md) | Frontend Devs | Guía de integración |
+| [COMPARATIVA-SISTEMA-IMPRESION.md](COMPARATIVA-SISTEMA-IMPRESION.md) | Product Owners | Antes vs Ahora |
+| [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](PLAN-MIGRACION-IMPRESION-AUTOMATICA.md) | Equipo Completo | Plan de despliegue |
+| [EJEMPLOS-RESPUESTAS-API-IMPRESION.md](EJEMPLOS-RESPUESTAS-API-IMPRESION.md) | Desarrolladores | Debugging & Testing |
 
 ### Scripts
 
 | Script | Descripción |
 |--------|-------------|
-| [test-nueva-impresion-automatica.ps1](./test-nueva-impresion-automatica.ps1) | Pruebas automatizadas |
+| [test-nueva-impresion-automatica.ps1](../test-nueva-impresion-automatica.ps1) | Pruebas automatizadas |
 
 ---
 
@@ -243,7 +243,7 @@ Cambios necesarios:
    }
    ```
 
-Ver [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](./GUIA-FRONTEND-NUEVA-API-IMPRESION.md) para detalles completos.
+Ver [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](GUIA-FRONTEND-NUEVA-API-IMPRESION.md) para detalles completos.
 
 ---
 
@@ -403,7 +403,7 @@ async imprimirMarbetes() {
 ### Para Empezar
 
 1. ✅ **Leer documentación:**
-   - [RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md](./RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md)
+   - [RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md](RESUMEN-MEJORA-IMPRESION-AUTOMATICA.md)
 
 2. ✅ **Probar backend:**
    ```bash
@@ -411,7 +411,7 @@ async imprimirMarbetes() {
    ```
 
 3. 📝 **Actualizar frontend:**
-   - Leer [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](./GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
+   - Leer [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
    - Eliminar campos de rango
    - Implementar nuevo request
 
@@ -421,7 +421,7 @@ async imprimirMarbetes() {
    - Tests E2E
 
 5. 🚀 **Despliegue:**
-   - Seguir [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](./PLAN-MIGRACION-IMPRESION-AUTOMATICA.md)
+   - Seguir [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](PLAN-MIGRACION-IMPRESION-AUTOMATICA.md)
 
 ---
 
@@ -429,16 +429,16 @@ async imprimirMarbetes() {
 
 ### ¿Dudas?
 
-- 📖 **Documentación técnica:** [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](./MEJORA-IMPRESION-AUTOMATICA-MARBETES.md)
-- 💻 **Integración frontend:** [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](./GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
-- 🐛 **Debugging:** [EJEMPLOS-RESPUESTAS-API-IMPRESION.md](./EJEMPLOS-RESPUESTAS-API-IMPRESION.md)
+- 📖 **Documentación técnica:** [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](MEJORA-IMPRESION-AUTOMATICA-MARBETES.md)
+- 💻 **Integración frontend:** [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
+- 🐛 **Debugging:** [EJEMPLOS-RESPUESTAS-API-IMPRESION.md](EJEMPLOS-RESPUESTAS-API-IMPRESION.md)
 
 ### ¿Problemas?
 
 1. Verificar compilación
 2. Revisar logs del servidor
 3. Ejecutar script de pruebas
-4. Consultar [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](./PLAN-MIGRACION-IMPRESION-AUTOMATICA.md)
+4. Consultar [PLAN-MIGRACION-IMPRESION-AUTOMATICA.md](PLAN-MIGRACION-IMPRESION-AUTOMATICA.md)
 
 ---
 
@@ -501,9 +501,9 @@ El sistema anterior pedía al usuario información que ya conocía. El nuevo sis
 
 **¿Listo para empezar?** → Ejecuta `.\test-nueva-impresion-automatica.ps1`
 
-**¿Necesitas ayuda?** → Lee [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](./GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
+**¿Necesitas ayuda?** → Lee [GUIA-FRONTEND-NUEVA-API-IMPRESION.md](GUIA-FRONTEND-NUEVA-API-IMPRESION.md)
 
-**¿Quieres más detalles?** → Consulta [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](./MEJORA-IMPRESION-AUTOMATICA-MARBETES.md)
+**¿Quieres más detalles?** → Consulta [MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](MEJORA-IMPRESION-AUTOMATICA-MARBETES.md)
 
 ---
 
