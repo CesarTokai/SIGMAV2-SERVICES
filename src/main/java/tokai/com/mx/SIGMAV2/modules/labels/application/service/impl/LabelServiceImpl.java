@@ -55,94 +55,24 @@ public class LabelServiceImpl implements LabelService {
     private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository jpaPeriodRepository;
 
+    /**
+     * @deprecated Este método ya no es necesario. Use generateBatchList() directamente.
+     * Se mantiene por compatibilidad pero será eliminado en versiones futuras.
+     */
+    @Deprecated
     @Override
     @Transactional
     public void requestLabels(LabelRequestDTO dto, Long userId, String userRole) {
-        // Validar acceso al almacén
+        // Este método ahora solo existe por compatibilidad
+        // La nueva API generateBatchList() genera marbetes directamente
+        log.warn("⚠️ requestLabels() está deprecado. Use generateBatchList() en su lugar.");
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // REGLA DE NEGOCIO: Validar que la cantidad sea numérica entera (ya validado por DTO)
-        // El DTO debe tener validación @Min(0) o similar
+        // Crear solicitud simple para compatibilidad
+        Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
+            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
 
-        // Buscar si ya existe una solicitud para este producto/almacén/periodo
-        Optional<LabelRequest> existingRequest = persistence.findByProductWarehousePeriod(
-            dto.getProductId(),
-            dto.getWarehouseId(),
-            dto.getPeriodId()
-        );
-
-        // REGLA DE NEGOCIO: Si la cantidad es 0, significa que ya no desea generar folios
-        // NUEVA VALIDACIÓN: No permitir 0 folios si el producto existe en el inventario
-        if (dto.getRequestedLabels() == 0) {
-            // Verificar si el producto existe en el inventario del almacén
-            Optional<InventoryStockEntity> stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                    dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-            if (stockOpt.isPresent()) {
-                // El producto EXISTE en el inventario
-                // No permitir solicitar 0 folios para productos en inventario
-                log.error("Intento de solicitar 0 folios para producto {} que existe en inventario",
-                    dto.getProductId());
-                throw new InvalidLabelStateException(
-                    "No se puede solicitar 0 folios para un producto que existe en el inventario. " +
-                    "Debe solicitar al menos 1 folio para permitir el conteo físico, " +
-                    "incluso si las existencias actuales son 0. " +
-                    "Esto permite detectar discrepancias entre el inventario del sistema y el físico.");
-            }
-
-            // El producto NO existe en el inventario - permitir cancelar la solicitud
-            if (existingRequest.isPresent()) {
-                LabelRequest req = existingRequest.get();
-
-                // Solo permitir eliminar/cancelar si NO se han generado folios aún
-                if (req.getFoliosGenerados() == 0) {
-                    persistence.delete(req);
-                    log.info("Solicitud cancelada (cantidad=0) para producto {} que NO existe en inventario",
-                        dto.getProductId());
-                } else {
-                    throw new InvalidLabelStateException(
-                        "No se puede cancelar la solicitud porque ya se generaron " +
-                        req.getFoliosGenerados() + " folios. Debe imprimirlos primero.");
-                }
-            }
-            // Si no existe solicitud y la cantidad es 0, no hacer nada
-            return;
-        }
-
-        // REGLA DE NEGOCIO: No permitir solicitar si existen marbetes GENERADOS sin imprimir
-        // Esta validación solo aplica para solicitudes NUEVAS o al INCREMENTAR la cantidad
-        if (existingRequest.isPresent()) {
-            LabelRequest existing = existingRequest.get();
-
-            // Si ya se generaron folios, verificar que no haya sin imprimir
-            if (existing.getFoliosGenerados() > 0) {
-                boolean hasUnprinted = persistence.existsGeneratedUnprintedForProductWarehousePeriod(
-                    dto.getProductId(),
-                    dto.getWarehouseId(),
-                    dto.getPeriodId()
-                );
-                if (hasUnprinted) {
-                    throw new InvalidLabelStateException(
-                        "Existen marbetes GENERADOS sin imprimir para este producto/almacén/periodo. " +
-                        "Por favor imprima los marbetes existentes antes de solicitar más.");
-                }
-            }
-
-            // REGLA DE NEGOCIO: Mientras no haya ejecutado "Generar marbetes",
-            // podrá cambiar la cantidad las veces que desee
-            log.info("Actualizando solicitud existente de {} a {} folios para producto {} en almacén {} periodo {}",
-                existing.getRequestedLabels(), dto.getRequestedLabels(),
-                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-            existing.setRequestedLabels(dto.getRequestedLabels());
-            persistence.save(existing);
-
-        } else {
-            // CREAR nueva solicitud
-            log.info("Creando nueva solicitud de {} folios para producto {} en almacén {} periodo {}",
-                dto.getRequestedLabels(), dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
+        if (existing.isEmpty() && dto.getRequestedLabels() > 0) {
             LabelRequest req = new LabelRequest();
             req.setProductId(dto.getProductId());
             req.setWarehouseId(dto.getWarehouseId());
@@ -151,262 +81,116 @@ public class LabelServiceImpl implements LabelService {
             req.setFoliosGenerados(0);
             req.setCreatedBy(userId);
             req.setCreatedAt(LocalDateTime.now());
-
             persistence.save(req);
         }
-
-        // REGLA DE NEGOCIO CUMPLIDA: Los datos se guardan automáticamente en BD,
-        // puede cambiar de módulo sin temor a perder el dato
     }
 
+    /**
+     * @deprecated Use generateBatchList() que es más simple. Este método se mantiene por compatibilidad.
+     * Genera marbetes para un solo producto (versión simplificada)
+     */
+    @Deprecated
     @Override
     @Transactional
     public GenerateBatchResponseDTO generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
-        log.info("=== INICIO generateBatch ===");
-        log.info("DTO recibido: productId={}, warehouseId={}, periodId={}, labelsToGenerate={}",
-            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId(), dto.getLabelsToGenerate());
-        log.info("Usuario: userId={}, userRole={}", userId, userRole);
+        log.warn("⚠️ generateBatch() está deprecado. Use generateBatchList() en su lugar.");
 
-        // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
-        log.info("Acceso al almacén validado correctamente");
 
-        // Buscar solicitud existente
-        Optional<LabelRequest> opt = persistence.findByProductWarehousePeriod(dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-        if (opt.isEmpty()) {
-            log.error("No se encontró solicitud para producto={}, warehouse={}, period={}",
-                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-            throw new LabelNotFoundException("No existe una solicitud para el producto/almacén/periodo.");
+        int cantidad = dto.getLabelsToGenerate();
+        long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
+
+        // Crear marbetes directamente
+        LocalDateTime now = LocalDateTime.now();
+        List<Label> labels = new ArrayList<>(cantidad);
+        for (long folio = range[0]; folio <= range[1]; folio++) {
+            Label label = new Label();
+            label.setFolio(folio);
+            label.setPeriodId(dto.getPeriodId());
+            label.setWarehouseId(dto.getWarehouseId());
+            label.setProductId(dto.getProductId());
+            label.setEstado(Label.State.GENERADO);
+            label.setCreatedBy(userId);
+            label.setCreatedAt(now);
+            labels.add(label);
         }
-        LabelRequest req = opt.get();
-        log.info("Solicitud encontrada: id={}, requestedLabels={}, foliosGenerados={}",
-            req.getIdLabelRequest(), req.getRequestedLabels(), req.getFoliosGenerados());
+        persistence.saveAll(labels);
 
-        int remaining = req.getRequestedLabels() - req.getFoliosGenerados();
-        if (remaining <= 0) {
-            log.error("No hay folios restantes para generar. Solicitados={}, Generados={}",
-                req.getRequestedLabels(), req.getFoliosGenerados());
-            throw new InvalidLabelStateException("No hay folios solicitados para generar.");
-        }
-        int toGenerate = Math.min(remaining, dto.getLabelsToGenerate());
-        log.info("Se generarán {} marbetes (restantes={}, solicitados en lote={})",
-            toGenerate, remaining, dto.getLabelsToGenerate());
-
-        // NUEVA REGLA DE NEGOCIO: Verificar existencias del producto
-        log.info("Verificando existencias del producto {} en almacén {} periodo {}",
-            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-        int existencias = 0;
-        try {
-            var stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                    dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-            if (stockOpt.isPresent()) {
-                existencias = stockOpt.get().getExistQty() != null ?
-                    stockOpt.get().getExistQty().intValue() : 0;
-            }
-            log.info("Existencias encontradas: {}", existencias);
-        } catch (Exception e) {
-            log.warn("No se pudieron obtener existencias: {}", e.getMessage());
-        }
-
-        // Allocación de rango de folios (transaccional)
-        long[] range = persistence.allocateFolioRange(dto.getPeriodId(), toGenerate);
-        long primer = range[0];
-        long ultimo = range[1];
-        log.info("Rango de folios asignado: {} a {}", primer, ultimo);
-
-        // Guardar marbetes individuales - TODOS se generan sin importar existencias
-        log.info("Guardando {} marbetes en la base de datos...", toGenerate);
-
-        // Generar TODOS los marbetes con estado GENERADO (sin validar existencias)
-        persistence.saveLabelsBatch(req.getIdLabelRequest(), dto.getPeriodId(),
-            dto.getWarehouseId(), dto.getProductId(), primer, ultimo, userId);
-
-        log.info("Marbetes guardados exitosamente con estado GENERADO (existencias: {})", existencias);
-
-        // Registrar lote
-        LabelGenerationBatch batch = new LabelGenerationBatch();
-        batch.setLabelRequestId(req.getIdLabelRequest());
-        batch.setPeriodId(dto.getPeriodId());
-        batch.setWarehouseId(dto.getWarehouseId());
-        batch.setPrimerFolio(primer);
-        batch.setUltimoFolio(ultimo);
-        batch.setTotalGenerados(toGenerate);
-        batch.setGeneradoPor(userId);
-        batch.setGeneradoAt(LocalDateTime.now());
-
-        persistence.saveGenerationBatch(batch);
-        log.info("Lote de generación registrado: batchId será asignado por BD");
-
-        // Actualizar la solicitud
-        int nuevosFoliosGenerados = req.getFoliosGenerados() + toGenerate;
-        req.setFoliosGenerados(nuevosFoliosGenerados);
-        persistence.save(req);
-        log.info("Solicitud actualizada: foliosGenerados={}/{}", nuevosFoliosGenerados, req.getRequestedLabels());
-        log.info("=== FIN generateBatch EXITOSO ===");
-
-        // Construir respuesta
-        String mensaje = String.format(
-            "Generación completada: %d marbete(s) generados exitosamente",
-            toGenerate
-        );
-
-        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO.builder()
-            .totalGenerados(toGenerate)
-            .generadosConExistencias(toGenerate)  // Todos se consideran generados
-            .generadosSinExistencias(0)  // Ya no se cancelan automáticamente
-            .primerFolio(primer)
-            .ultimoFolio(ultimo)
-            .mensaje(mensaje)
+        return GenerateBatchResponseDTO.builder()
+            .totalGenerados(cantidad)
+            .generadosConExistencias(cantidad)
+            .generadosSinExistencias(0)
+            .primerFolio(range[0])
+            .ultimoFolio(range[1])
+            .mensaje("Generados " + cantidad + " marbetes")
             .build();
     }
 
+    /**
+     * 📄 MÉTODO SIMPLIFICADO: Imprime marbetes directamente
+     * Busca marbetes en estado GENERADO y genera el PDF
+     */
     @Override
-    @Transactional
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
-        log.info("Iniciando impresión de marbetes: periodId={}, warehouseId={}, userId={}, userRole={}",
-            dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}", dto.getPeriodId(), dto.getWarehouseId());
 
-        // REGLA DE NEGOCIO: Esta operación delimita el contexto según usuario y almacén asignado,
-        // PERO si el usuario tiene rol "ADMINISTRADOR" o "AUXILIAR", puede cambiar de almacén
-        if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
-            log.info("Usuario {} tiene rol {} - puede imprimir en cualquier almacén", userId, userRole);
-            // Los administradores y auxiliares pueden imprimir en cualquier almacén sin validación restrictiva
-        } else {
-            // Para otros roles, validar acceso estricto al almacén
-            warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        // Validaciones básicas
+        if (userRole == null || userRole.trim().isEmpty()) {
+            throw new PermissionDeniedException("Rol de usuario requerido");
         }
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // REGLA DE NEGOCIO: Se podrán imprimir marbetes siempre y cuando se hayan importado datos
-        // de los catálogos de inventario y multialmacén
-        boolean hasInventoryData = inventoryStockRepository.existsByWarehouseIdWarehouseAndPeriodId(
-            dto.getWarehouseId(), dto.getPeriodId());
-
-        if (!hasInventoryData) {
-            throw new tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException(
-                "No se pueden imprimir marbetes porque no se han cargado los catálogos de inventario " +
-                "y multialmacén para el periodo y almacén seleccionados. " +
-                "Por favor, importe los datos antes de continuar.");
-        }
-
-        List<Label> labelsToProcess;
-
-        // Determinar qué marbetes imprimir según los parámetros
+        // Buscar marbetes pendientes
+        List<Label> labels;
         if (dto.getFolios() != null && !dto.getFolios().isEmpty()) {
-            // MODO SELECTIVO: Imprimir folios específicos (para reimpresión)
-            log.info("Modo selectivo: Imprimiendo {} folios específicos", dto.getFolios().size());
-            labelsToProcess = new ArrayList<>();
-
-            for (Long folio : dto.getFolios()) {
-                Optional<Label> optLabel = persistence.findByFolioAndPeriodAndWarehouse(
-                    folio, dto.getPeriodId(), dto.getWarehouseId());
-
-                if (optLabel.isEmpty()) {
-                    throw new LabelNotFoundException(
-                        String.format("Folio %d no encontrado para periodo %d y almacén %d",
-                            folio, dto.getPeriodId(), dto.getWarehouseId()));
-                }
-
-                Label label = optLabel.get();
-
-                // Validar que no esté cancelado
-                if (label.getEstado() == Label.State.CANCELADO) {
-                    throw new InvalidLabelStateException(
-                        String.format("El folio %d está CANCELADO y no se puede imprimir", folio));
-                }
-
-                // Si no se fuerza reimpresión, validar que no esté ya impreso
-                if (!Boolean.TRUE.equals(dto.getForceReprint()) && label.getEstado() == Label.State.IMPRESO) {
-                    throw new InvalidLabelStateException(
-                        String.format("El folio %d ya está IMPRESO. Use forceReprint=true para reimprimir", folio));
-                }
-
-                labelsToProcess.add(label);
+            // Modo selectivo: folios específicos
+            labels = persistence.findByFoliosInAndPeriodAndWarehouse(
+                dto.getFolios(), dto.getPeriodId(), dto.getWarehouseId());
+            if (labels.size() != dto.getFolios().size()) {
+                throw new LabelNotFoundException("Algunos folios no existen");
             }
-
+        } else if (dto.getProductId() != null) {
+            // Filtrar por producto
+            labels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
+                dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
         } else {
-            // MODO AUTOMÁTICO: Imprimir todos los marbetes pendientes (no impresos)
-            log.info("Modo automático: Imprimiendo todos los marbetes pendientes");
-
-            if (dto.getProductId() != null) {
-                // Filtrar por producto específico
-                log.info("Filtrando por producto ID: {}", dto.getProductId());
-                labelsToProcess = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
-                    dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
-            } else {
-                // Todos los marbetes pendientes del periodo/almacén
-                labelsToProcess = persistence.findPendingLabelsByPeriodAndWarehouse(
-                    dto.getPeriodId(), dto.getWarehouseId());
-            }
-
-            if (labelsToProcess.isEmpty()) {
-                throw new InvalidLabelStateException(
-                    "No hay marbetes pendientes de impresión para el periodo y almacén especificados");
-            }
-
-            log.info("Encontrados {} marbetes pendientes de impresión", labelsToProcess.size());
+            // Todos los pendientes
+            labels = persistence.findPendingLabelsByPeriodAndWarehouse(
+                dto.getPeriodId(), dto.getWarehouseId());
         }
 
-        // Ordenar por folio para impresión secuencial
-        labelsToProcess.sort(Comparator.comparing(Label::getFolio));
-
-        // REGLA DE NEGOCIO: Soportar dos escenarios de impresión:
-        // 1. Impresión normal: Impresión inmediata de marbetes recién generados (GENERADOS)
-        // 2. Impresión extraordinaria: Reimpresión de marbetes previamente impresos (IMPRESOS)
-
-        try {
-            // Obtener rango de folios para registro
-            Long minFolio = labelsToProcess.stream()
-                .map(Label::getFolio)
-                .min(Long::compareTo)
-                .orElseThrow();
-
-            Long maxFolio = labelsToProcess.stream()
-                .map(Label::getFolio)
-                .max(Long::compareTo)
-                .orElseThrow();
-
-            // CAMBIO IMPORTANTE: Primero generar el PDF, luego marcar como impreso
-            // Esto evita que los marbetes queden marcados como impresos si falla la generación del PDF
-
-            // Generar el PDF con JasperReports
-            log.info("Generando PDF con {} marbetes...", labelsToProcess.size());
-            byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labelsToProcess);
-
-            // Validar que el PDF se generó correctamente
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.error("El PDF generado está vacío o es null");
-                throw new RuntimeException("Error: El PDF generado está vacío. Verifique que los datos de productos y almacenes existan.");
-            }
-
-            log.info("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
-
-            // Solo si el PDF se generó exitosamente, marcar como impresos y registrar
-            LabelPrint result = persistence.printLabelsRange(
-                dto.getPeriodId(),
-                dto.getWarehouseId(),
-                minFolio,
-                maxFolio,
-                userId
-            );
-
-            log.info("Impresión registrada exitosamente: {} folio(s) del {} al {}",
-                result.getCantidadImpresa(), result.getFolioInicial(), result.getFolioFinal());
-
-            return pdfBytes;
-
-        } catch (IllegalArgumentException e) {
-            log.error("Error de validación en impresión: {}", e.getMessage());
-            throw new InvalidLabelStateException(e.getMessage());
-        } catch (IllegalStateException e) {
-            log.error("Error de estado en impresión: {}", e.getMessage());
-            throw new InvalidLabelStateException(e.getMessage());
-        } catch (RuntimeException e) {
-            log.error("Error generando PDF: {}", e.getMessage());
-            throw new InvalidLabelStateException("Error al generar el PDF de marbetes: " + e.getMessage());
+        if (labels.isEmpty()) {
+            throw new InvalidLabelStateException("No hay marbetes pendientes de impresión");
         }
+
+        if (labels.size() > 500) {
+            throw new InvalidLabelStateException("Límite máximo: 500 marbetes por impresión");
+        }
+
+        labels.sort(Comparator.comparing(Label::getFolio));
+
+        // Generar PDF
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF");
+        }
+
+        // Actualizar estados a IMPRESO
+        Long minFolio = labels.get(0).getFolio();
+        Long maxFolio = labels.get(labels.size() - 1).getFolio();
+        updateLabelsStateAfterPrint(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
+
+        log.info("✅ PDF generado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
+        return pdfBytes;
+    }
+
+    /**
+     * 🔒 Actualiza estado de marbetes a IMPRESO después de generar PDF
+     */
+    @Transactional
+    protected LabelPrint updateLabelsStateAfterPrint(Long periodId, Long warehouseId,
+                                                     Long minFolio, Long maxFolio, Long userId) {
+        return persistence.printLabelsRange(periodId, warehouseId, minFolio, maxFolio, userId);
     }
 
     @Override
@@ -930,24 +714,50 @@ public class LabelServiceImpl implements LabelService {
         };
     }
 
+    /**
+     * 🚀 MÉTODO SIMPLIFICADO: Genera marbetes directamente sin solicitudes previas
+     * Este método reemplaza todo el flujo antiguo de request -> generate
+     */
     @Override
     @Transactional
     public void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole) {
-        // Validar acceso al almacén una sola vez
+        log.info("🚀 Generando marbetes para {} productos", dto.getProducts().size());
+
+        // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
+        LocalDateTime now = LocalDateTime.now();
+        int totalGenerados = 0;
+
         for (ProductBatchDTO product : dto.getProducts()) {
-            try {
-                GenerateBatchDTO single = new GenerateBatchDTO();
-                single.setProductId(product.getProductId());
-                single.setWarehouseId(dto.getWarehouseId());
-                single.setPeriodId(dto.getPeriodId());
-                single.setLabelsToGenerate(product.getLabelsToGenerate());
-                this.generateBatch(single, userId, userRole);
-            } catch (Exception e) {
-                log.error("Error generando marbetes para producto {}: {}", product.getProductId(), e.getMessage());
-                // Aquí podrías recolectar errores individuales si quieres devolver un resumen
+            int cantidad = product.getLabelsToGenerate();
+
+            // Asignar folios consecutivos
+            long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
+
+            // Crear marbetes en batch
+            List<Label> labels = new ArrayList<>(cantidad);
+            for (long folio = range[0]; folio <= range[1]; folio++) {
+                Label label = new Label();
+                label.setFolio(folio);
+                label.setPeriodId(dto.getPeriodId());
+                label.setWarehouseId(dto.getWarehouseId());
+                label.setProductId(product.getProductId());
+                label.setEstado(Label.State.GENERADO);
+                label.setCreatedBy(userId);
+                label.setCreatedAt(now);
+                labels.add(label);
             }
+
+            // Guardar en BD
+            persistence.saveAll(labels);
+            totalGenerados += cantidad;
+
+            log.info("✅ Producto {}: {} marbetes (folios {}-{})",
+                product.getProductId(), cantidad, range[0], range[1]);
         }
+
+        log.info("✅ Total generado: {} marbetes", totalGenerados);
     }
 
     @Override

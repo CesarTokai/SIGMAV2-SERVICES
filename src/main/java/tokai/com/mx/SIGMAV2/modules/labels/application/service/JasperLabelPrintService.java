@@ -20,6 +20,7 @@ import java.util.*;
 
 /**
  * Servicio para generar PDFs de marbetes usando JasperReports
+ * REFACTORIZADO: Ahora usa cache de reportes para mejor rendimiento
  */
 @Service
 @RequiredArgsConstructor
@@ -28,9 +29,11 @@ public class JasperLabelPrintService {
 
     private final JpaProductRepository productRepository;
     private final JpaWarehouseRepository warehouseRepository;
+    private final JasperReportCacheService reportCacheService;
 
     /**
      * Genera un PDF con los marbetes especificados usando la plantilla JRXML
+     * REFACTORIZADO: Usa cache de reportes para evitar compilación repetida
      *
      * @param labels Lista de marbetes a imprimir
      * @return byte[] del PDF generado
@@ -44,8 +47,8 @@ public class JasperLabelPrintService {
             Map<Long, ProductEntity> productsCache = loadProductsCache(labels);
             Map<Long, WarehouseEntity> warehousesCache = loadWarehousesCache(labels);
 
-            // Cargar y compilar la plantilla
-            JasperReport jasperReport = loadJasperTemplate();
+            // MEJORA #1: Usar cache de reportes en lugar de compilar cada vez
+            JasperReport jasperReport = reportCacheService.getReport("Carta_Tres_Cuadros");
 
             // Convertir labels a estructura de datos para JasperReports
             List<Map<String, Object>> dataSource = buildDataSource(labels, productsCache, warehousesCache);
@@ -88,28 +91,6 @@ public class JasperLabelPrintService {
         }
     }
 
-    /**
-     * Carga y compila la plantilla JRXML
-     */
-    private JasperReport loadJasperTemplate() throws Exception {
-        log.info("Cargando plantilla JRXML...");
-
-        try {
-            // Intentar cargar el archivo .jasper compilado primero
-            InputStream jasperStream = new ClassPathResource("reports/Carta_Tres_Cuadros.jasper").getInputStream();
-            log.info("Archivo .jasper encontrado, cargando...");
-            return (JasperReport) JRLoader.loadObject(jasperStream);
-        } catch (Exception e) {
-            log.warn("No se encontró .jasper compilado, compilando .jrxml...");
-
-            // Si no existe el .jasper, compilar el .jrxml
-            InputStream jrxmlStream = new ClassPathResource("reports/Carta_Tres_Cuadros.jrxml").getInputStream();
-            JasperReport jasperReport = JasperCompileManager.compileReport(jrxmlStream);
-
-            log.info("JRXML compilado exitosamente");
-            return jasperReport;
-        }
-    }
 
     /**
      * Pre-carga todos los productos en un mapa para evitar queries repetidas
@@ -167,20 +148,27 @@ public class JasperLabelPrintService {
         for (Label label : labels) {
             Map<String, Object> record = new HashMap<>();
 
+            // CORRECCIÓN ERROR #4: Lanzar excepción en lugar de continuar silenciosamente
             // Obtener datos del producto
             ProductEntity product = productsCache.get(label.getProductId());
             if (product == null) {
-                log.warn("Producto no encontrado para folio {}: productId={}",
+                log.error("CRÍTICO: Producto no encontrado para folio {}: productId={}",
                     label.getFolio(), label.getProductId());
-                continue;
+                throw new IllegalStateException(
+                    String.format("No se puede generar PDF: El folio %d está asociado a un producto inexistente (ID: %d). " +
+                        "Esto indica datos huérfanos en la base de datos. Por favor, contacte al administrador del sistema.",
+                        label.getFolio(), label.getProductId()));
             }
 
             // Obtener datos del almacén
             WarehouseEntity warehouse = warehousesCache.get(label.getWarehouseId());
             if (warehouse == null) {
-                log.warn("Almacén no encontrado para folio {}: warehouseId={}",
+                log.error("CRÍTICO: Almacén no encontrado para folio {}: warehouseId={}",
                     label.getFolio(), label.getWarehouseId());
-                continue;
+                throw new IllegalStateException(
+                    String.format("No se puede generar PDF: El folio %d está asociado a un almacén inexistente (ID: %d). " +
+                        "Esto indica datos huérfanos en la base de datos. Por favor, contacte al administrador del sistema.",
+                        label.getFolio(), label.getWarehouseId()));
             }
 
             // Mapear datos a las variables del JRXML

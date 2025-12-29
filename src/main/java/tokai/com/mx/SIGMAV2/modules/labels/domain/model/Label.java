@@ -10,7 +10,7 @@ public class Label {
     @Id
     private Long folio;
 
-    @Column(name = "id_label_request", nullable = false)
+    @Column(name = "id_label_request", nullable = true)  // Nullable porque en versión simplificada no siempre hay solicitud previa
     private Long labelRequestId;
 
     @Column(name = "id_period", nullable = false)

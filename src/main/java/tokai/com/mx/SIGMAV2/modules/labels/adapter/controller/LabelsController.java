@@ -88,32 +88,80 @@ public class LabelsController {
     // Imprimir / Reimprimir rango de marbetes
     @PostMapping("/print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
+    public ResponseEntity<?> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
 
         log.info("Endpoint /print llamado por usuario {} con rol {}", userId, userRole);
 
-        // Generar el PDF
-        byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
+        try {
+            // Generar el PDF
+            byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
 
-        // Construir nombre del archivo más descriptivo
-        String timestamp = java.time.LocalDateTime.now()
-            .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String filename = String.format("marbetes_P%d_A%d_%s.pdf",
-            dto.getPeriodId(), dto.getWarehouseId(), timestamp);
+            // Validar que el PDF se generó correctamente
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.error("El servicio retornó un PDF vacío o null");
+                return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                        "error", "No se pudo generar el PDF",
+                        "message", "El PDF generado está vacío. Verifique que existan marbetes pendientes de impresión."
+                    ));
+            }
 
-        // Configurar headers para descarga del PDF
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", filename);
-        headers.setContentLength(pdfBytes.length);
+            // Construir nombre del archivo más descriptivo
+            String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = String.format("marbetes_P%d_A%d_%s.pdf",
+                dto.getPeriodId(), dto.getWarehouseId(), timestamp);
 
-        log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
+            // Configurar headers para descarga del PDF
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentLength(pdfBytes.length);
 
-        return ResponseEntity.ok()
-            .headers(headers)
-            .body(pdfBytes);
+            log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
+
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            log.warn("Error de estado al intentar imprimir: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Estado inválido",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
+            log.warn("Folios no encontrados: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Folios no encontrados",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException e) {
+            log.warn("Catálogos no cargados: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Catálogos no cargados",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
+            log.warn("Permiso denegado: {}", e.getMessage());
+            return ResponseEntity.status(403)
+                .body(java.util.Map.of(
+                    "error", "Permiso denegado",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            log.error("Error inesperado al generar PDF de marbetes", e);
+            return ResponseEntity.status(500)
+                .body(java.util.Map.of(
+                    "error", "Error interno del servidor",
+                    "message", "Error al generar el PDF de marbetes: " + e.getMessage()
+                ));
+        }
     }
 
     // Contar marbetes pendientes de impresión
@@ -212,6 +260,84 @@ public class LabelsController {
         String userRole = getUserRoleFromToken();
         labelService.generateBatchList(dto, userId, userRole);
         return ResponseEntity.ok().build();
+    }
+
+    // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
+    @PostMapping("/generate-and-print")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<?> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("🚀 API simplificada /generate-and-print llamada por usuario {} con rol {}", userId, userRole);
+
+        try {
+            // PASO 1: Generar marbetes
+            log.info("Generando marbetes...");
+            labelService.generateBatchList(dto, userId, userRole);
+
+            // PASO 2: Verificar que se generaron
+            log.info("Verificando marbetes pendientes...");
+            tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO countDto =
+                new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO();
+            countDto.setPeriodId(dto.getPeriodId());
+            countDto.setWarehouseId(dto.getWarehouseId());
+
+            var countResponse = labelService.getPendingPrintCount(countDto, userId, userRole);
+
+            if (countResponse.getCount() == 0) {
+                log.error("No se generaron marbetes o no hay pendientes");
+                return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                        "error", "No hay marbetes pendientes",
+                        "message", "No se pudieron generar los marbetes o ya fueron impresos"
+                    ));
+            }
+
+            log.info("Marbetes pendientes: {}", countResponse.getCount());
+
+            // PASO 3: Imprimir automáticamente
+            log.info("Imprimiendo marbetes...");
+            PrintRequestDTO printDto = new PrintRequestDTO();
+            printDto.setPeriodId(dto.getPeriodId());
+            printDto.setWarehouseId(dto.getWarehouseId());
+
+            byte[] pdfBytes = labelService.printLabels(printDto, userId, userRole);
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.error("El PDF generado está vacío");
+                return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                        "error", "Error generando PDF",
+                        "message", "El PDF está vacío"
+                    ));
+            }
+
+            // PASO 4: Retornar el PDF
+            String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = String.format("marbetes_P%d_A%d_%s.pdf",
+                dto.getPeriodId(), dto.getWarehouseId(), timestamp);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentLength(pdfBytes.length);
+
+            log.info("✅ Generación e impresión completada exitosamente: {} KB", pdfBytes.length / 1024);
+
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+
+        } catch (Exception e) {
+            log.error("❌ Error en generate-and-print: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(java.util.Map.of(
+                    "error", "Error en generación e impresión",
+                    "message", e.getMessage()
+                ));
+        }
     }
 
     // Consultar estado de marbete
