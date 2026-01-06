@@ -25,7 +25,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersiste
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;+
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelledException;
