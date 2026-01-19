@@ -262,7 +262,7 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
-    // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
+        // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
     @PostMapping("/generate-and-print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<?> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
@@ -272,11 +272,9 @@ public class LabelsController {
         log.info("🚀 API simplificada /generate-and-print llamada por usuario {} con rol {}", userId, userRole);
 
         try {
-            // PASO 1: Generar marbetes
             log.info("Generando marbetes...");
             labelService.generateBatchList(dto, userId, userRole);
 
-            // PASO 2: Verificar que se generaron
             log.info("Verificando marbetes pendientes...");
             tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO countDto =
                 new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO();
@@ -296,7 +294,6 @@ public class LabelsController {
 
             log.info("Marbetes pendientes: {}", countResponse.getCount());
 
-            // PASO 3: Imprimir automáticamente
             log.info("Imprimiendo marbetes...");
             PrintRequestDTO printDto = new PrintRequestDTO();
             printDto.setPeriodId(dto.getPeriodId());
@@ -313,7 +310,6 @@ public class LabelsController {
                     ));
             }
 
-            // PASO 4: Retornar el PDF
             String timestamp = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String filename = String.format("marbetes_P%d_A%d_%s.pdf",
@@ -346,7 +342,6 @@ public class LabelsController {
                                             @RequestParam Long periodId,
                                             @RequestParam Long warehouseId) {
         Long userId = getUserIdFromToken();
-        // El rol puede ser útil para validaciones futuras
         String userRole = null;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getAuthorities() != null && !auth.getAuthorities().isEmpty()) {
@@ -356,7 +351,6 @@ public class LabelsController {
         return ResponseEntity.ok(status);
     }
 
-    // Endpoint de diagnóstico para verificar marbetes generados
     @GetMapping("/debug/count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<?> getLabelsCount(@RequestParam Long periodId,
@@ -365,7 +359,6 @@ public class LabelsController {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
 
-        // Consultar directamente cuántos marbetes existen
         long count = labelService.countLabelsByPeriodAndWarehouse(periodId, warehouseId);
 
         java.util.Map<String, Object> response = new java.util.HashMap<>();
@@ -379,7 +372,6 @@ public class LabelsController {
         return ResponseEntity.ok(response);
     }
 
-    // Consultar marbetes cancelados
     @GetMapping("/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO>> getCancelledLabels(
@@ -397,7 +389,6 @@ public class LabelsController {
         return ResponseEntity.ok(cancelledLabels);
     }
 
-    // Actualizar existencias de marbete cancelado
     @PutMapping("/cancelled/update-stock")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> updateCancelledStock(
@@ -414,7 +405,6 @@ public class LabelsController {
         return ResponseEntity.ok(updated);
     }
 
-    // Obtener detalles de marbetes de un producto
     @GetMapping("/product/{productId}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO>> getLabelsByProduct(
@@ -433,7 +423,6 @@ public class LabelsController {
         return ResponseEntity.ok(labels);
     }
 
-    // Cancelar un marbete
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<Void> cancelLabel(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.CancelLabelRequestDTO dto) {
@@ -447,7 +436,6 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
-    // Obtener información de un marbete para la interfaz de conteo
     @GetMapping("/for-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCount(
@@ -465,7 +453,6 @@ public class LabelsController {
         return ResponseEntity.ok(label);
     }
 
-    // Buscar marbete por folio, periodo y almacén usando POST y body
     @PostMapping("/for-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCountByBody(
@@ -481,7 +468,6 @@ public class LabelsController {
         return ResponseEntity.ok(label);
     }
 
-    // Listar todos los marbetes disponibles para conteo en un periodo/almacén
     @PostMapping("/for-count/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO>> getLabelsForCountList(
@@ -498,9 +484,7 @@ public class LabelsController {
         return ResponseEntity.ok(labels);
     }
 
-    // ==================== REPORTES ====================
 
-    // Reporte de Distribución de Marbetes
     @PostMapping("/reports/distribution")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO>> getDistributionReport(
@@ -516,7 +500,6 @@ public class LabelsController {
         return ResponseEntity.ok(report);
     }
 
-    // Reporte de Listado de Marbetes
     @PostMapping("/reports/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO>> getLabelListReport(
@@ -532,7 +515,6 @@ public class LabelsController {
         return ResponseEntity.ok(report);
     }
 
-    // Reporte de Marbetes Pendientes
     @PostMapping("/reports/pending")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO>> getPendingLabelsReport(
@@ -548,7 +530,6 @@ public class LabelsController {
         return ResponseEntity.ok(report);
     }
 
-    // Reporte de Marbetes con Diferencias
     @PostMapping("/reports/with-differences")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO>> getDifferencesReport(
@@ -564,8 +545,7 @@ public class LabelsController {
         return ResponseEntity.ok(report);
     }
 
-    // Reporte de Marbetes Cancelados
-    @PostMapping("/reports/cancelled")
+        @PostMapping("/reports/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO>> getCancelledLabelsReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
