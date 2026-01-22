@@ -32,6 +32,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelle
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -277,27 +278,68 @@ public class LabelServiceImpl implements LabelService {
         // Verificar que el marbete exista
         Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
         if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException("El folio no existe");
+            throw new LabelNotFoundException(
+                String.format("El folio %d no existe en el sistema", dto.getFolio())
+            );
         }
         Label label = optLabel.get();
+
+        // Validar contexto: periodo y almacén (si están presentes en el DTO)
+        if (dto.getPeriodId() != null && !label.getPeriodId().equals(dto.getPeriodId())) {
+            String labelPeriodName = getPeriodName(label.getPeriodId());
+            String requestedPeriodName = getPeriodName(dto.getPeriodId());
+            throw new InvalidLabelStateException(
+                String.format(
+                    "El folio %d pertenece al periodo '%s' (ID: %d), pero está consultando el periodo '%s' (ID: %d). " +
+                    "Por favor verifique que está trabajando en el periodo correcto.",
+                    dto.getFolio(), labelPeriodName, label.getPeriodId(), requestedPeriodName, dto.getPeriodId()
+                )
+            );
+        }
+
+        if (dto.getWarehouseId() != null && !label.getWarehouseId().equals(dto.getWarehouseId())) {
+            String labelWarehouseName = getWarehouseName(label.getWarehouseId());
+            String requestedWarehouseName = getWarehouseName(dto.getWarehouseId());
+            throw new InvalidLabelStateException(
+                String.format(
+                    "El folio %d pertenece al almacén '%s' (ID: %d), pero está consultando el almacén '%s' (ID: %d). " +
+                    "Por favor verifique que está en el almacén correcto.",
+                    dto.getFolio(), labelWarehouseName, label.getWarehouseId(), requestedWarehouseName, dto.getWarehouseId()
+                )
+            );
+        }
 
         // Validar acceso al almacén del marbete
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
         if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
+            throw new InvalidLabelStateException(
+                String.format("No se puede registrar conteo: el folio %d está CANCELADO.", dto.getFolio())
+            );
         }
         if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete no está IMPRESO.");
+            throw new InvalidLabelStateException(
+                String.format(
+                    "No se puede registrar conteo: el folio %d no está IMPRESO. Estado actual: %s",
+                    dto.getFolio(), label.getEstado()
+                )
+            );
         }
 
         // No permitir registrar C1 si ya existe C1
         if (persistence.hasCountNumber(dto.getFolio(), 1)) {
-            throw new DuplicateCountException("El conteo C1 ya fue registrado para este folio.");
+            throw new DuplicateCountException(
+                String.format("El conteo C1 ya fue registrado para el folio %d.", dto.getFolio())
+            );
         }
         // No permitir registrar C1 si ya existe C2 (secuencia rota)
         if (persistence.hasCountNumber(dto.getFolio(), 2)) {
-            throw new CountSequenceException("No se puede registrar C1 porque ya existe un conteo C2 para este folio.");
+            throw new CountSequenceException(
+                String.format(
+                    "No se puede registrar C1 porque ya existe un conteo C2 para el folio %d. La secuencia de conteo está rota.",
+                    dto.getFolio()
+                )
+            );
         }
 
         LabelCountEvent.Role roleEnum;
@@ -323,28 +365,69 @@ public class LabelServiceImpl implements LabelService {
         // Verificar que el marbete exista
         Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
         if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException("El folio no existe");
+            throw new LabelNotFoundException(
+                String.format("El folio %d no existe en el sistema", dto.getFolio())
+            );
         }
         Label label = optLabel.get();
+
+        // Validar contexto: periodo y almacén (si están presentes en el DTO)
+        if (dto.getPeriodId() != null && !label.getPeriodId().equals(dto.getPeriodId())) {
+            String labelPeriodName = getPeriodName(label.getPeriodId());
+            String requestedPeriodName = getPeriodName(dto.getPeriodId());
+            throw new InvalidLabelStateException(
+                String.format(
+                    "El folio %d pertenece al periodo '%s' (ID: %d), pero está consultando el periodo '%s' (ID: %d). " +
+                    "Por favor verifique que está trabajando en el periodo correcto.",
+                    dto.getFolio(), labelPeriodName, label.getPeriodId(), requestedPeriodName, dto.getPeriodId()
+                )
+            );
+        }
+
+        if (dto.getWarehouseId() != null && !label.getWarehouseId().equals(dto.getWarehouseId())) {
+            String labelWarehouseName = getWarehouseName(label.getWarehouseId());
+            String requestedWarehouseName = getWarehouseName(dto.getWarehouseId());
+            throw new InvalidLabelStateException(
+                String.format(
+                    "El folio %d pertenece al almacén '%s' (ID: %d), pero está consultando el almacén '%s' (ID: %d). " +
+                    "Por favor verifique que está en el almacén correcto.",
+                    dto.getFolio(), labelWarehouseName, label.getWarehouseId(), requestedWarehouseName, dto.getWarehouseId()
+                )
+            );
+        }
 
         // Validar acceso al almacén del marbete
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
         if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete está CANCELADO.");
+            throw new InvalidLabelStateException(
+                String.format("No se puede registrar conteo: el folio %d está CANCELADO.", dto.getFolio())
+            );
         }
         if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException("No se puede registrar conteo: el marbete no está IMPRESO.");
+            throw new InvalidLabelStateException(
+                String.format(
+                    "No se puede registrar conteo: el folio %d no está IMPRESO. Estado actual: %s",
+                    dto.getFolio(), label.getEstado()
+                )
+            );
         }
 
         // Debe existir C1 antes de C2
         if (!persistence.hasCountNumber(dto.getFolio(), 1)) {
-            throw new CountSequenceException("No se puede registrar C2 porque no existe un conteo C1 previo.");
+            throw new CountSequenceException(
+                String.format(
+                    "No se puede registrar C2 porque no existe un conteo C1 previo para el folio %d. Debe registrar C1 primero.",
+                    dto.getFolio()
+                )
+            );
         }
 
         // No permitir duplicar C2
         if (persistence.hasCountNumber(dto.getFolio(), 2)) {
-            throw new DuplicateCountException("El conteo C2 ya fue registrado para este folio.");
+            throw new DuplicateCountException(
+                String.format("El conteo C2 ya fue registrado para el folio %d.", dto.getFolio())
+            );
         }
 
         LabelCountEvent.Role roleEnum;
@@ -405,52 +488,88 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole) {
-        log.info("Actualizando conteo C2 para folio {}", dto.getFolio());
+        log.info("🔄 Iniciando actualización de conteo C2 para folio {}", dto.getFolio());
+        log.debug("Parámetros: folio={}, countedValue={}, observaciones={}, userId={}, userRole={}",
+            dto.getFolio(), dto.getCountedValue(), dto.getObservaciones(), userId, userRole);
 
-        if (userRole == null) {
-            throw new PermissionDeniedException("Role de usuario requerido para actualizar C2");
+        try {
+            if (userRole == null) {
+                log.error("❌ Role de usuario es null");
+                throw new PermissionDeniedException("Role de usuario requerido para actualizar C2");
+            }
+
+            String roleUpper = userRole.toUpperCase();
+            log.debug("Role normalizado: {}", roleUpper);
+
+            // Para C2, permitir actualización a ADMINISTRADOR, ALMACENISTA y AUXILIAR_DE_CONTEO
+            boolean allowed = roleUpper.equals("ADMINISTRADOR") ||
+                             roleUpper.equals("ALMACENISTA") ||
+                             roleUpper.equals("AUXILIAR_DE_CONTEO");
+            if (!allowed) {
+                log.error("❌ Rol {} no tiene permisos para actualizar C2", roleUpper);
+                throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR, ALMACENISTA o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
+            }
+
+            log.debug("Buscando marbete con folio {}", dto.getFolio());
+
+            // Verificar que el marbete exista
+            Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
+            if (optLabel.isEmpty()) {
+                log.error("❌ Folio {} no existe en el sistema", dto.getFolio());
+                throw new LabelNotFoundException("El folio no existe");
+            }
+            Label label = optLabel.get();
+
+            log.debug("Marbete encontrado: productId={}, warehouseId={}, estado={}",
+                label.getProductId(), label.getWarehouseId(), label.getEstado());
+
+            // Validar acceso al almacén del marbete
+            log.debug("Validando acceso al almacén {}", label.getWarehouseId());
+            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+            if (label.getEstado() == Label.State.CANCELADO) {
+                log.error("❌ Marbete está CANCELADO");
+                throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
+            }
+            if (label.getEstado() != Label.State.IMPRESO) {
+                log.error("❌ Marbete no está IMPRESO, estado actual: {}", label.getEstado());
+                throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
+            }
+
+            // Buscar el evento de conteo C2 existente
+            log.debug("Buscando evento C2 para folio {}", dto.getFolio());
+            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+            log.debug("Eventos encontrados: {}", events.size());
+
+            LabelCountEvent eventC2 = events.stream()
+                .filter(e -> e.getCountNumber() == 2)
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("❌ No existe un conteo C2 para el folio {}", dto.getFolio());
+                    return new LabelNotFoundException("No existe un conteo C2 para actualizar");
+                });
+
+            log.debug("Evento C2 encontrado: id={}, countedValue={}", eventC2.getIdCountEvent(), eventC2.getCountedValue());
+
+            // Actualizar el valor
+            BigDecimal oldValue = eventC2.getCountedValue();
+            eventC2.setCountedValue(dto.getCountedValue());
+
+            log.debug("Actualizando valor de {} a {}", oldValue, dto.getCountedValue());
+
+            LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
+            log.info("✅ Conteo C2 actualizado exitosamente para folio {} - Valor anterior: {}, Valor nuevo: {}",
+                dto.getFolio(), oldValue, dto.getCountedValue());
+
+            return updated;
+
+        } catch (PermissionDeniedException | LabelNotFoundException | InvalidLabelStateException e) {
+            log.warn("Excepción controlada en updateCountC2: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Error inesperado en updateCountC2 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
+            throw new RuntimeException("Error inesperado al actualizar C2: " + e.getMessage(), e);
         }
-
-        String roleUpper = userRole.toUpperCase();
-        // Para C2, permitir actualización a ADMINISTRADOR, ALMACENISTA y AUXILIAR_DE_CONTEO
-        boolean allowed = roleUpper.equals("ADMINISTRADOR") ||
-                         roleUpper.equals("ALMACENISTA") ||
-                         roleUpper.equals("AUXILIAR_DE_CONTEO");
-        if (!allowed) {
-            throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR, ALMACENISTA o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
-        }
-
-        // Verificar que el marbete exista
-        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
-        if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException("El folio no existe");
-        }
-        Label label = optLabel.get();
-
-        // Validar acceso al almacén del marbete
-        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-
-        if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
-        }
-        if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
-        }
-
-        // Buscar el evento de conteo C2 existente
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
-        LabelCountEvent eventC2 = events.stream()
-            .filter(e -> e.getCountNumber() == 2)
-            .findFirst()
-            .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C2 para actualizar"));
-
-        // Actualizar el valor
-        eventC2.setCountedValue(dto.getCountedValue());
-
-        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
-        log.info("Conteo C2 actualizado exitosamente para folio {}", dto.getFolio());
-
-        return updated;
     }
 
     @Override
@@ -1923,5 +2042,80 @@ public class LabelServiceImpl implements LabelService {
             this.existencias = this.existencias.add(cantidad);
         }
     }
-}
 
+    /**
+     * 🔧 Métodos auxiliares para obtener nombres descriptivos
+     * Mejoran los mensajes de error con contexto completo
+     */
+
+    /**
+     * Obtiene el nombre descriptivo de un periodo
+     * @param periodId ID del periodo
+     * @return Nombre del periodo formateado (ej: "Enero 2026")
+     */
+    private String getPeriodName(Long periodId) {
+        try {
+            return jpaPeriodRepository.findById(periodId)
+                .map(period -> {
+                    java.time.LocalDate date = period.getDate();
+                    if (date != null) {
+                        java.time.format.DateTimeFormatter formatter =
+                            java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.of("es", "ES"));
+                        String formatted = date.format(formatter);
+                        return formatted.substring(0, 1).toUpperCase() + formatted.substring(1);
+                    }
+                    return "Periodo " + periodId;
+                })
+                .orElse("Periodo " + periodId);
+        } catch (Exception e) {
+            log.warn("Error obteniendo nombre del periodo {}: {}", periodId, e.getMessage());
+            return "Periodo " + periodId;
+        }
+    }
+
+    /**
+     * Obtiene el nombre descriptivo de un almacén
+     * @param warehouseId ID del almacén
+     * @return Nombre del almacén (ej: "Bodega Norte")
+     */
+    private String getWarehouseName(Long warehouseId) {
+        try {
+            return warehouseRepository.findById(warehouseId)
+                .map(warehouse -> {
+                    String name = warehouse.getNameWarehouse();
+                    String key = warehouse.getWarehouseKey();
+                    if (name != null && !name.trim().isEmpty()) {
+                        return name + (key != null ? " (" + key + ")" : "");
+                    }
+                    return key != null ? key : "Almacén " + warehouseId;
+                })
+                .orElse("Almacén " + warehouseId);
+        } catch (Exception e) {
+            log.warn("Error obteniendo nombre del almacén {}: {}", warehouseId, e.getMessage());
+            return "Almacén " + warehouseId;
+        }
+    }
+
+    /**
+     * Obtiene el nombre descriptivo de un producto
+     * @param productId ID del producto
+     * @return Nombre del producto (ej: "Tornillo M8")
+     */
+    private String getProductName(Long productId) {
+        try {
+            return productRepository.findById(productId)
+                .map(product -> {
+                    String descr = product.getDescr();
+                    String cveArt = product.getCveArt();
+                    if (descr != null && !descr.trim().isEmpty()) {
+                        return descr + (cveArt != null ? " (" + cveArt + ")" : "");
+                    }
+                    return cveArt != null ? cveArt : "Producto " + productId;
+                })
+                .orElse("Producto " + productId);
+        } catch (Exception e) {
+            log.warn("Error obteniendo nombre del producto {}: {}", productId, e.getMessage());
+            return "Producto " + productId;
+        }
+    }
+}

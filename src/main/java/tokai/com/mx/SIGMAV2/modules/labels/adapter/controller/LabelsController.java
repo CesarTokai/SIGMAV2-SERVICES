@@ -207,27 +207,93 @@ public class LabelsController {
     // Actualizar Conteo C1
     @PutMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+    public ResponseEntity<?> updateCountC1(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
 
-        log.info("Actualizando conteo C1 para folio {} por usuario {}", dto.getFolio(), userId);
+        log.info("Actualizando conteo C1 para folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+        log.info("Request body: folio={}, countedValue={}, observaciones={}", dto.getFolio(), dto.getCountedValue(), dto.getObservaciones());
 
-        LabelCountEvent ev = labelService.updateCountC1(dto, userId, userRole);
-        return ResponseEntity.ok(ev);
+        try {
+            LabelCountEvent ev = labelService.updateCountC1(dto, userId, userRole);
+            log.info("��� Conteo C1 actualizado exitosamente para folio {}", dto.getFolio());
+            return ResponseEntity.ok(ev);
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
+            log.warn("❌ Folio no encontrado o sin C1: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                .body(java.util.Map.of(
+                    "error", "Conteo no encontrado",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            log.warn("❌ Estado inválido: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Estado inválido",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
+            log.warn("❌ Permiso denegado: {}", e.getMessage());
+            return ResponseEntity.status(403)
+                .body(java.util.Map.of(
+                    "error", "Permiso denegado",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            log.error("❌ Error inesperado al actualizar C1 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(java.util.Map.of(
+                    "error", "Error interno del servidor",
+                    "message", "Error al actualizar el conteo C1: " + e.getMessage(),
+                    "details", e.getClass().getSimpleName()
+                ));
+        }
     }
 
     // Actualizar Conteo C2
     @PutMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+    public ResponseEntity<?> updateCountC2(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
 
-        log.info("Actualizando conteo C2 para folio {} por usuario {}", dto.getFolio(), userId);
+        log.info("Actualizando conteo C2 para folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+        log.info("Request body: folio={}, countedValue={}, observaciones={}", dto.getFolio(), dto.getCountedValue(), dto.getObservaciones());
 
-        LabelCountEvent ev = labelService.updateCountC2(dto, userId, userRole);
-        return ResponseEntity.ok(ev);
+        try {
+            LabelCountEvent ev = labelService.updateCountC2(dto, userId, userRole);
+            log.info("✅ Conteo C2 actualizado exitosamente para folio {}", dto.getFolio());
+            return ResponseEntity.ok(ev);
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
+            log.warn("❌ Folio no encontrado o sin C2: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                .body(java.util.Map.of(
+                    "error", "Conteo no encontrado",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            log.warn("❌ Estado inválido: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                    "error", "Estado inválido",
+                    "message", e.getMessage()
+                ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
+            log.warn("❌ Permiso denegado: {}", e.getMessage());
+            return ResponseEntity.status(403)
+                .body(java.util.Map.of(
+                    "error", "Permiso denegado",
+                    "message", e.getMessage()
+                ));
+        } catch (Exception e) {
+            log.error("❌ Error inesperado al actualizar C2 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(java.util.Map.of(
+                    "error", "Error interno del servidor",
+                    "message", "Error al actualizar el conteo C2: " + e.getMessage(),
+                    "details", e.getClass().getSimpleName()
+                ));
+        }
     }
 
     // Resumen de marbetes por periodo y almacén - ENDPOINT DE PRUEBA
