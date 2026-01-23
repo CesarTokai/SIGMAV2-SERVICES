@@ -10,12 +10,11 @@ import tokai.com.mx.SIGMAV2.security.infrastructure.dto.ResponseAuthDTO;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.UserDetailsServicePer;
-  import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
+import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
 import tokai.com.mx.SIGMAV2.shared.audit.AuditService;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 import tokai.com.mx.SIGMAV2.shared.response.ResponseHelper;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

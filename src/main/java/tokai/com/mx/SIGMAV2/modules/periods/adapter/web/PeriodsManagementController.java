@@ -17,12 +17,6 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/sigmav2/periods")
 @RequiredArgsConstructor
 
-/**
- * Controlador REST principal para la gestión avanzada de periodos.
- * Expone endpoints para crear, consultar, actualizar, eliminar, cerrar y bloquear periodos,
- * utilizando casos de uso y DTOs para aplicar lógica de negocio y validaciones.
- */
-
 public class PeriodsManagementController {
     private final PeriodManagementUseCase periodManagementUseCase;
 

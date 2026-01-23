@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventorySnapshot;
 
 import java.util.List;
 import java.util.Optional;

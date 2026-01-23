@@ -1,6 +1,5 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.model;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class InventoryImportJob {

@@ -30,7 +30,9 @@ public class InventoryPeriodController {
             throw new IllegalArgumentException("Ya existe un periodo para la fecha indicada");
         });
         // Default state and save
-        period.setState(period.getState() == null ? period.getState() : period.getState());
+        if (period.getState() == null) {
+            period.setState(Period.PeriodState.OPEN);
+        }
         Period saved = periodRepository.save(period);
         return ResponseEntity.ok(saved);
     }

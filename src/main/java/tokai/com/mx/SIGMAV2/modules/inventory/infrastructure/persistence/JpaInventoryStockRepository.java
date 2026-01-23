@@ -52,10 +52,10 @@ public interface JpaInventoryStockRepository extends JpaRepository<InventoryStoc
      * Consultar existencias activas por almacén y periodo
      */
     @Query("""
-        SELECT s 
-        FROM InventoryStockEntity s 
-        WHERE s.warehouse.idWarehouse = :warehouseId 
-        AND s.periodId = :periodId 
+        SELECT s
+        FROM InventoryStockEntity s
+        WHERE s.warehouse.idWarehouse = :warehouseId
+        AND s.periodId = :periodId
         AND s.status = 'A'
         ORDER BY s.product.idProduct
         """)

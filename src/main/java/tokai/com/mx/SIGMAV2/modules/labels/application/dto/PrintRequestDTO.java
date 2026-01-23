@@ -1,7 +1,6 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
 import java.util.List;
 
 /**

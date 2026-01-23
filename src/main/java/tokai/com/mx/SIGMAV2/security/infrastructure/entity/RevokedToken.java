@@ -31,9 +31,8 @@ public class RevokedToken {
     private Instant expiresAt;
 
     @Column(length = 100)
-    private String reason; // LOGOUT, SECURITY_BREACH, ADMIN_REVOCATION, etc.
+    private String reason;
 
-    @Column(length = 255)
-    private String username; // Usuario asociado (opcional)
+    private String username;
 }
 

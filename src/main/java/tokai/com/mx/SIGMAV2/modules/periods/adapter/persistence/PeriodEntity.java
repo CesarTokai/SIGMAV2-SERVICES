@@ -2,8 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+
 import java.time.LocalDate;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
 

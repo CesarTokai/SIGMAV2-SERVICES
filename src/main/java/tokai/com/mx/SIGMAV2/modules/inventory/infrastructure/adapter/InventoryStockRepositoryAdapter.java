@@ -21,8 +21,8 @@ public class InventoryStockRepositoryAdapter implements InventoryStockRepository
     }
 
     @Override
-    public Optional<InventoryStock> findByProductAndWarehouse(Long productId, Long warehouseId) {
-        return jpaRepository.findByProductIdProductAndWarehouseIdWarehouse(productId, warehouseId)
+    public Optional<InventoryStock> findByProductAndWarehouseAndPeriod(Long productId, Long warehouseId, Long periodId) {
+        return jpaRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId)
                 .map(mapper::toDomain);
     }
 

@@ -2,8 +2,6 @@ package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.mapper;
 
 import org.springframework.stereotype.Component;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.InventorySnapshot;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
-import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
 
 

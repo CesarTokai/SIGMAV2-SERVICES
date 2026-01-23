@@ -279,7 +279,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             List<WarehouseEntity> conflictsByName = warehouseRepository.findDeletedByNameIgnoreCase(nameOrNull);
             if (!conflictsByName.isEmpty()) {
                 for (WarehouseEntity w : conflictsByName) {
-                    if (currentId != null && w.getId() != null && w.getId().equals(currentId)) continue;
+                    if (currentId != null && currentId.equals(w.getId())) continue;
                     w.setNameWarehouse(archiveLabel(w.getNameWarehouse(), w.getId()));
                 }
                 warehouseRepository.saveAll(conflictsByName);
@@ -289,7 +289,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             List<WarehouseEntity> conflictsByKey = warehouseRepository.findDeletedByKeyIgnoreCase(keyOrNull);
             if (!conflictsByKey.isEmpty()) {
                 for (WarehouseEntity w : conflictsByKey) {
-                    if (currentId != null && w.getId() != null && w.getId().equals(currentId)) continue;
+                    if (currentId != null && currentId.equals(w.getId())) continue;
                     w.setWarehouseKey(archiveKey(w.getWarehouseKey(), w.getId()));
                 }
                 warehouseRepository.saveAll(conflictsByKey);

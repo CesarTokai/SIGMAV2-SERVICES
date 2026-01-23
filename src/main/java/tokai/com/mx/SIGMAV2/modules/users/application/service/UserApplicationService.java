@@ -367,6 +367,7 @@ public class UserApplicationService implements UserService {
     /**
      * Elimina un usuario por username (alias para email)
      */
+    @Transactional
     @Override
     public void deleteByUsername(String email) {
         deleteByEmail(email);

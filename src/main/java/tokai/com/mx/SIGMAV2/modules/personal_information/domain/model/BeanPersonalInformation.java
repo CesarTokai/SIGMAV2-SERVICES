@@ -29,26 +29,26 @@ public class BeanPersonalInformation {
     @Column(name ="name", nullable = false)
     private String name;
 
-    @Column(name ="first_last_name", nullable = true)  // Cambiar a nullable = true
+    @Column(name ="first_last_name")  // Cambiar a nullable = true
     private String firstLastName;
 
-    @Column(name ="second_last_name", nullable = true)
+    @Column(name ="second_last_name")
     private String secondLastName;
 
-    @Column(name ="phone_number", nullable = true)
+    @Column(name ="phone_number")
     private String phoneNumber;
 
     @Lob  // Agregar esta anotación para LONGBLOB
-    @Column(name ="image", nullable = true, columnDefinition = "LONGBLOB")
+    @Column(name ="image", columnDefinition = "LONGBLOB")
     private byte[] image;
     
-    @Column(name = "created_at", nullable = true, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
-    @Column(name = "updated_at", nullable = true)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    @Column(name = "comments", nullable = true)
+    @Column(name = "comments")
     private String comments;
 
     @PrePersist

@@ -301,12 +301,13 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User update(User user) {
-        log.info("Actualizando usuario con ID: {}", user.getId());
-        
+        // Validar primero antes de acceder a cualquier propiedad
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("El usuario y su ID son obligatorios");
         }
         
+        log.info("Actualizando usuario con ID: {}", user.getId());
+
         try {
             user.setUpdatedAt(LocalDateTime.now());
             User updatedUser = userRepository.save(user);

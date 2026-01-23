@@ -26,7 +26,7 @@ public class ImageValidationServiceImpl implements ImageValidationService {
         log.debug("Validando imagen: {}", file.getOriginalFilename());
         
         // Verificar si el archivo está vacío
-        if (file == null || file.isEmpty()) {
+        if (file.isEmpty()) {
             return ImageValidationResult.invalid("No se seleccionó ningún archivo");
         }
         
@@ -55,7 +55,7 @@ public class ImageValidationServiceImpl implements ImageValidationService {
         // Verificar que realmente sea una imagen válida
         try {
             byte[] bytes = file.getBytes();
-            if (bytes == null || bytes.length == 0) {
+            if (bytes.length == 0) {
                 return ImageValidationResult.invalid("El archivo está vacío o corrupto");
             }
             
@@ -73,7 +73,7 @@ public class ImageValidationServiceImpl implements ImageValidationService {
 
     @Override
     public ImageValidationResult validateImageBytes(byte[] imageBytes, String originalFilename) {
-        if (imageBytes == null || imageBytes.length == 0) {
+        if (imageBytes.length == 0) {
             return ImageValidationResult.invalid("Los datos de la imagen están vacíos");
         }
         
@@ -104,59 +104,48 @@ public class ImageValidationServiceImpl implements ImageValidationService {
         
         try {
             // JPEG (FF D8 FF)
-            if (bytes.length >= 3 && 
-                (bytes[0] & 0xFF) == 0xFF && 
+            boolean isJpeg = bytes.length >= 3 &&
+                (bytes[0] & 0xFF) == 0xFF &&
                 (bytes[1] & 0xFF) == 0xD8 && 
-                (bytes[2] & 0xFF) == 0xFF) {
-                return true;
-            }
-            
+                (bytes[2] & 0xFF) == 0xFF;
+
             // PNG (89 50 4E 47 0D 0A 1A 0A)
-            if (bytes.length >= 8 && 
-                (bytes[0] & 0xFF) == 0x89 && 
+            boolean isPng = bytes.length >= 8 &&
+                (bytes[0] & 0xFF) == 0x89 &&
                 (bytes[1] & 0xFF) == 0x50 && 
                 (bytes[2] & 0xFF) == 0x4E && 
                 (bytes[3] & 0xFF) == 0x47 &&
                 (bytes[4] & 0xFF) == 0x0D && 
                 (bytes[5] & 0xFF) == 0x0A && 
                 (bytes[6] & 0xFF) == 0x1A && 
-                (bytes[7] & 0xFF) == 0x0A) {
-                return true;
-            }
-            
+                (bytes[7] & 0xFF) == 0x0A;
+
             // GIF (47 49 46 38 [37|39] 61)
-            if (bytes.length >= 6 && 
-                (bytes[0] & 0xFF) == 0x47 && 
+            boolean isGif = bytes.length >= 6 &&
+                (bytes[0] & 0xFF) == 0x47 &&
                 (bytes[1] & 0xFF) == 0x49 && 
                 (bytes[2] & 0xFF) == 0x46 &&
                 (bytes[3] & 0xFF) == 0x38 && 
                 ((bytes[4] & 0xFF) == 0x37 || (bytes[4] & 0xFF) == 0x39) && 
-                (bytes[5] & 0xFF) == 0x61) {
-                return true;
-            }
-            
+                (bytes[5] & 0xFF) == 0x61;
+
             // BMP (42 4D)
-            if (bytes.length >= 2 && 
-                (bytes[0] & 0xFF) == 0x42 && 
-                (bytes[1] & 0xFF) == 0x4D) {
-                return true;
-            }
-            
+            boolean isBmp = (bytes[0] & 0xFF) == 0x42 &&
+                (bytes[1] & 0xFF) == 0x4D;
+
             // WEBP (52 49 46 46 ... 57 45 42 50)
-            if (bytes.length >= 12 && 
-                (bytes[0] & 0xFF) == 0x52 && 
+            boolean isWebp = bytes.length >= 12 &&
+                (bytes[0] & 0xFF) == 0x52 &&
                 (bytes[1] & 0xFF) == 0x49 && 
                 (bytes[2] & 0xFF) == 0x46 && 
                 (bytes[3] & 0xFF) == 0x46 &&
                 (bytes[8] & 0xFF) == 0x57 && 
                 (bytes[9] & 0xFF) == 0x45 && 
                 (bytes[10] & 0xFF) == 0x42 && 
-                (bytes[11] & 0xFF) == 0x50) {
-                return true;
-            }
-            
-            return false;
-            
+                (bytes[11] & 0xFF) == 0x50;
+
+            return isJpeg || isPng || isGif || isBmp || isWebp;
+
         } catch (Exception e) {
             log.error("Error al validar magic numbers: {}", e.getMessage());
             return false;

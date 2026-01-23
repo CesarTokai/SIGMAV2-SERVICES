@@ -14,10 +14,10 @@ public class WarehouseEntity {
     @Column(name = "warehouse_key", nullable = false, unique = true, length = 50)
     private String warehouseKey;
 
-    @Column(name = "name_warehouse", nullable = false, unique = true, length = 255)
+    @Column(name = "name_warehouse", nullable = false, unique = true)
     private String nameWarehouse;
 
-    @Column(name = "observations", length = 255)
+    @Column(name = "observations")
     private String observations;
 
     // Getters y setters

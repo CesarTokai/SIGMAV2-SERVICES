@@ -3,8 +3,6 @@ package tokai.com.mx.SIGMAV2.modules.users.model;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
 
 
 @Entity

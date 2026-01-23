@@ -15,7 +15,6 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
@@ -131,6 +130,7 @@ public class LabelServiceImpl implements LabelService {
      * 📄 MÉTODO SIMPLIFICADO: Imprime marbetes directamente
      * Busca marbetes en estado GENERADO y genera el PDF
      */
+    @Transactional
     @Override
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
         log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}", dto.getPeriodId(), dto.getWarehouseId());
@@ -1104,7 +1104,7 @@ public class LabelServiceImpl implements LabelService {
             .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
         // Obtener existencias
-        Integer existencias = 0;
+        int existencias = 0;
         try {
             var stockOpt = inventoryStockRepository
                 .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId);
@@ -2045,11 +2045,6 @@ public class LabelServiceImpl implements LabelService {
             this.existencias = this.existencias.add(cantidad);
         }
     }
-
-    /**
-     * 🔧 Métodos auxiliares para obtener nombres descriptivos
-     * Mejoran los mensajes de error con contexto completo
-     */
 
     /**
      * Obtiene el nombre descriptivo de un periodo

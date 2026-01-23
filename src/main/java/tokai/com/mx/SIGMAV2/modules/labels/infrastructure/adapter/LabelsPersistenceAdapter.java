@@ -220,7 +220,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
             StringBuilder sb = new StringBuilder();
             for (long f = startFolio; f <= endFolio; f++) {
                 if (!found.contains(f)) {
-                    if (sb.length() > 0) sb.append(',');
+                    if (!sb.isEmpty()) sb.append(',');
                     sb.append(f);
                 }
             }
@@ -276,9 +276,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         lp.setPrintedBy(userId);
         lp.setPrintedAt(now);
 
-        LabelPrint saved = jpaLabelPrintRepository.save(lp);
-
-        return saved;
+        return jpaLabelPrintRepository.save(lp);
     }
 
     /**

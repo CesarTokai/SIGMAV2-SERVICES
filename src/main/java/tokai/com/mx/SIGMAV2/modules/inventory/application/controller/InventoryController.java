@@ -72,8 +72,9 @@ public class InventoryController {
     @GetMapping("/stock")
     public ResponseEntity<InventoryStockDTO> getCurrentStock(
             @RequestParam Long productId,
-            @RequestParam Long warehouseId) {
-        InventoryStock stock = inventoryQueryUseCase.getCurrentStock(productId, warehouseId);
+            @RequestParam Long warehouseId,
+            @RequestParam Long periodId) {
+        InventoryStock stock = inventoryQueryUseCase.getCurrentStock(productId, warehouseId, periodId);
         if (stock == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(mapToStockDTO(stock));
     }

@@ -8,19 +8,15 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventorySnaps
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryStockRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
 
-import java.util.List;
-
 @Service
 public class InventoryQueryService implements InventoryQueryUseCase {
 
-    private final InventorySnapshotRepository snapshotRepository;
     private final InventoryStockRepository stockRepository;
 
     public InventoryQueryService(
             InventorySnapshotRepository snapshotRepository,
             InventoryStockRepository stockRepository
     ) {
-        this.snapshotRepository = snapshotRepository;
         this.stockRepository = stockRepository;
     }
 
@@ -38,18 +34,14 @@ public class InventoryQueryService implements InventoryQueryUseCase {
         snapshot.setId(entity.getId());
         snapshot.setExistQty(entity.getExistQty());
         snapshot.setCreatedAt(entity.getCreatedAt());
-        // Mapea los objetos anidados si es necesario
-        // snapshot.setProduct(...);
-        // snapshot.setWarehouse(...);
-        // snapshot.setPeriod(...);
         return snapshot;
     }
 
 
 
     @Override
-    public InventoryStock getCurrentStock(Long productId, Long warehouseId) {
-        return stockRepository.findByProductAndWarehouse(productId, warehouseId)
+    public InventoryStock getCurrentStock(Long productId, Long warehouseId, Long periodId) {
+        return stockRepository.findByProductAndWarehouseAndPeriod(productId, warehouseId, periodId)
                 .orElse(null);
     }
 }

@@ -16,13 +16,11 @@ import java.util.stream.Collectors;
 public class InventorySnapshotRepositoryAdapter implements InventorySnapshotRepository {
 
     private final JpaInventorySnapshotRepository jpaRepository;
-    private final JpaProductRepository productRepository;
 
     public InventorySnapshotRepositoryAdapter(
             JpaInventorySnapshotRepository jpaRepository,
             JpaProductRepository productRepository) {
         this.jpaRepository = jpaRepository;
-        this.productRepository = productRepository;
     }
 
     public List<InventorySnapshot> findByPeriodAndWarehouse(Long periodId, Long warehouseId) {

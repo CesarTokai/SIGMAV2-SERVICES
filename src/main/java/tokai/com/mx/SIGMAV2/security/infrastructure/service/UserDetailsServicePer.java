@@ -34,7 +34,6 @@ import tokai.com.mx.SIGMAV2.shared.audit.AuditEntry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -214,12 +213,12 @@ public class UserDetailsServicePer implements UserDetailsService {
         tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user);
         log.debug("Saving updated user verification code for email={}", user.getEmail());
         tokai.com.mx.SIGMAV2.modules.users.domain.model.User saved = userRepository.save(updatedDomain);
-        log.debug("Saved user verificationCode for email={}, savedId={}, verificationCode={}", user.getEmail(), saved != null ? saved.getId() : null, saved != null ? saved.getVerificationCode() : "null");
+        log.debug("Saved user verificationCode for email={}, savedId={}, verificationCode={}", user.getEmail(), saved.getId(), saved.getVerificationCode());
 
         Map<String, Object> debug = new HashMap<>();
         debug.put("email", user.getEmail());
         debug.put("verificationCode", code);
-        debug.put("userSavedId", saved != null ? saved.getId() : null);
+        debug.put("userSavedId", saved.getId());
 
         // Create a pending request record so the request_recovery_password table reflects the reset attempt
         try {
@@ -229,9 +228,9 @@ public class UserDetailsServicePer implements UserDetailsService {
             req.setDate(java.time.LocalDate.now());
 
             BeanRequestRecoveryPassword savedReq = recoveryPasswordRepository.saveAndFlush(req);
-            log.debug("Created password recovery request id={} for user={}", savedReq != null ? savedReq.getRequestId() : null, user.getEmail());
+            log.debug("Created password recovery request id={} for user={}", savedReq.getRequestId(), user.getEmail());
             debug.put("requestSaved", true);
-            debug.put("requestId", savedReq != null ? savedReq.getRequestId() : null);
+            debug.put("requestId", savedReq.getRequestId());
         } catch (Exception e) {
             // Log but don't break the flow: we still want to send the email and not roll back the code update
             log.error("Failed to persist password recovery request for user {}: {}", user.getEmail(), e.getMessage(), e);
@@ -286,7 +285,7 @@ public class UserDetailsServicePer implements UserDetailsService {
 
         log.debug("Saving password recovery request for user={}", user.getEmail());
         BeanRequestRecoveryPassword saved = recoveryPasswordRepository.saveAndFlush(request);
-        log.debug("Saved password recovery request id={} for user={}", saved != null ? saved.getRequestId() : null, user.getEmail());
+        log.debug("Saved password recovery request id={} for user={}", saved.getRequestId(), user.getEmail());
 
         return true;
     }

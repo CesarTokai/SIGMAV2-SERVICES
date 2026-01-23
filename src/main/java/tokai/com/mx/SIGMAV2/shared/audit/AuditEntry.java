@@ -22,10 +22,10 @@ public class AuditEntry {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "principal", length = 255)
+    @Column(name = "principal")
     private String principal; // e.g. email
 
-    @Column(name = "principal_name", length = 255)
+    @Column(name = "principal_name")
     private String principalName; // nombre completo si está disponible
 
     @Column(name = "action", length = 100, nullable = false)
@@ -34,7 +34,7 @@ public class AuditEntry {
     @Column(name = "resource_type", length = 100)
     private String resourceType;
 
-    @Column(name = "resource_id", length = 255)
+    @Column(name = "resource_id")
     private String resourceId;
 
     @Column(name = "outcome", length = 50)

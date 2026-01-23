@@ -4,6 +4,15 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
 import java.util.Optional;
 
 public interface InventoryStockRepository {
-    Optional<InventoryStock> findByProductAndWarehouse(Long productId, Long warehouseId);
+    /**
+     * Buscar existencias por producto, almacén y periodo
+     * @param productId ID del producto
+     * @param warehouseId ID del almacén
+     * @param periodId ID del periodo
+     * @return Optional con el stock encontrado
+     */
+    Optional<InventoryStock> findByProductAndWarehouseAndPeriod(Long productId, Long warehouseId, Long periodId);
+
     InventoryStock save(InventoryStock stock);
+
 }

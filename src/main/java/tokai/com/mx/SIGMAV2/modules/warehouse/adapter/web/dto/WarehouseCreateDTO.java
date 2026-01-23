@@ -1,7 +1,6 @@
 package tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
