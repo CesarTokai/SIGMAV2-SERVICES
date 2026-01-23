@@ -72,11 +72,4 @@ public class BeanPersonalInformation {
         foreignKey = @ForeignKey(name = "fk_pi_user")
     )
     private BeanUser user;
-
-    public String getComments() {
-        return comments;
-    }
-    public void setComments(String comments) {
-        this.comments = comments;
-    }
 }

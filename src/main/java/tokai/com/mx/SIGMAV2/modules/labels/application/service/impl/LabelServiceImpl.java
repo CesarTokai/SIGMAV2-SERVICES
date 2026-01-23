@@ -35,7 +35,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -767,14 +766,14 @@ public class LabelServiceImpl implements LabelService {
             filteredResults = allResults.stream()
                 .filter(item -> {
                     // Búsqueda en: Clave de producto, Producto, Clave de almacén, Almacén, Estado, Existencias
-                    return (item.getClaveProducto() != null && item.getClaveProducto().toLowerCase().contains(searchLower)) ||
+                     return (item.getClaveProducto() != null && item.getClaveProducto().toLowerCase().contains(searchLower)) ||
                            (item.getNombreProducto() != null && item.getNombreProducto().toLowerCase().contains(searchLower)) ||
                            (item.getClaveAlmacen() != null && item.getClaveAlmacen().toLowerCase().contains(searchLower)) ||
                            (item.getNombreAlmacen() != null && item.getNombreAlmacen().toLowerCase().contains(searchLower)) ||
                            (item.getEstado() != null && item.getEstado().toLowerCase().contains(searchLower)) ||
                            String.valueOf(item.getExistencias()).contains(searchLower);
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
             log.info("Búsqueda aplicada: '{}', resultados filtrados: {}", dto.getSearchText(), filteredResults.size());
         }
 
@@ -1272,7 +1271,7 @@ public class LabelServiceImpl implements LabelService {
         boolean cancelado = label.getEstado() == Label.State.CANCELADO;
 
         // Construir mensaje informativo
-        String mensaje = "";
+        String mensaje;
         if (cancelado) {
             mensaje = "Este marbete está CANCELADO y no puede ser usado para conteo";
         } else if (conteo1 != null && conteo2 != null) {
@@ -1362,7 +1361,7 @@ public class LabelServiceImpl implements LabelService {
                 }
 
                 // Construir mensaje informativo
-                String mensaje = "";
+                String mensaje;
                 if (conteo1 != null && conteo2 != null) {
                     mensaje = "Completo";
                 } else if (conteo1 != null) {
@@ -1451,7 +1450,7 @@ public class LabelServiceImpl implements LabelService {
         }
 
         log.info("Reporte de distribución generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(DistributionReportDTO::getClaveAlmacen)).collect(Collectors.toList());
+        return result.stream().sorted(Comparator.comparing(DistributionReportDTO::getClaveAlmacen)).toList();
     }
 
     @Override
@@ -1510,7 +1509,7 @@ public class LabelServiceImpl implements LabelService {
                 label.getEstado() == Label.State.CANCELADO
             );
         }).sorted(Comparator.comparing(LabelListReportDTO::getNumeroMarbete))
-          .collect(Collectors.toList());
+          .toList();
 
         log.info("Reporte de listado generado con {} registros", result.size());
         return result;
@@ -1534,7 +1533,7 @@ public class LabelServiceImpl implements LabelService {
         // Filtrar solo los que no están cancelados
         labels = labels.stream()
             .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .collect(Collectors.toList());
+            .toList();
 
         List<PendingLabelsReportDTO> result = new ArrayList<>();
 
@@ -1570,7 +1569,7 @@ public class LabelServiceImpl implements LabelService {
         }
 
         log.info("Reporte de marbetes pendientes generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete)).collect(Collectors.toList());
+        return result.stream().sorted(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete)).toList();
     }
 
     @Override
@@ -1631,7 +1630,7 @@ public class LabelServiceImpl implements LabelService {
         }
 
         log.info("Reporte de marbetes con diferencias generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(DifferencesReportDTO::getNumeroMarbete)).collect(Collectors.toList());
+        return result.stream().sorted(Comparator.comparing(DifferencesReportDTO::getNumeroMarbete)).toList();
     }
 
     @Override
@@ -1684,8 +1683,7 @@ public class LabelServiceImpl implements LabelService {
                 userName
             );
         }).sorted(Comparator.comparing(CancelledLabelsReportDTO::getNumeroMarbete))
-          .collect(Collectors.toList());
-
+          .toList();
         log.info("Reporte de marbetes cancelados generado con {} registros", result.size());
         return result;
     }
@@ -1707,7 +1705,7 @@ public class LabelServiceImpl implements LabelService {
 
         labels = labels.stream()
             .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .collect(Collectors.toList());
+            .toList();
 
         // Agrupar por producto y almacén
         Map<String, List<Label>> groupedByProductWarehouse = labels.stream()
@@ -1787,7 +1785,7 @@ public class LabelServiceImpl implements LabelService {
         return result.stream()
             .sorted(Comparator.comparing(ComparativeReportDTO::getClaveAlmacen)
                 .thenComparing(ComparativeReportDTO::getClaveProducto))
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Override
@@ -1841,7 +1839,7 @@ public class LabelServiceImpl implements LabelService {
         }).sorted(Comparator.comparing(WarehouseDetailReportDTO::getClaveAlmacen)
             .thenComparing(WarehouseDetailReportDTO::getClaveProducto)
             .thenComparing(WarehouseDetailReportDTO::getNumeroMarbete))
-          .collect(Collectors.toList());
+          .toList();
 
         log.info("Reporte de almacén con detalle generado con {} registros", result.size());
         return result;
@@ -1922,8 +1920,7 @@ public class LabelServiceImpl implements LabelService {
         }).sorted(Comparator.comparing(ProductDetailReportDTO::getClaveProducto)
             .thenComparing(ProductDetailReportDTO::getClaveAlmacen)
             .thenComparing(ProductDetailReportDTO::getNumeroMarbete))
-          .collect(Collectors.toList());
-
+          .toList();
         log.info("Reporte de producto con detalle generado con {} registros", result.size());
         return result;
     }

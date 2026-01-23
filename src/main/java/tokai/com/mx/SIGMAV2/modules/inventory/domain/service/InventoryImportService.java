@@ -1,6 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -169,7 +171,9 @@ public class InventoryImportService implements InventoryImportUseCase {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 DigestInputStream dis = new DigestInputStream(is, digest);
                 byte[] buffer = new byte[4096];
-                while (dis.read(buffer) != -1) {}
+                // Leer todo el stream para calcular el checksum
+                //noinspection StatementWithEmptyBody
+                while (dis.read(buffer) != -1) { /* Lectura intencional */ }
                 byte[] hash = digest.digest();
                 StringBuilder hexString = new StringBuilder();
                 for (byte b : hash) {
@@ -331,7 +335,9 @@ public class InventoryImportService implements InventoryImportUseCase {
         return rows;
     }
 
-    // DTO auxiliar para parseo de archivo
+
+    @Getter
+    @Setter
     private static class InventoryImportRow {
         private String cveArt;
         private String descr;
@@ -340,18 +346,6 @@ public class InventoryImportService implements InventoryImportUseCase {
         private BigDecimal existQty;
         private String status;
 
-        public String getCveArt() { return cveArt; }
-        public void setCveArt(String cveArt) { this.cveArt = cveArt; }
-        public String getDescr() { return descr; }
-        public void setDescr(String descr) { this.descr = descr; }
-        public String getLinProd() { return linProd; }
-        public void setLinProd(String linProd) { this.linProd = linProd; }
-        public String getUniMed() { return uniMed; }
-        public void setUniMed(String uniMed) { this.uniMed = uniMed; }
-        public BigDecimal getExistQty() { return existQty; }
-        public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
     }
 
     // Clase auxiliar para manejar contadores

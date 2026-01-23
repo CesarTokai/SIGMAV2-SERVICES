@@ -8,7 +8,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.validation.FieldError;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -64,8 +63,9 @@ public class RestExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("success", false);
         String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .findFirst().orElse("Validation error");
+                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Validation error")
+                .findFirst()
+                .orElse("Validation error");
         body.put("message", message);
         return ResponseEntity.badRequest().body(body);
     }

@@ -105,8 +105,8 @@ public class RequestRecoveryPasswordController {
     @PostMapping("/verifyUser")
     @PreAuthorize("permitAll()")
     public ResponseEntity<?> verifyUser(@RequestBody @Valid VerifyEmailDTO payload) {
-        boolean success = requestRecoveryPasswordService.verifyUser(payload.email());
-        
+        boolean success = requestRecoveryPasswordService.verifyUser(payload.getEmail());
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
         
@@ -123,7 +123,7 @@ public class RequestRecoveryPasswordController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<?> createPasswordRecoveryRequest(@RequestBody @Valid VerifyEmailDTO payload) {
         log.debug("POST /api/auth/createRequest body={}", payload);
-        boolean success = requestRecoveryPasswordService.createRequest(payload.email());
+        boolean success = requestRecoveryPasswordService.createRequest(payload.getEmail());
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
         response.put("message", success ? "Solicitud de recuperación creada exitosamente" : "Error al crear la solicitud de recuperación");

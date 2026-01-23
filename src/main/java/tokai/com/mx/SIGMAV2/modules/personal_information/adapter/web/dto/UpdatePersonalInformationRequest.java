@@ -1,10 +1,11 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto;
 
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * DTO para actualización de información personal
- */
+@Getter
+@Setter
 public class UpdatePersonalInformationRequest {
     
     @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
@@ -30,36 +31,4 @@ public class UpdatePersonalInformationRequest {
         this.phoneNumber = phoneNumber;
     }
 
-    // Getters y Setters
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getFirstLastName() {
-        return firstLastName;
-    }
-
-    public void setFirstLastName(String firstLastName) {
-        this.firstLastName = firstLastName;
-    }
-
-    public String getSecondLastName() {
-        return secondLastName;
-    }
-
-    public void setSecondLastName(String secondLastName) {
-        this.secondLastName = secondLastName;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
 }

@@ -176,19 +176,8 @@ public class ImageServiceImpl implements ImageService {
         try {
             // Obtener información del usuario para usar su email como nombre temporal
             Optional<User> userOpt = userService.findById(userId);
-            String defaultName = "Usuario";
-            
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                // Usar la parte antes del @ del email como nombre por defecto
-                String email = user.getEmail();
-                if (email != null && email.contains("@")) {
-                    defaultName = email.substring(0, email.indexOf("@"));
-                    // Capitalizar primera letra
-                    defaultName = defaultName.substring(0, 1).toUpperCase() + defaultName.substring(1);
-                }
-            }
-            
+            String defaultName = generateDefaultName(userOpt);
+
             PersonalInformationRequest basicRequest = new PersonalInformationRequest();
             basicRequest.setName(defaultName);
             basicRequest.setFirstLastName("Sin especificar");
@@ -202,5 +191,28 @@ public class ImageServiceImpl implements ImageService {
             log.error("Error al crear información personal básica para usuario ID {}: {}", userId, e.getMessage());
             throw new RuntimeException("Error al crear información personal básica: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Genera un nombre por defecto a partir del email del usuario
+     * @param userOpt Optional del usuario
+     * @return Nombre generado a partir del email o "Usuario" por defecto
+     */
+    private String generateDefaultName(Optional<User> userOpt) {
+        if (userOpt.isEmpty()) {
+            return "Usuario";
+        }
+
+        User user = userOpt.get();
+        String email = user.getEmail();
+
+        if (email == null || !email.contains("@")) {
+            return "Usuario";
+        }
+
+        // Usar la parte antes del @ del email como nombre por defecto
+        String nameFromEmail = email.substring(0, email.indexOf("@"));
+        // Capitalizar primera letra
+        return nameFromEmail.substring(0, 1).toUpperCase() + nameFromEmail.substring(1);
     }
 }

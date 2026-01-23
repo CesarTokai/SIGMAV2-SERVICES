@@ -2,9 +2,13 @@ package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence;
 
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+@Getter
+@Setter
 @Entity
 @Table(name = "inventory_snapshot")
 public class InventorySnapshotJpaEntity {
@@ -31,25 +35,4 @@ public class InventorySnapshotJpaEntity {
     @Column(name = "status")
     private String status;
 
-    // Getters y setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public BigDecimal getExistQty() { return existQty; }
-    public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
 }

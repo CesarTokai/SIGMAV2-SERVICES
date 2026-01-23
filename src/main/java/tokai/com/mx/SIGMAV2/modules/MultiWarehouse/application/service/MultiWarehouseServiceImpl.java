@@ -190,9 +190,9 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         log.setStage(stage);
         MultiWarehouseImportLog savedLog = importLogRepository.save(log);
 
-        int processed = 0;
-        int warehousesCreated = 0;
-        int productsCreated = 0;
+        int processed;
+        int warehousesCreated;
+        int productsCreated;
         int existingUpdated = 0;
         int markedAsInactive = 0;
 
@@ -225,7 +225,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             List<MultiWarehouseExistence> existingRecords = multiWarehouseRepository.findAll()
                 .stream()
                 .filter(e -> e.getPeriodId().equals(periodId))
-                .collect(Collectors.toList());
+                .toList();
 
             // Crear mapa de registros existentes para búsqueda rápida
             // Usar warehouseKey en lugar de warehouseName para la identificación correcta
@@ -361,7 +361,11 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=multiwarehouse_export.csv");
+        headers.setContentDisposition(
+            org.springframework.http.ContentDisposition.attachment()
+                .filename("multiwarehouse_export.csv")
+                .build()
+        );
         headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
@@ -666,7 +670,9 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             DigestInputStream dis = new DigestInputStream(is, digest);
             byte[] buffer = new byte[4096];
-            while (dis.read(buffer) != -1) {}
+            // Leer todo el stream para calcular el checksum
+            //noinspection StatementWithEmptyBody
+            while (dis.read(buffer) != -1) { /* Lectura intencional */ }
             byte[] hash = digest.digest();
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {

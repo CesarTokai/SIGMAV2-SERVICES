@@ -2,7 +2,6 @@ package tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
@@ -21,8 +20,11 @@ public class MultiWarehouseController {
 
     private static final Logger log = LoggerFactory.getLogger(MultiWarehouseController.class);
 
-    @Autowired
-    private MultiWarehouseService multiWarehouseService;
+    private final MultiWarehouseService multiWarehouseService;
+
+    public MultiWarehouseController(MultiWarehouseService multiWarehouseService) {
+        this.multiWarehouseService = multiWarehouseService;
+    }
 
     @PostMapping("/existences")
     public Page<MultiWarehouseExistence> getExistences(

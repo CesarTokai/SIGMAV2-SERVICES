@@ -1,8 +1,13 @@
 package tokai.com.mx.SIGMAV2.modules.labels.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "label_prints")
 public class LabelPrint {
@@ -32,28 +37,4 @@ public class LabelPrint {
 
     @Column(name = "printed_at", nullable = false)
     private LocalDateTime printedAt;
-
-    public Long getIdLabelPrint() { return idLabelPrint; }
-    public void setIdLabelPrint(Long idLabelPrint) { this.idLabelPrint = idLabelPrint; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
-
-    public Long getFolioInicial() { return folioInicial; }
-    public void setFolioInicial(Long folioInicial) { this.folioInicial = folioInicial; }
-
-    public Long getFolioFinal() { return folioFinal; }
-    public void setFolioFinal(Long folioFinal) { this.folioFinal = folioFinal; }
-
-    public Integer getCantidadImpresa() { return cantidadImpresa; }
-    public void setCantidadImpresa(Integer cantidadImpresa) { this.cantidadImpresa = cantidadImpresa; }
-
-    public Long getPrintedBy() { return printedBy; }
-    public void setPrintedBy(Long printedBy) { this.printedBy = printedBy; }
-
-    public LocalDateTime getPrintedAt() { return printedAt; }
-    public void setPrintedAt(LocalDateTime printedAt) { this.printedAt = printedAt; }
 }

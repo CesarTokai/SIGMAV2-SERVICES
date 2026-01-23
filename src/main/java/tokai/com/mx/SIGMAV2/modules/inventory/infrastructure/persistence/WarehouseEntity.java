@@ -1,7 +1,10 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence;
-
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 @Entity(name = "InventoryWarehouseEntity")
 @Table(name = "warehouse")
 public class WarehouseEntity {
@@ -20,36 +23,4 @@ public class WarehouseEntity {
     @Column(name = "observations")
     private String observations;
 
-    // Getters y setters
-    public Long getIdWarehouse() {
-        return idWarehouse;
-    }
-
-    public void setIdWarehouse(Long idWarehouse) {
-        this.idWarehouse = idWarehouse;
-    }
-
-    public String getWarehouseKey() {
-        return warehouseKey;
-    }
-
-    public void setWarehouseKey(String warehouseKey) {
-        this.warehouseKey = warehouseKey;
-    }
-
-    public String getNameWarehouse() {
-        return nameWarehouse;
-    }
-
-    public void setNameWarehouse(String nameWarehouse) {
-        this.nameWarehouse = nameWarehouse;
-    }
-
-    public String getObservations() {
-        return observations;
-    }
-
-    public void setObservations(String observations) {
-        this.observations = observations;
-    }
-}
+   }

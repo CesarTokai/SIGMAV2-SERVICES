@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
+import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
 
 @Repository
 public interface JpaUserRepository extends JpaRepository<BeanUser, Long> {
@@ -47,8 +47,8 @@ public interface JpaUserRepository extends JpaRepository<BeanUser, Long> {
            "(:verified IS NULL OR u.isVerified = :verified) AND " +
            "(:status IS NULL OR u.status = :status)")
     Page<BeanUser> findByCriteria(@Param("email") String email, 
-                                  @Param("role") Role role, 
-                                  @Param("verified") Boolean verified, 
+                                  @Param("role") ERole role,
+                                  @Param("verified") Boolean verified,
                                   @Param("status") Boolean status, 
                                   Pageable pageable);
     
@@ -71,8 +71,8 @@ public interface JpaUserRepository extends JpaRepository<BeanUser, Long> {
     /**
      * Encuentra usuarios por rol
      */
-    List<BeanUser> findByRole(Role role);
-    
+    List<BeanUser> findByRole(ERole role);
+
     /**
      * Elimina usuarios no verificados más antiguos que la fecha especificada
      */

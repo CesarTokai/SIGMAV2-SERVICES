@@ -1,9 +1,12 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
-
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 
+@Getter
+@Setter
 public class CountEventDTO {
 
     @NotNull(message = "El folio es obligatorio")
@@ -24,17 +27,5 @@ public class CountEventDTO {
      * Si se proporciona, se valida que el marbete pertenezca a este almacén
      */
     private Long warehouseId;
-
-    public Long getFolio() { return folio; }
-    public void setFolio(Long folio) { this.folio = folio; }
-
-    public BigDecimal getCountedValue() { return countedValue; }
-    public void setCountedValue(BigDecimal countedValue) { this.countedValue = countedValue; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
 }
 

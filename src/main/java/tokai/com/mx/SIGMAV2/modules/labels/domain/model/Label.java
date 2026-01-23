@@ -1,8 +1,11 @@
 package tokai.com.mx.SIGMAV2.modules.labels.domain.model;
-
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "labels")
 public class Label {
@@ -37,30 +40,4 @@ public class Label {
 
     public enum State {GENERADO, IMPRESO, CANCELADO}
 
-    public Long getFolio() { return folio; }
-    public void setFolio(Long folio) { this.folio = folio; }
-
-    public Long getLabelRequestId() { return labelRequestId; }
-    public void setLabelRequestId(Long labelRequestId) { this.labelRequestId = labelRequestId; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
-
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
-
-    public State getEstado() { return estado; }
-    public void setEstado(State estado) { this.estado = estado; }
-
-    public LocalDateTime getImpresoAt() { return impresoAt; }
-    public void setImpresoAt(LocalDateTime impresoAt) { this.impresoAt = impresoAt; }
-
-    public Long getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

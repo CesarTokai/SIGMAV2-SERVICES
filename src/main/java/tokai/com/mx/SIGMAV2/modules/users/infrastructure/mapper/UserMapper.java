@@ -76,7 +76,7 @@ public class UserMapper {
     /**
      * Mapea Role (dominio) a ERole (infraestructura)
      */
-    private ERole mapToERole(Role role) {
+    public ERole mapToERole(Role role) {
         if (role == null) return null;
         
         switch (role) {

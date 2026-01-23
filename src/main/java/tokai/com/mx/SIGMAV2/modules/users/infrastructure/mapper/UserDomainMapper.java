@@ -58,7 +58,7 @@ public class UserDomainMapper {
     /**
      * Mapea Role del dominio a ERole de la entidad
      */
-    private ERole mapRoleToEntity(Role domainRole) {
+    public ERole mapRoleToEntity(Role domainRole) {
         if (domainRole == null) return null;
         
         switch (domainRole) {

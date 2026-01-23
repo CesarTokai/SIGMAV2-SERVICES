@@ -29,19 +29,8 @@ public class UserController {
         log.info("Recibida solicitud de registro para email: {}", request.getEmail());
         
         User user = userService.register(request);
-        
-        UserDomainResponse userResponse = new UserDomainResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.isStatus(),
-                user.isVerified(),
-                user.getAttempts(),
-                user.getLastTryAt(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
-        
+        UserDomainResponse userResponse = mapToUserDomainResponse(user);
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Usuario registrado exitosamente. Revisa tu correo para verificar tu cuenta.");
@@ -77,19 +66,8 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         
-        User user = userOpt.get();
-        UserDomainResponse userResponse = new UserDomainResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.isStatus(),
-                user.isVerified(),
-                user.getAttempts(),
-                user.getLastTryAt(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
-        
+        UserDomainResponse userResponse = mapToUserDomainResponse(userOpt.get());
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("data", userResponse);
@@ -138,21 +116,9 @@ public class UserController {
         
         Optional<User> userOpt = userService.verifyByUsernameAndCode(request.getEmail(), request.getCode());
         
-        User user = userOpt.orElseThrow(() -> new RuntimeException("Usuario no encontrado al verificar")); // evitar Optional.get() sin comprobación
+        User user = userOpt.orElseThrow(() -> new RuntimeException("Usuario no encontrado al verificar"));
+        UserDomainResponse userResponse = mapToUserDomainResponse(user);
 
-
-        UserDomainResponse userResponse = new UserDomainResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.isStatus(),
-                user.isVerified(),
-                user.getAttempts(),
-                user.getLastTryAt(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
-        
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Usuario verificado exitosamente. Tu cuenta ya está activa.");
@@ -188,5 +154,22 @@ public class UserController {
             
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    /**
+     * Mapea un objeto User del dominio a UserDomainResponse
+     */
+    private UserDomainResponse mapToUserDomainResponse(User user) {
+        return new UserDomainResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.isStatus(),
+                user.isVerified(),
+                user.getAttempts(),
+                user.getLastTryAt(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
+        );
     }
 }

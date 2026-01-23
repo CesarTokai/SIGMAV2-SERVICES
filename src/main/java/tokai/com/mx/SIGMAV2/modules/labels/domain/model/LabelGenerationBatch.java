@@ -1,8 +1,13 @@
 package tokai.com.mx.SIGMAV2.modules.labels.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "label_generation_batches")
 public class LabelGenerationBatch {
@@ -35,31 +40,4 @@ public class LabelGenerationBatch {
 
     @Column(name = "generado_at", nullable = false)
     private LocalDateTime generadoAt;
-
-    public Long getIdBatch() { return idBatch; }
-    public void setIdBatch(Long idBatch) { this.idBatch = idBatch; }
-
-    public Long getLabelRequestId() { return labelRequestId; }
-    public void setLabelRequestId(Long labelRequestId) { this.labelRequestId = labelRequestId; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
-
-    public Long getPrimerFolio() { return primerFolio; }
-    public void setPrimerFolio(Long primerFolio) { this.primerFolio = primerFolio; }
-
-    public Long getUltimoFolio() { return ultimoFolio; }
-    public void setUltimoFolio(Long ultimoFolio) { this.ultimoFolio = ultimoFolio; }
-
-    public Integer getTotalGenerados() { return totalGenerados; }
-    public void setTotalGenerados(Integer totalGenerados) { this.totalGenerados = totalGenerados; }
-
-    public Long getGeneradoPor() { return generadoPor; }
-    public void setGeneradoPor(Long generadoPor) { this.generadoPor = generadoPor; }
-
-    public LocalDateTime getGeneradoAt() { return generadoAt; }
-    public void setGeneradoAt(LocalDateTime generadoAt) { this.generadoAt = generadoAt; }
 }

@@ -62,18 +62,8 @@ public class RequestRecoveryPasswordService {
 
         log.info("Buscando solicitudes de recuperación para usuario: {} con rol: {}", email, role);
 
-        // Validar que el usuario existe
-        var userDomain = userRepository.findByEmail(email);
-        if(userDomain.isEmpty()) {
-            log.error("Usuario no encontrado en sesión: {}", email);
-            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
-        }
-
-        // Validar rol y autorización
-        if(role == null || role.trim().isEmpty()) {
-            log.error("Rol no definido para usuario: {}", email);
-            throw new UnauthorizedAccessException("Rol de usuario no definido");
-        }
+        // Validar usuario y rol
+        validateUserAndRole(email, role);
 
         try {
             // Determinar solicitudes según jerarquía de roles
@@ -114,19 +104,9 @@ public class RequestRecoveryPasswordService {
             throw new IllegalArgumentException("El ID de la solicitud es obligatorio");
         }
 
-        // Validar que el usuario existe
-        var userDomain = userRepository.findByEmail(email);
-        if(userDomain.isEmpty()) {
-            log.error("Usuario no encontrado en sesión: {}", email);
-            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
-        }
-        BeanUser user = userMapper.toEntity(userDomain.get());
-
-        // Validar autorización
-        if(role == null || role.trim().isEmpty()) {
-            log.error("Rol no definido para usuario: {}", email);
-            throw new UnauthorizedAccessException("Rol de usuario no definido");
-        }
+        // Validar usuario y rol
+        var userDomain = validateUserAndRole(email, role);
+        BeanUser user = userMapper.toEntity(userDomain);
 
         Optional<BeanRequestRecoveryPassword> request = requestRecoveryPasswordRepository.findById(payload.getRequestId());
         if(request.isEmpty())
@@ -235,16 +215,9 @@ public class RequestRecoveryPasswordService {
         String role = SessionInformation.getRole();
         log.info("Buscando historial de solicitudes para usuario: {} con rol: {}", email, role);
 
-        // Validar que el usuario existe
-        var userDomain = userRepository.findByEmail(email);
-        if(userDomain.isEmpty()) {
-            log.error("Usuario no encontrado en sesión: {}", email);
-            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
-        }
-        if(role == null || role.trim().isEmpty()) {
-            log.error("Rol no definido para usuario: {}", email);
-            throw new UnauthorizedAccessException("Rol de usuario no definido");
-        }
+        // Validar usuario y rol
+        validateUserAndRole(email, role);
+
         try {
             switch(role.toUpperCase()) {
                 case "ADMINISTRADOR":
@@ -266,5 +239,30 @@ public class RequestRecoveryPasswordService {
             log.error("Error al buscar historial de solicitudes: {}", e.getMessage(), e);
             throw new CustomException("Error interno al buscar historial de solicitudes de recuperación");
         }
+    }
+
+    /**
+     * Valida que el usuario y rol existan y sean válidos
+     * @param email Email del usuario en sesión
+     * @param role Rol del usuario en sesión
+     * @return User del dominio si las validaciones pasan
+     * @throws UserNotFoundException si el usuario no existe
+     * @throws UnauthorizedAccessException si el rol es inválido
+     */
+    private tokai.com.mx.SIGMAV2.modules.users.domain.model.User validateUserAndRole(String email, String role) {
+        // Validar que el usuario existe
+        var userDomain = userRepository.findByEmail(email);
+        if(userDomain.isEmpty()) {
+            log.error("Usuario no encontrado en sesión: {}", email);
+            throw new UserNotFoundException("Usuario no encontrado o sesión inválida");
+        }
+
+        // Validar que el rol está definido
+        if(role == null || role.isBlank()) {
+            log.error("Rol no definido para usuario: {}", email);
+            throw new UnauthorizedAccessException("Rol de usuario no definido");
+        }
+
+        return userDomain.get();
     }
 }

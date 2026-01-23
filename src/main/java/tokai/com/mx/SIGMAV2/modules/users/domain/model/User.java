@@ -1,10 +1,11 @@
 package tokai.com.mx.SIGMAV2.modules.users.domain.model;
 
-import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * Entidad de dominio pura - Sin dependencias de frameworks externos
- */
+import java.time.LocalDateTime;
+@Getter
+@Setter
 public class User {
     private Long id;
     private String email;
@@ -39,94 +40,6 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    // Getters y Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public boolean isStatus() {
-        return status;
-    }
-
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
-    public boolean isVerified() {
-        return verified;
-    }
-
-    public void setVerified(boolean verified) {
-        this.verified = verified;
-    }
-
-    public int getAttempts() {
-        return attempts;
-    }
-
-    public void setAttempts(int attempts) {
-        this.attempts = attempts;
-    }
-
-    public LocalDateTime getLastTryAt() {
-        return lastTryAt;
-    }
-
-    public void setLastTryAt(LocalDateTime lastTryAt) {
-        this.lastTryAt = lastTryAt;
-    }
-
-    public String getVerificationCode() {
-        return verificationCode;
-    }
-
-    public void setVerificationCode(String verificationCode) {
-        this.verificationCode = verificationCode;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 
     // Métodos de dominio
     public void markAsVerified() {

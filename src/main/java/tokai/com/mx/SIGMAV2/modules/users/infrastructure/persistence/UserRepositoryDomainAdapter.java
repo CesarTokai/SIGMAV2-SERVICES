@@ -78,7 +78,9 @@ public class UserRepositoryDomainAdapter implements UserRepository {
 
     @Override
     public Page<User> findByCriteria(String email, Role role, Boolean verified, Boolean status, Pageable pageable) {
-        return jpaRepository.findByCriteria(email, role, verified, status, pageable)
+        // Convertir Role del dominio a ERole de infraestructura
+        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = role != null ? mapper.mapRoleToEntity(role) : null;
+        return jpaRepository.findByCriteria(email, eRole, verified, status, pageable)
                 .map(mapper::toDomain);
     }
 
@@ -102,7 +104,9 @@ public class UserRepositoryDomainAdapter implements UserRepository {
 
     @Override
     public List<User> findByRole(Role role) {
-        return jpaRepository.findByRole(role)
+        // Convertir Role del dominio a ERole de infraestructura
+        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = mapper.mapRoleToEntity(role);
+        return jpaRepository.findByRole(eRole)
                 .stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());

@@ -45,18 +45,7 @@ public class AdminUserController {
     public ResponseEntity<CustomResponse<AdminUserResponse>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
         log.info("Creando usuario desde panel de administración: {}", request.getEmail());
         try {
-            UserRequest userRequest = new UserRequest();
-            userRequest.setEmail(request.getEmail());
-            userRequest.setPassword(request.getPassword());
-            userRequest.setRole(request.getRole());
-            userRequest.setName(request.getName());
-            userRequest.setFirstLastName(request.getFirstLastName());
-            userRequest.setSecondLastName(request.getSecondLastName());
-            userRequest.setPhoneNumber(request.getPhoneNumber());
-            userRequest.setComments(request.getComments());
-            userRequest.setStatus(request.isStatus()); // Mapear status configurable
-            userRequest.setPreVerified(request.isPreVerified()); // Mapear pre-verificación
-
+            UserRequest userRequest = mapToUserRequest(request);
             User user = userService.register(userRequest);
 
 
@@ -434,6 +423,24 @@ public class AdminUserController {
         response.put("deletedCount", deletedCount);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Mapea AdminCreateUserRequest a UserRequest
+     */
+    private UserRequest mapToUserRequest(AdminCreateUserRequest request) {
+        UserRequest userRequest = new UserRequest();
+        userRequest.setEmail(request.getEmail());
+        userRequest.setPassword(request.getPassword());
+        userRequest.setRole(request.getRole());
+        userRequest.setName(request.getName());
+        userRequest.setFirstLastName(request.getFirstLastName());
+        userRequest.setSecondLastName(request.getSecondLastName());
+        userRequest.setPhoneNumber(request.getPhoneNumber());
+        userRequest.setComments(request.getComments());
+        userRequest.setStatus(request.isStatus());
+        userRequest.setPreVerified(request.isPreVerified());
+        return userRequest;
     }
 
     /**

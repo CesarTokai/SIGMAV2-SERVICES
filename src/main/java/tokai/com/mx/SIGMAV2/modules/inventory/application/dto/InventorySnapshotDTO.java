@@ -1,8 +1,13 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.application.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 public class InventorySnapshotDTO {
     private Long id;
     private Long productId;
@@ -11,21 +16,5 @@ public class InventorySnapshotDTO {
     private BigDecimal existQty;
     private LocalDateTime createdAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
-
-    public Long getWarehouseId() { return warehouseId; }
-    public void setWarehouseId(Long warehouseId) { this.warehouseId = warehouseId; }
-
-    public Long getPeriodId() { return periodId; }
-    public void setPeriodId(Long periodId) { this.periodId = periodId; }
-
-    public BigDecimal getExistQty() { return existQty; }
-    public void setExistQty(BigDecimal existQty) { this.existQty = existQty; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

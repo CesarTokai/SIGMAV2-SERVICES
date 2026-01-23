@@ -1,8 +1,9 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * DTO de respuesta para el conteo de marbetes pendientes de impresión
- */
+@Getter
+@Setter
 public class PendingPrintCountResponseDTO {
 
     private Long count;
@@ -18,46 +19,6 @@ public class PendingPrintCountResponseDTO {
         this.periodId = periodId;
         this.warehouseId = warehouseId;
         this.warehouseName = warehouseName;
-        this.periodName = periodName;
-    }
-
-    public Long getCount() {
-        return count;
-    }
-
-    public void setCount(Long count) {
-        this.count = count;
-    }
-
-    public Long getPeriodId() {
-        return periodId;
-    }
-
-    public void setPeriodId(Long periodId) {
-        this.periodId = periodId;
-    }
-
-    public Long getWarehouseId() {
-        return warehouseId;
-    }
-
-    public void setWarehouseId(Long warehouseId) {
-        this.warehouseId = warehouseId;
-    }
-
-    public String getWarehouseName() {
-        return warehouseName;
-    }
-
-    public void setWarehouseName(String warehouseName) {
-        this.warehouseName = warehouseName;
-    }
-
-    public String getPeriodName() {
-        return periodName;
-    }
-
-    public void setPeriodName(String periodName) {
         this.periodName = periodName;
     }
 }

@@ -93,7 +93,9 @@ public class UserRepositoryAdapter implements UserRepository {
     public Page<User> findByCriteria(String email, Role role, Boolean verified, Boolean status, Pageable pageable) {
         log.debug("Buscando usuarios por criterios: email={}, role={}, verified={}, status={}", 
                 email, role, verified, status);
-        return jpaUserRepository.findByCriteria(email, role, verified, status, pageable)
+        // Convertir Role del dominio a ERole de infraestructura
+        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = role != null ? userMapper.mapToERole(role) : null;
+        return jpaUserRepository.findByCriteria(email, eRole, verified, status, pageable)
                 .map(userMapper::toDomain);
     }
 
@@ -121,7 +123,9 @@ public class UserRepositoryAdapter implements UserRepository {
     @Override
     public List<User> findByRole(Role role) {
         log.debug("Buscando usuarios por rol: {}", role);
-        return jpaUserRepository.findByRole(role)
+        // Convertir Role del dominio a ERole de infraestructura
+        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = userMapper.mapToERole(role);
+        return jpaUserRepository.findByRole(eRole)
                 .stream()
                 .map(userMapper::toDomain)
                 .collect(Collectors.toList());

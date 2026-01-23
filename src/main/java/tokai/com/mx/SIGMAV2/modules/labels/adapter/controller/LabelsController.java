@@ -111,13 +111,20 @@ public class LabelsController {
             // Construir nombre del archivo más descriptivo
             String timestamp = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String filename = String.format("marbetes_P%d_A%d_%s.pdf",
-                dto.getPeriodId(), dto.getWarehouseId(), timestamp);
+            // Sanitizar los valores para prevenir inyección en headers
+            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
+            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
+            String filename = String.format("marbetes_P%s_A%s_%s.pdf",
+                safePeriodId, safeWarehouseId, timestamp);
 
-            // Configurar headers para descarga del PDF
+            // Configurar headers para descarga del PDF usando ContentDisposition builder (más seguro)
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                    .filename(filename)
+                    .build()
+            );
             headers.setContentLength(pdfBytes.length);
 
             log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
@@ -378,12 +385,19 @@ public class LabelsController {
 
             String timestamp = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String filename = String.format("marbetes_P%d_A%d_%s.pdf",
-                dto.getPeriodId(), dto.getWarehouseId(), timestamp);
+            // Sanitizar los valores para prevenir inyección en headers
+            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
+            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
+            String filename = String.format("marbetes_P%s_A%s_%s.pdf",
+                safePeriodId, safeWarehouseId, timestamp);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                    .filename(filename)
+                    .build()
+            );
             headers.setContentLength(pdfBytes.length);
 
             log.info("✅ Generación e impresión completada exitosamente: {} KB", pdfBytes.length / 1024);

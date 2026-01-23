@@ -38,8 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TokenExpiredException.class)
     public ResponseEntity<ApiResponse<Object>> handleTokenExpiredException(
             TokenExpiredException ex, WebRequest request) {
-        
-        ApiResponse<Object> response = ApiResponse.<Object>builder()
+        ApiResponse<Object> response = ApiResponse.builder()
                 .success(false)
                 .error(ApiResponse.ErrorDetails.builder()
                         .code(ex.getErrorCode())

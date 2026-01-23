@@ -3,8 +3,11 @@ package tokai.com.mx.SIGMAV2.modules.users.model;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
-
+@Getter
+@Setter
 @Entity
 @Table(name = "users")
 public class BeanUser {
@@ -43,96 +46,6 @@ public class BeanUser {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public ERole getRole() {
-        return role;
-    }
-
-    public void setRole(ERole role) {
-        this.role = role;
-    }
-
-    public boolean isStatus() {
-        return status;
-    }
-
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
-    public boolean isVerified() {
-        return isVerified;
-    }
-
-    public void setVerified(boolean isVerified) {
-        this.isVerified = isVerified;
-    }
-
-    public int getAttempts() {
-        return attempts;
-    }
-
-    public void setAttempts(int attempts) {
-        this.attempts = attempts;
-    }
-
-    public LocalDateTime getLastTryAt() {
-        return lastTryAt;
-    }
-
-    public void setLastTryAt(LocalDateTime lastTryAt) {
-        this.lastTryAt = lastTryAt;
-    }
-
-    public String getVerificationCode() {
-        return verificationCode;
-    }
-
-    public void setVerificationCode(String verificationCode) {
-        this.verificationCode = verificationCode;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-
-    
     @Override
     public String toString() {
         return "BeanUser [id=" + id + ", email=" + email + ", passwordHash=" + passwordHash + ", role=" + role
@@ -159,9 +72,5 @@ public class BeanUser {
 
     public BeanUser() {
     }
-
-
-
-    
 }
 

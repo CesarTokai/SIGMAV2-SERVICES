@@ -120,24 +120,8 @@ public class PersonalInformationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
         }
         
-        // Construir respuesta a partir del PersonalInformation (ya contiene email/role/status tras la llamada)
-        PersonalInformation pi = personalInfoOpt.get();
-        PersonalInformationResponse response = new PersonalInformationResponse(
-                pi.getId(),
-                pi.getUserId(),
-                pi.getName(),
-                pi.getFirstLastName(),
-                pi.getSecondLastName(),
-                pi.getPhoneNumber(),
-                pi.getImage() != null && pi.getImage().length > 0,
-                pi.getFullName(),
-                pi.getCreatedAt(),
-                pi.getUpdatedAt(),
-                pi.getEmail(),
-                pi.getRole(),
-                pi.isStatus(),
-                pi.getComments()
-        );
+        // Construir respuesta usando el método helper
+        PersonalInformationResponse response = mapToResponse(personalInfoOpt.get());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);

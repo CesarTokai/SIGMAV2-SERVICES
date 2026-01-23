@@ -1,11 +1,11 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto;
 
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * DTO de respuesta para información personal
- */
+@Getter
+@Setter
 public class PersonalInformationResponse {
     private Long id;
     private Long userId;
@@ -55,118 +55,5 @@ public class PersonalInformationResponse {
         this.comments = comments;
     }
 
-    // Getters y Setters
-    public Long getId() {
-        return id;
-    }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getFirstLastName() {
-        return firstLastName;
-    }
-
-    public void setFirstLastName(String firstLastName) {
-        this.firstLastName = firstLastName;
-    }
-
-    public String getSecondLastName() {
-        return secondLastName;
-    }
-
-    public void setSecondLastName(String secondLastName) {
-        this.secondLastName = secondLastName;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public boolean isHasImage() {
-        return hasImage;
-    }
-
-    public void setHasImage(boolean hasImage) {
-        this.hasImage = hasImage;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    @JsonProperty("created_at")
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    @JsonProperty("updated_at")
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public boolean isStatus() {
-        return status;
-    }
-
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
-    public String getComments() {
-        return comments;
-    }
-
-    public void setComments(String comments) {
-        this.comments = comments;
-    }
 }

@@ -28,7 +28,6 @@ import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInve
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -43,15 +42,8 @@ public class InventoryController {
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
     private final PeriodRepository periodRepository;
-
-    @Autowired
-    private JpaPersonalInformationRepository personalInformationRepository;
-
-    @Autowired
-    private JpaInventorySnapshotRepository jpaInventorySnapshotRepository;
-
-    @Autowired
-    private JpaProductRepository jpaProductRepository;
+    private final JpaInventorySnapshotRepository jpaInventorySnapshotRepository;
+    private final JpaProductRepository jpaProductRepository;
 
     @Autowired
     public InventoryController(
@@ -59,13 +51,17 @@ public class InventoryController {
             InventoryImportUseCase inventoryImportUseCase,
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
-            @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository
+            @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository,
+            JpaInventorySnapshotRepository jpaInventorySnapshotRepository,
+            JpaProductRepository jpaProductRepository
     ) {
         this.inventoryQueryUseCase = inventoryQueryUseCase;
         this.inventoryImportUseCase = inventoryImportUseCase;
         this.productRepository = productRepository;
         this.warehouseRepository = warehouseRepository;
         this.periodRepository = periodRepository;
+        this.jpaInventorySnapshotRepository = jpaInventorySnapshotRepository;
+        this.jpaProductRepository = jpaProductRepository;
     }
 
     // 2. Consultar stock actual

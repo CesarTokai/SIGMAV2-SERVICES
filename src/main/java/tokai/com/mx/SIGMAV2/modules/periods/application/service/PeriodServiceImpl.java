@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.periods.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -24,8 +25,9 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
     @Transactional
     public Period createPeriod(LocalDate date, String comments, BeanUser user) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMINISTRADOR"))) {
+        if (authentication == null || authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .noneMatch("ROLE_ADMINISTRADOR"::equals)) {
             throw new IllegalArgumentException("Solo el administrador puede crear periodos");
         }
 

@@ -285,27 +285,31 @@ public class UserCompleteController {
         response.setCreatedAt(user.getCreatedAt());
         response.setUpdatedAt(user.getUpdatedAt());
         
-        // Información personal
-        if (personalInfoOpt.isPresent()) {
-            PersonalInformation personalInfo = personalInfoOpt.get();
-            UserCompleteResponse.PersonalInfoData personalData = new UserCompleteResponse.PersonalInfoData();
-            
-            personalData.setPersonalInformationId(personalInfo.getId());
-            personalData.setName(personalInfo.getName());
-            personalData.setFirstLastName(personalInfo.getFirstLastName());
-            personalData.setSecondLastName(personalInfo.getSecondLastName());
-            personalData.setPhoneNumber(personalInfo.getPhoneNumber());
-            personalData.setHasImage(personalInfo.getImage() != null && personalInfo.getImage().length > 0);
-            personalData.setFullName(personalInfo.getFullName());
-            personalData.setHasCompleteInfo(personalInfo.hasCompleteBasicInfo());
-            personalData.setCreatedAt(personalInfo.getCreatedAt());
-            personalData.setUpdatedAt(personalInfo.getUpdatedAt());
-            
-            response.setPersonalInformation(personalData);
-        } else {
-            response.setPersonalInformation(null);
-        }
-        
+        // Información personal - usar map para transformar Optional directamente
+        response.setPersonalInformation(
+            personalInfoOpt.map(this::buildPersonalInfoData).orElse(null)
+        );
+
         return response;
+    }
+
+    /**
+     * Construye el objeto PersonalInfoData a partir de PersonalInformation
+     */
+    private UserCompleteResponse.PersonalInfoData buildPersonalInfoData(PersonalInformation personalInfo) {
+        UserCompleteResponse.PersonalInfoData personalData = new UserCompleteResponse.PersonalInfoData();
+
+        personalData.setPersonalInformationId(personalInfo.getId());
+        personalData.setName(personalInfo.getName());
+        personalData.setFirstLastName(personalInfo.getFirstLastName());
+        personalData.setSecondLastName(personalInfo.getSecondLastName());
+        personalData.setPhoneNumber(personalInfo.getPhoneNumber());
+        personalData.setHasImage(personalInfo.getImage() != null && personalInfo.getImage().length > 0);
+        personalData.setFullName(personalInfo.getFullName());
+        personalData.setHasCompleteInfo(personalInfo.hasCompleteBasicInfo());
+        personalData.setCreatedAt(personalInfo.getCreatedAt());
+        personalData.setUpdatedAt(personalInfo.getUpdatedAt());
+
+        return personalData;
     }
 }

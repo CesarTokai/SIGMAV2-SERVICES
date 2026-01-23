@@ -231,18 +231,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
         // CORRECCIÓN ERROR #5: Validar TODOS los marbetes ANTES de modificar cualquiera
         // Esto evita inconsistencias si se encuentra un error a mitad del proceso
-        List<String> errores = new ArrayList<>();
-
-        for (Label l : filteredLabels) {
-            // Ya filtramos por periodo y almacén arriba, pero validamos por seguridad
-            if (!l.getPeriodId().equals(periodId) || !l.getWarehouseId().equals(warehouseId)) {
-                errores.add(String.format("Folio %d no pertenece al periodo/almacén seleccionado", l.getFolio()));
-            }
-
-            if (l.getEstado() == Label.State.CANCELADO) {
-                errores.add(String.format("Folio %d está cancelado", l.getFolio()));
-            }
-        }
+        List<String> errores = validateLabelsForPrinting(filteredLabels, periodId, warehouseId);
 
         // Si hay errores, lanzar excepción SIN HABER MODIFICADO NADA
         if (!errores.isEmpty()) {
@@ -395,6 +384,30 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return allPending.stream()
             .filter(l -> l.getProductId().equals(productId))
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Valida una lista de marbetes antes de imprimirlos
+     * @param labels Lista de marbetes a validar
+     * @param periodId ID del periodo esperado
+     * @param warehouseId ID del almacén esperado
+     * @return Lista de mensajes de error. Vacía si no hay errores.
+     */
+    private List<String> validateLabelsForPrinting(List<Label> labels, Long periodId, Long warehouseId) {
+        List<String> errores = new ArrayList<>();
+
+        for (Label l : labels) {
+            // Ya filtramos por periodo y almacén arriba, pero validamos por seguridad
+            if (!l.getPeriodId().equals(periodId) || !l.getWarehouseId().equals(warehouseId)) {
+                errores.add(String.format("Folio %d no pertenece al periodo/almacén seleccionado", l.getFolio()));
+            }
+
+            if (l.getEstado() == Label.State.CANCELADO) {
+                errores.add(String.format("Folio %d está cancelado", l.getFolio()));
+            }
+        }
+
+        return errores;
     }
 }
 
