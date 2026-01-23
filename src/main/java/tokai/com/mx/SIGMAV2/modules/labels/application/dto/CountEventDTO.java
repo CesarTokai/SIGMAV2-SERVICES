@@ -1,16 +1,16 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public class CountEventDTO {
 
-    @NotNull
+    @NotNull(message = "El folio es obligatorio")
     private Long folio;
 
-    @NotNull
-    @DecimalMin("0.0")
+    @NotNull(message = "El valor del conteo es obligatorio")
+    @Positive(message = "El valor del conteo debe ser mayor a cero")
     private BigDecimal countedValue;
 
     /**

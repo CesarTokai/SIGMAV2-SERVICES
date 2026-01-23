@@ -1,6 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,8 +23,10 @@ public class UpdateCountDTO {
     private Long folio;
 
     @NotNull(message = "El valor del conteo es obligatorio")
+    @Positive(message = "El valor del conteo debe ser mayor a cero")
     private BigDecimal countedValue;
 
+    @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")
     private String observaciones;
 }
 

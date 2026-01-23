@@ -1605,8 +1605,11 @@ public class LabelServiceImpl implements LabelService {
                 if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
             }
 
-            // Si ambos conteos existen y son diferentes
-            if (conteo1 != null && conteo2 != null && conteo1.compareTo(conteo2) != 0) {
+            // Si ambos conteos existen, son mayores a cero y son diferentes
+            if (conteo1 != null && conteo2 != null
+                && conteo1.compareTo(java.math.BigDecimal.ZERO) > 0
+                && conteo2.compareTo(java.math.BigDecimal.ZERO) > 0
+                && conteo1.compareTo(conteo2) != 0) {
                 ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
                 WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
 
