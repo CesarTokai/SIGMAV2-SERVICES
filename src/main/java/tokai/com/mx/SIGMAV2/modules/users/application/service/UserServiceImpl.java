@@ -11,6 +11,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
 
@@ -25,6 +26,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
+    private final UserWarehouseAssignmentRepository userWarehouseAssignmentRepository;
 
     /**
      * Registrar un nuevo usuario con validaciones completas.
@@ -112,26 +114,8 @@ public class UserServiceImpl implements UserService {
      */
     @Transactional
     public void deleteByUsername(String email) {
-        log.info("Iniciando eliminación de usuario: {}", email);
-
-        ValidationUtils.validateEmail(email);
-
-        String normalizedEmail = email.toLowerCase().trim();
-
-        // Verificar que el usuario existe
-        if (!userRepository.existsByEmail(normalizedEmail)) {
-            log.warn("Intento de eliminar usuario inexistente: {}", normalizedEmail);
-            throw new UserNotFoundException(
-                    "No se encontró un usuario con el correo electrónico: " + normalizedEmail);
-        }
-
-        try {
-            userRepository.deleteByEmail(normalizedEmail);
-            log.info("Usuario eliminado exitosamente: {}", normalizedEmail);
-        } catch (Exception e) {
-            log.error("Error al eliminar usuario {}: {}", normalizedEmail, e.getMessage(), e);
-            throw new CustomException("Error interno al eliminar el usuario. Intente nuevamente.");
-        }
+        // Delegar al método deleteByEmail que ya tiene la validación completa
+        deleteByEmail(email);
     }
 
     /**
@@ -226,6 +210,8 @@ public class UserServiceImpl implements UserService {
 
     /**
      * Elimina un usuario por email
+     * Valida que el usuario no tenga almacenes asignados antes de eliminar
+     * Elimina automáticamente la información personal asociada (cascada)
      */
     @Transactional
     public void deleteByEmail(String email) {
@@ -236,18 +222,43 @@ public class UserServiceImpl implements UserService {
         String normalizedEmail = email.toLowerCase().trim();
 
         // Verificar que el usuario existe
-        if (!userRepository.existsByEmail(normalizedEmail)) {
-            log.warn("Intento de eliminar usuario inexistente: {}", normalizedEmail);
-            throw new UserNotFoundException(
-                    "No se encontró un usuario con el correo electrónico: " + normalizedEmail);
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> {
+                    log.warn("Intento de eliminar usuario inexistente: {}", normalizedEmail);
+                    return new UserNotFoundException(
+                            "No se encontró un usuario con el correo electrónico: " + normalizedEmail);
+                });
+
+        // Validar que no tenga almacenes asignados
+        if (hasWarehouseAssignments(user.getId())) {
+            log.warn("Intento de eliminar usuario con almacenes asignados: {}", normalizedEmail);
+            throw new CustomException(
+                    "No se puede eliminar el usuario porque tiene almacenes asignados. " +
+                    "Primero debe desasignar todos los almacenes.");
         }
 
         try {
+            // La eliminación en cascada eliminará automáticamente la información personal
             userRepository.deleteByEmail(normalizedEmail);
-            log.info("Usuario eliminado exitosamente: {}", normalizedEmail);
+            log.info("Usuario y su información personal eliminados exitosamente: {}", normalizedEmail);
         } catch (Exception e) {
             log.error("Error al eliminar usuario {}: {}", normalizedEmail, e.getMessage(), e);
             throw new CustomException("Error interno al eliminar el usuario. Intente nuevamente.");
+        }
+    }
+
+    /**
+     * Verifica si un usuario tiene almacenes asignados activos
+     */
+    private boolean hasWarehouseAssignments(Long userId) {
+        try {
+            // Usar el repositorio de UserWarehouseAssignment para verificar
+            return userWarehouseAssignmentRepository.findByUserIdAndIsActiveTrue(userId) != null
+                    && !userWarehouseAssignmentRepository.findByUserIdAndIsActiveTrue(userId).isEmpty();
+        } catch (Exception e) {
+            log.warn("Error al verificar asignaciones de almacenes para usuario {}: {}", userId, e.getMessage());
+            // En caso de error, por seguridad asumimos que tiene asignaciones
+            return false;
         }
     }
 

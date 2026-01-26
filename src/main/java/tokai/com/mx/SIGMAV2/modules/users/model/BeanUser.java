@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
 
 @Getter
 @Setter
@@ -54,6 +55,10 @@ public class BeanUser {
 
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
+
+    // Relación con PersonalInformation - Eliminación en cascada
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private BeanPersonalInformation personalInformation;
 
     @Override
     public String toString() {

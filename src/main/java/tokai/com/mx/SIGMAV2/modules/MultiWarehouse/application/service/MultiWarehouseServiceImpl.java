@@ -567,7 +567,9 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
      */
     private Map<String, Long> createMissingWarehouses(List<MultiWarehouseExistence> parsedData) {
         Map<String, Long> warehouseMap = new HashMap<>();
+        Map<String, String> warehouseNameMap = new HashMap<>(); // Mapa para almacenar nombres de almacén
 
+        // Primera pasada: normalizar claves y construir mapas de almacenes
         for (MultiWarehouseExistence data : parsedData) {
             String warehouseKeyRaw = data.getWarehouseKey(); // CVE_ALM del Excel
             if (warehouseKeyRaw == null || warehouseKeyRaw.trim().isEmpty()) {
@@ -587,8 +589,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
                 if (existing.isPresent()) {
                     warehouseMap.put(warehouseKey, existing.get().getId());
-                    // Actualizar el nombre del almacén en el objeto de datos
-                    data.setWarehouseName(existing.get().getNameWarehouse());
+                    warehouseNameMap.put(warehouseKey, existing.get().getNameWarehouse());
                 } else {
                     // Si no viene nombre en el Excel, usar la clave como nombre
                     String warehouseName;
@@ -609,8 +610,16 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
                     WarehouseEntity saved = warehouseRepository.save(newWarehouse);
                     warehouseMap.put(warehouseKey, saved.getId());
-                    data.setWarehouseName(warehouseName);
+                    warehouseNameMap.put(warehouseKey, warehouseName);
                 }
+            }
+        }
+
+        // Segunda pasada: actualizar TODOS los registros con el nombre correcto del almacén
+        for (MultiWarehouseExistence data : parsedData) {
+            String warehouseKey = data.getWarehouseKey();
+            if (warehouseKey != null && warehouseNameMap.containsKey(warehouseKey)) {
+                data.setWarehouseName(warehouseNameMap.get(warehouseKey));
             }
         }
 
