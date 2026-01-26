@@ -9,4 +9,5 @@ public class ResponseAuthDTO {
     private String email;
     private String token;
     private String role;
+    private boolean status;
 }

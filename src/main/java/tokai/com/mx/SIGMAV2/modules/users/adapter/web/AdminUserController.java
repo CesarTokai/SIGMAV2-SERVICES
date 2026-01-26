@@ -467,73 +467,11 @@ public class AdminUserController {
      * Convierte User a AdminUserResponse con información adicional
      */
     private AdminUserResponse convertToAdminUserResponse(User user) {
-        // Obtener información adicional de códigos de verificación
-        long totalCodes = verificationCodeLogRepository.countResentCodesInTimeRange(
-                user.getEmail(), LocalDateTime.now().minusYears(1));
-        
-        var lastCode = verificationCodeLogRepository.findLastActiveCodeByEmail(user.getEmail());
-
-        // Obtener comentarios de personal_information
-        String comments = null;
-        try {
-            Optional<BeanPersonalInformation> personalInfo = personalInformationRepository.findByUser_Id(user.getId());
-            comments = personalInfo.map(BeanPersonalInformation::getComments).orElse(null);
-        } catch (Exception e) {
-            log.warn("No se pudo obtener comentarios para usuario {}: {}", user.getId(), e.getMessage());
-        }
-
-        // Obtener almacenes asignados
-        List<String> assignedWarehouses = new ArrayList<>();
-        try {
-            List<Long> warehouseIds = userWarehouseAssignmentRepository.findWarehouseIdsByUserId(user.getId());
-            assignedWarehouses = warehouseIds.stream()
-                    .map(warehouseId -> {
-                        try {
-                            return warehouseRepository.findById(warehouseId)
-                                    .map(w -> w.getNameWarehouse())
-                                    .orElse("Almacén ID: " + warehouseId);
-                        } catch (Exception e) {
-                            return "Almacén ID: " + warehouseId;
-                        }
-                    })
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("No se pudieron obtener almacenes para usuario {}: {}", user.getId(), e.getMessage());
-        }
-
-        // Verificar si tiene sesión activa (token no revocado)
-        boolean isSessionActive = false;
-        try {
-            // Un usuario tiene sesión activa si ha iniciado sesión recientemente
-            // y no todos sus tokens han sido revocados
-            isSessionActive = user.getLastLoginAt() != null &&
-                             user.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24));
-        } catch (Exception e) {
-            log.warn("No se pudo verificar sesión activa para usuario {}: {}", user.getId(), e.getMessage());
-        }
-
         return AdminUserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .status(user.isStatus())
-                .verified(user.isVerified())
-                .attempts(user.getAttempts())
-                .lastTryAt(user.getLastTryAt())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .verificationCode(user.getVerificationCode())
-                .totalVerificationCodes((int) totalCodes)
-                .lastVerificationCodeSent(lastCode.map(code -> code.getCreatedAt()).orElse(null))
-                .accountLocked(user.getAttempts() >= 5)
-                // Nuevos campos
-                .comments(comments)
-                .assignedWarehouses(assignedWarehouses)
-                .isSessionActive(isSessionActive)
-                .lastActivityAt(user.getLastActivityAt())
-                .lastLoginAt(user.getLastLoginAt())
-                .lastAccountLockAt(user.getLastTryAt()) // Reutilizamos lastTryAt como último bloqueo
-                .lastPasswordChangeAt(user.getPasswordChangedAt())
                 .build();
     }
 }

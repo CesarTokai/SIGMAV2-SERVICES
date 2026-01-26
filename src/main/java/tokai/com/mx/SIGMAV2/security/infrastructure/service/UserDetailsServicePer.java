@@ -70,23 +70,27 @@ public class UserDetailsServicePer implements UserDetailsService {
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String email) {
-    tokai.com.mx.SIGMAV2.modules.users.domain.model.User domainUser = userRepository.findByEmail(email)
-        .orElseThrow(() -> new CustomException("User or password incorrect"));
-    
-    BeanUser user = securityUserAdapter.toLegacyUser(domainUser);
+        tokai.com.mx.SIGMAV2.modules.users.domain.model.User domainUser = userRepository.findByEmail(email)
+            .orElseThrow(() -> new CustomException("User or password incorrect"));
+        BeanUser user = securityUserAdapter.toLegacyUser(domainUser);
 
-    List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
-    authorityList.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().toString()));
+        // Validar si el usuario está activo antes de permitir autenticación
+        if (!user.isStatus()) {
+            throw new CustomException("El usuario está desactivado. Contacta al administrador.");
+        }
 
-    return new User(
-        user.getEmail(),
-        user.getPasswordHash(),
-        user.isVerified(),
-        true,
-        true,
-        user.isStatus(),
-        authorityList
-    );
+        List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
+        authorityList.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().toString()));
+
+        return new User(
+            user.getEmail(),
+            user.getPasswordHash(),
+            user.isVerified(),
+            true,
+            true,
+            user.isStatus(),
+            authorityList
+        );
     }
 
 
@@ -115,7 +119,7 @@ public class UserDetailsServicePer implements UserDetailsService {
                 if (user2.getLastTryAt() != null && user2.getLastTryAt().plusMinutes(5).isAfter(java.time.LocalDateTime.now())) {
                     throw new CustomException("User is blocked");
                 } else {
-                    user2.setStatus(true);
+
                     tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
                     userRepository.save(updatedDomain);
                 }
@@ -143,6 +147,11 @@ public class UserDetailsServicePer implements UserDetailsService {
                 throw new CustomException("account not verified");
             }
 
+            // Validar si el usuario está activo
+            if (!user2.isStatus()) {
+                throw new CustomException("El usuario está desactivado. Contacta al administrador.");
+            }
+
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     userDetails.getUsername(),
                     userDetails.getPassword(),
@@ -153,7 +162,6 @@ public class UserDetailsServicePer implements UserDetailsService {
             String accessToken = jwtUtils.createToken(authentication);
 
             // marcar usuario como activo y actualizar last_login_at
-            user2.setStatus(true);
             user2.setLastLoginAt(java.time.LocalDateTime.now());
             user2.setLastActivityAt(java.time.LocalDateTime.now());
             tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
@@ -176,6 +184,7 @@ public class UserDetailsServicePer implements UserDetailsService {
             response.setEmail(user2.getEmail());
             response.setToken(accessToken);
             response.setRole(user2.getRole().toString()); // Agregar el rol a la respuesta
+            response.setStatus(user2.isStatus()); // Agregar el status a la respuesta
             return response;
         } catch (Exception e) {
             // registrar auditoría de fallo en login
