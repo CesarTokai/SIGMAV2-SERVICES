@@ -57,7 +57,6 @@ public class AdminUserController {
             UserRequest userRequest = mapToUserRequest(request);
             User user = userService.register(userRequest);
 
-
             AdminUserResponse userResponse = convertToAdminUserResponse(user);
 
             CustomResponse<AdminUserResponse> response = new CustomResponse<>(
@@ -65,8 +64,20 @@ public class AdminUserController {
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
+        } catch (tokai.com.mx.SIGMAV2.shared.exception.WeakPasswordException e) {
+            log.warn("Contraseña débil para usuario {}: {}", request.getEmail(), e.getMessage());
+            CustomResponse<AdminUserResponse> errorResponse = new CustomResponse<>(
+                    null, true, HttpStatus.BAD_REQUEST.value(), e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        } catch (tokai.com.mx.SIGMAV2.shared.exception.InvalidEmailFormatException e) {
+            log.warn("Email inválido: {}", e.getMessage());
+            CustomResponse<AdminUserResponse> errorResponse = new CustomResponse<>(
+                    null, true, HttpStatus.BAD_REQUEST.value(), e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         } catch (Exception e) {
-            // Aquí capturas cualquier excepción y das retroalimentación
+            log.error("Error al crear usuario {}: {}", request.getEmail(), e.getMessage(), e);
             CustomResponse<AdminUserResponse> errorResponse = new CustomResponse<>(
                     null, true, HttpStatus.BAD_REQUEST.value(), "Error al crear usuario: " + e.getMessage()
             );

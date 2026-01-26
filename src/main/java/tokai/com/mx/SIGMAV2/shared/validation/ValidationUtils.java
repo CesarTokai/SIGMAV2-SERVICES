@@ -14,7 +14,7 @@ public class ValidationUtils {
     );
 
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
-        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&.#\\-_+=])[A-Za-z\\d@$!%*?&.#\\-_+=]{8,}$"
     );
 
     public static void validateEmail(String email) {
@@ -38,7 +38,7 @@ public class ValidationUtils {
 
         if (!PASSWORD_PATTERN.matcher(password).matches()) {
             throw new WeakPasswordException(
-                "La contraseña debe contener al menos: una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&)"
+                "La contraseña debe contener al menos: una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&.#-_+=)"
             );
         }
     }
