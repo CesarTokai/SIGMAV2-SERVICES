@@ -152,8 +152,10 @@ public class UserDetailsServicePer implements UserDetailsService {
 
             String accessToken = jwtUtils.createToken(authentication);
 
-            // marcar usuario como activo y persistir
+            // marcar usuario como activo y actualizar last_login_at
             user2.setStatus(true);
+            user2.setLastLoginAt(java.time.LocalDateTime.now());
+            user2.setLastActivityAt(java.time.LocalDateTime.now());
             tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
             userRepository.save(updatedDomain);
 

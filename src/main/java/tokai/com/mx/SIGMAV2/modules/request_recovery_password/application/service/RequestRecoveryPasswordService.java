@@ -134,6 +134,7 @@ public class RequestRecoveryPasswordService {
         String newPass = SecurityCode.generateAlphanumeric();
         String encodedPass = passwordEncoder.encode(newPass);
         userToUpdate.setPasswordHash(encodedPass);
+        userToUpdate.setPasswordChangedAt(java.time.LocalDateTime.now());
         userRepository.save(userMapper.toDomain(userToUpdate));
         request.get().setStatus(BeanRequestStatus.ACCEPTED);
         requestRecoveryPasswordRepository.save(request.get());

@@ -18,6 +18,9 @@ public class User {
     private String verificationCode;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime lastLoginAt;
+    private LocalDateTime lastActivityAt;
+    private LocalDateTime passwordChangedAt;
 
     // Constructor por defecto
     public User() {}

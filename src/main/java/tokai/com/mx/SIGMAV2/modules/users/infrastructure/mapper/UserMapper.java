@@ -16,7 +16,7 @@ public class UserMapper {
     public User toDomain(BeanUser beanUser) {
         if (beanUser == null) return null;
         
-        return new User(
+        User user = new User(
                 beanUser.getId(),
                 beanUser.getEmail(),
                 beanUser.getPasswordHash(),
@@ -29,6 +29,13 @@ public class UserMapper {
                 beanUser.getCreatedAt(),
                 beanUser.getUpdatedAt()
         );
+
+        // Agregar nuevos campos
+        user.setLastLoginAt(beanUser.getLastLoginAt());
+        user.setLastActivityAt(beanUser.getLastActivityAt());
+        user.setPasswordChangedAt(beanUser.getPasswordChangedAt());
+
+        return user;
     }
 
     /**
@@ -49,7 +56,10 @@ public class UserMapper {
         beanUser.setVerificationCode(user.getVerificationCode());
         beanUser.setCreatedAt(user.getCreatedAt());
         beanUser.setUpdatedAt(user.getUpdatedAt());
-        
+        beanUser.setLastLoginAt(user.getLastLoginAt());
+        beanUser.setLastActivityAt(user.getLastActivityAt());
+        beanUser.setPasswordChangedAt(user.getPasswordChangedAt());
+
         return beanUser;
     }
 

@@ -15,6 +15,11 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.VerificationCodeLogRepository;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.WarehouseRepository;
+import tokai.com.mx.SIGMAV2.security.infrastructure.repository.RevokedTokenRepository;
 
 import jakarta.validation.Valid;
 import tokai.com.mx.SIGMAV2.shared.response.CustomResponse;
@@ -37,6 +42,10 @@ public class AdminUserController {
     private final UserService userService;
     private final VerificationCodeService verificationCodeService;
     private final VerificationCodeLogRepository verificationCodeLogRepository;
+    private final JpaPersonalInformationRepository personalInformationRepository;
+    private final UserWarehouseAssignmentRepository userWarehouseAssignmentRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final RevokedTokenRepository revokedTokenRepository;
 
     /**
      * Crea un nuevo usuario desde el panel de administración
@@ -453,6 +462,45 @@ public class AdminUserController {
         
         var lastCode = verificationCodeLogRepository.findLastActiveCodeByEmail(user.getEmail());
 
+        // Obtener comentarios de personal_information
+        String comments = null;
+        try {
+            Optional<BeanPersonalInformation> personalInfo = personalInformationRepository.findByUser_Id(user.getId());
+            comments = personalInfo.map(BeanPersonalInformation::getComments).orElse(null);
+        } catch (Exception e) {
+            log.warn("No se pudo obtener comentarios para usuario {}: {}", user.getId(), e.getMessage());
+        }
+
+        // Obtener almacenes asignados
+        List<String> assignedWarehouses = new ArrayList<>();
+        try {
+            List<Long> warehouseIds = userWarehouseAssignmentRepository.findWarehouseIdsByUserId(user.getId());
+            assignedWarehouses = warehouseIds.stream()
+                    .map(warehouseId -> {
+                        try {
+                            return warehouseRepository.findById(warehouseId)
+                                    .map(w -> w.getNameWarehouse())
+                                    .orElse("Almacén ID: " + warehouseId);
+                        } catch (Exception e) {
+                            return "Almacén ID: " + warehouseId;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener almacenes para usuario {}: {}", user.getId(), e.getMessage());
+        }
+
+        // Verificar si tiene sesión activa (token no revocado)
+        boolean isSessionActive = false;
+        try {
+            // Un usuario tiene sesión activa si ha iniciado sesión recientemente
+            // y no todos sus tokens han sido revocados
+            isSessionActive = user.getLastLoginAt() != null &&
+                             user.getLastLoginAt().isAfter(LocalDateTime.now().minusHours(24));
+        } catch (Exception e) {
+            log.warn("No se pudo verificar sesión activa para usuario {}: {}", user.getId(), e.getMessage());
+        }
+
         return AdminUserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -466,7 +514,15 @@ public class AdminUserController {
                 .verificationCode(user.getVerificationCode())
                 .totalVerificationCodes((int) totalCodes)
                 .lastVerificationCodeSent(lastCode.map(code -> code.getCreatedAt()).orElse(null))
-                .accountLocked(user.getAttempts() >= 5) // Asumiendo 5 intentos como límite
+                .accountLocked(user.getAttempts() >= 5)
+                // Nuevos campos
+                .comments(comments)
+                .assignedWarehouses(assignedWarehouses)
+                .isSessionActive(isSessionActive)
+                .lastActivityAt(user.getLastActivityAt())
+                .lastLoginAt(user.getLastLoginAt())
+                .lastAccountLockAt(user.getLastTryAt()) // Reutilizamos lastTryAt como último bloqueo
+                .lastPasswordChangeAt(user.getPasswordChangedAt())
                 .build();
     }
 }

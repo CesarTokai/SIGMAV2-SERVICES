@@ -30,6 +30,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountE
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
 
+@SuppressWarnings("JvmTaintAnalysis")
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -23,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtAuthenticationFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.filter.JwtRevocationFilter;
+import tokai.com.mx.SIGMAV2.security.infrastructure.filter.UserActivityFilter;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.TokenRevocationService;
@@ -50,7 +51,7 @@ public class SecurityConfig {
 
     // configuration of security filter chain
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, UserActivityFilter activityFilter) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -70,6 +71,7 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(new JwtRevocationFilter(tokenRevocationService, jwtUtils), BasicAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtils, jwtBlacklistService, jpaUserRepository), BasicAuthenticationFilter.class)
+                .addFilterAfter(activityFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO para respuesta completa de usuario en operaciones de administrador
@@ -31,4 +32,13 @@ public class AdminUserResponse {
     private int totalVerificationCodes;
     private LocalDateTime lastVerificationCodeSent;
     private boolean accountLocked;
+
+    // Información de la cuenta y actividad
+    private String comments;
+    private List<String> assignedWarehouses;
+    private boolean isSessionActive;
+    private LocalDateTime lastActivityAt;
+    private LocalDateTime lastLoginAt;
+    private LocalDateTime lastAccountLockAt;
+    private LocalDateTime lastPasswordChangeAt;
 }

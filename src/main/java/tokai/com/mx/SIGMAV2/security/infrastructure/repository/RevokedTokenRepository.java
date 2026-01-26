@@ -15,6 +15,9 @@ public interface RevokedTokenRepository extends JpaRepository<RevokedToken, Long
 
     boolean existsByJti(String jti);
 
+    @Query("SELECT COUNT(r) FROM RevokedToken r WHERE r.username = :username AND r.expiresAt > :now")
+    long countByUsernameAndExpiresAtAfter(@Param("username") String username, @Param("now") Instant now);
+
     @Transactional
     @Modifying
     @Query("DELETE FROM RevokedToken r WHERE r.expiresAt < :now")
