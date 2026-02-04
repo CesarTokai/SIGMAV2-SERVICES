@@ -1,5 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -57,5 +59,21 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
      * @return Lista de asignaciones
      */
     List<UserWarehouseAssignment> findByWarehouseIdAndIsActiveTrue(Long warehouseId);
-}
 
+    /**
+     * Obtiene una página de usuarios con el conteo de almacenes activos asignados
+     * @param pageable Información de paginación
+     * @return Página de usuarios con conteo de almacenes activos
+     */
+    @Query(value = "SELECT u.userId AS userId, COUNT(u.warehouseId) AS warehousesCount " +
+                   "FROM UserWarehouseAssignment u " +
+                   "WHERE u.isActive = true " +
+                   "GROUP BY u.userId",
+           countQuery = "SELECT COUNT(DISTINCT u.userId) FROM UserWarehouseAssignment u WHERE u.isActive = true")
+    Page<UserWarehouseCountProjection> findUsersWithActiveWarehouses(Pageable pageable);
+
+    interface UserWarehouseCountProjection {
+        Long getUserId();
+        Long getWarehousesCount();
+    }
+}

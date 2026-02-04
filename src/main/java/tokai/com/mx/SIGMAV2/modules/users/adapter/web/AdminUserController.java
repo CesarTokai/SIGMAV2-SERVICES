@@ -446,6 +446,48 @@ public class AdminUserController {
     }
 
     /**
+     * Lista usuarios que tienen al menos un almacén asignado (paginado)
+     */
+    @GetMapping("/with-warehouses")
+    public ResponseEntity<Map<String, Object>> getUsersWithWarehouses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "email") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        var assignmentsPage = userWarehouseAssignmentRepository.findUsersWithActiveWarehouses(pageable);
+
+        List<UserWarehouseSummaryResponse> users = assignmentsPage.getContent().stream()
+                .map(projection -> userService.findById(projection.getUserId())
+                        .map(user -> UserWarehouseSummaryResponse.builder()
+                                .userId(user.getId())
+                                .email(user.getEmail())
+                                .role(user.getRole().name())
+                                .status(user.isStatus())
+                                .warehousesCount(projection.getWarehousesCount())
+                                .warehouseIds(userWarehouseAssignmentRepository.findWarehouseIdsByUserId(user.getId()))
+                                .build())
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", users);
+        response.put("totalElements", assignmentsPage.getTotalElements());
+        response.put("totalPages", assignmentsPage.getTotalPages());
+        response.put("currentPage", assignmentsPage.getNumber());
+        response.put("pageSize", assignmentsPage.getSize());
+        response.put("hasNext", assignmentsPage.hasNext());
+        response.put("hasPrevious", assignmentsPage.hasPrevious());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Mapea AdminCreateUserRequest a UserRequest
      */
     private UserRequest mapToUserRequest(AdminCreateUserRequest request) {
