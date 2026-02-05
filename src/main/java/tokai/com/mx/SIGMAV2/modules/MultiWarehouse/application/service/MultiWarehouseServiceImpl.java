@@ -564,6 +564,8 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
      * Si la clave es solo un número (o número decimal terminado en .0), el nombre será "Almacén <número>".
      * Si la clave es texto, el nombre será igual a la clave.
      * Se normaliza la clave para evitar valores como "55.0".
+     *
+     * OPTIMIZACIÓN: Valida la unicidad ANTES de guardar para evitar consumir IDs en fallos
      */
     private Map<String, Long> createMissingWarehouses(List<MultiWarehouseExistence> parsedData) {
         Map<String, Long> warehouseMap = new HashMap<>();
@@ -590,6 +592,7 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 if (existing.isPresent()) {
                     warehouseMap.put(warehouseKey, existing.get().getId());
                     warehouseNameMap.put(warehouseKey, existing.get().getNameWarehouse());
+                    log.debug("Almacén existente encontrado: warehouseKey={}, id={}", warehouseKey, existing.get().getId());
                 } else {
                     // Si no viene nombre en el Excel, usar la clave como nombre
                     String warehouseName;
@@ -601,16 +604,31 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                         warehouseName = warehouseKey;
                     }
 
-                    WarehouseEntity newWarehouse = new WarehouseEntity();
-                    newWarehouse.setWarehouseKey(warehouseKey);
-                    newWarehouse.setNameWarehouse(warehouseName);
-                    newWarehouse.setObservations("Este almacén no existía y fue creado en la importación el " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                    newWarehouse.setCreatedAt(LocalDateTime.now());
-                    newWarehouse.setUpdatedAt(LocalDateTime.now());
+                    // ✅ VALIDACIÓN PREVIA: Verificar que no hay conflictos ANTES de crear
+                    try {
+                        // Verificar que el nombre también sea único (considerando soft-deletes)
+                        List<WarehouseEntity> byName = warehouseRepository.findAllByNameWarehouseAndDeletedAtIsNull(warehouseName);
+                        if (!byName.isEmpty()) {
+                            log.warn("El nombre de almacén ya existe: {} (warehouseKey={}). Usando clave como nombre.", warehouseName, warehouseKey);
+                            warehouseName = warehouseKey; // Usar clave como alternativa
+                        }
 
-                    WarehouseEntity saved = warehouseRepository.save(newWarehouse);
-                    warehouseMap.put(warehouseKey, saved.getId());
-                    warehouseNameMap.put(warehouseKey, warehouseName);
+                        WarehouseEntity newWarehouse = new WarehouseEntity();
+                        newWarehouse.setWarehouseKey(warehouseKey);
+                        newWarehouse.setNameWarehouse(warehouseName);
+                        newWarehouse.setObservations("Este almacén no existía y fue creado en la importación el " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        newWarehouse.setCreatedAt(LocalDateTime.now());
+                        newWarehouse.setUpdatedAt(LocalDateTime.now());
+
+                        WarehouseEntity saved = warehouseRepository.save(newWarehouse);
+                        warehouseMap.put(warehouseKey, saved.getId());
+                        warehouseNameMap.put(warehouseKey, warehouseName);
+                        log.info("Almacén creado: warehouseKey={}, id={}, name={}", warehouseKey, saved.getId(), warehouseName);
+
+                    } catch (Exception ex) {
+                        log.error("Error creando almacén: warehouseKey={}, name={}. Error: {}", warehouseKey, warehouseName, ex.getMessage(), ex);
+                        throw new RuntimeException("Error al crear almacén " + warehouseKey + ": " + ex.getMessage(), ex);
+                    }
                 }
             }
         }
