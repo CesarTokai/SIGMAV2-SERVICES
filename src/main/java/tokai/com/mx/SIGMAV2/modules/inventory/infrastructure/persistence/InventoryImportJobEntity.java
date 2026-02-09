@@ -45,7 +45,7 @@ public class InventoryImportJobEntity {
     @Column(name = "total_rows")
     private Integer totalRows;
 
-    @Column(name = "errors_json")
+    @Column(name = "errors_json", columnDefinition = "LONGTEXT")
     private String errorsJson;
 
     @Column(name = "log_file_path")

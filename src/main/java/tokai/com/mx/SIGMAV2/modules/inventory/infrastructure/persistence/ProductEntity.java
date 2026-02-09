@@ -7,7 +7,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "products")
+@Table(name = "products", uniqueConstraints = {
+    @UniqueConstraint(columnNames = "cve_art", name = "uk_products_cve_art")
+})
 public class ProductEntity {
 
     @Id
@@ -15,7 +17,7 @@ public class ProductEntity {
     @Column(name = "id_product")
     private Long idProduct;
 
-    @Column(name = "cve_art")
+    @Column(name = "cve_art", unique = true, nullable = false)
     private String cveArt;
 
     @Column(name = "descr")

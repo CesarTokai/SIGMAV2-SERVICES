@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS inventory_import_jobs (
     id_period BIGINT,
     created_by VARCHAR(100),
     log_file_path VARCHAR(500),
-    errors_json TEXT,
+    errors_json LONGTEXT,
     checksum VARCHAR(255),
     FOREIGN KEY (id_period) REFERENCES periods(id) ON DELETE SET NULL
 );

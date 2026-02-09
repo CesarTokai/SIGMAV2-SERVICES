@@ -204,50 +204,55 @@ public class InventoryImportService implements InventoryImportUseCase {
     }
 
     private Product processProduct(InventoryImportRow row, ImportStats stats) {
-        return productRepository.findByCveArt(row.getCveArt())
-                .map(existingProduct -> {
-                    boolean changed = false;
-                    if (!existingProduct.getDescr().equals(row.getDescr())) {
-                        existingProduct.setDescr(row.getDescr());
-                        changed = true;
-                    }
-                    if (!existingProduct.getUniMed().equals(row.getUniMed())) {
-                        existingProduct.setUniMed(row.getUniMed());
-                        changed = true;
-                    }
-                    if (row.getLinProd() != null && (existingProduct.getLinProd() == null || !existingProduct.getLinProd().equals(row.getLinProd()))) {
-                        existingProduct.setLinProd(row.getLinProd());
-                        changed = true;
-                    }
-                    if (row.getStatus() != null) {
+        try {
+            return productRepository.findByCveArt(row.getCveArt())
+                    .map(existingProduct -> {
+                        boolean changed = false;
+                        if (!existingProduct.getDescr().equals(row.getDescr())) {
+                            existingProduct.setDescr(row.getDescr());
+                            changed = true;
+                        }
+                        if (!existingProduct.getUniMed().equals(row.getUniMed())) {
+                            existingProduct.setUniMed(row.getUniMed());
+                            changed = true;
+                        }
+                        if (row.getLinProd() != null && (existingProduct.getLinProd() == null || !existingProduct.getLinProd().equals(row.getLinProd()))) {
+                            existingProduct.setLinProd(row.getLinProd());
+                            changed = true;
+                        }
+                        if (row.getStatus() != null) {
+                            try {
+                                Product.Status newStatus = Product.Status.valueOf(row.getStatus().toUpperCase());
+                                if (existingProduct.getStatus() != newStatus) {
+                                    existingProduct.setStatus(newStatus);
+                                    changed = true;
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        if (changed) {
+                            return productRepository.save(existingProduct);
+                        }
+                        return existingProduct;
+                    })
+                    .orElseGet(() -> {
+                        Product p = new Product();
+                        p.setCveArt(row.getCveArt());
+                        p.setDescr(row.getDescr());
+                        p.setUniMed(row.getUniMed());
+                        p.setLinProd(row.getLinProd());
                         try {
-                            Product.Status newStatus = Product.Status.valueOf(row.getStatus().toUpperCase());
-                            if (existingProduct.getStatus() != newStatus) {
-                                existingProduct.setStatus(newStatus);
-                                changed = true;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                    if (changed) {
-                        return productRepository.save(existingProduct);
-                    }
-                    return existingProduct;
-                })
-                .orElseGet(() -> {
-                    Product p = new Product();
-                    p.setCveArt(row.getCveArt());
-                    p.setDescr(row.getDescr());
-                    p.setUniMed(row.getUniMed());
-                    p.setLinProd(row.getLinProd());
-                    try {
-                        p.setStatus(Product.Status.valueOf(row.getStatus() != null ? row.getStatus().toUpperCase() : "A"));
-                    } catch (Exception e) {
-                        p.setStatus(Product.Status.A);
-                    }
-                    p.setCreatedAt(LocalDateTime.now());
-                    stats.incrementInserted();
-                    return productRepository.save(p);
-                });
+                            p.setStatus(Product.Status.valueOf(row.getStatus() != null ? row.getStatus().toUpperCase() : "A"));
+                        } catch (Exception e) {
+                            p.setStatus(Product.Status.A);
+                        }
+                        p.setCreatedAt(LocalDateTime.now());
+                        stats.incrementInserted();
+                        return productRepository.save(p);
+                    });
+        } catch (Exception e) {
+            // Capturar errores como duplicados o constraint violations
+            throw new IllegalArgumentException("Producto " + row.getCveArt() + " - " + e.getMessage(), e);
+        }
     }
 
     // Cambia la firma y lógica de processSnapshot para no usar warehouse

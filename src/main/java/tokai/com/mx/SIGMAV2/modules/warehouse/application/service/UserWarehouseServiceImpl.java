@@ -50,14 +50,26 @@ public class UserWarehouseServiceImpl implements UserWarehouseService {
                     .filter(w -> !w.isDeleted())
                     .orElseThrow(() -> new WarehouseNotFoundException(warehouseId));
             
-            if (!userWarehouseRepository.existsByUserIdAndWarehouseIdAndWarehouseDeletedAtIsNull(userId, warehouseId)) {
-                UserWarehouseEntity assignment = new UserWarehouseEntity(userId, warehouse, assignedBy);
-                assignments.add(mapToUserWarehouseAssignment(userWarehouseRepository.save(assignment)));
-                log.info("Asignación creada: Usuario {} -> Almacén {} por {}", userId, warehouseId, assignedBy);
+            // Buscar asignación existente
+            var existingAssignment = userWarehouseRepository.findByUserIdAndWarehouseId(userId, warehouseId);
+
+            if (existingAssignment.isPresent()) {
+                // Si ya existe, solo activarla si no está activa
+                UserWarehouseEntity assignment = existingAssignment.get();
+                if (!assignment.getIsActive()) {
+                    assignment.setIsActive(true);
+                    userWarehouseRepository.save(assignment);
+                    log.info("Asignación reactivada: Usuario {} -> Almacén {}", userId, warehouseId);
+                } else {
+                    log.info("Asignación ya existe y está activa: Usuario {} -> Almacén {}", userId, warehouseId);
+                }
+                assignments.add(mapToUserWarehouseAssignment(assignment));
             } else {
-                userWarehouseRepository.findByUserIdAndWarehouseId(userId, warehouseId)
-                        .ifPresent(existing -> assignments.add(mapToUserWarehouseAssignment(existing)));
-                log.info("Asignación ya existe: Usuario {} -> Almacén {}", userId, warehouseId);
+                // Si no existe, crear nueva asignación (isActive = true por defecto)
+                UserWarehouseEntity assignment = new UserWarehouseEntity(userId, warehouse, assignedBy);
+                userWarehouseRepository.save(assignment);
+                assignments.add(mapToUserWarehouseAssignment(assignment));
+                log.info("Asignación creada: Usuario {} -> Almacén {} por {}", userId, warehouseId, assignedBy);
             }
         }
         
@@ -72,25 +84,35 @@ public class UserWarehouseServiceImpl implements UserWarehouseService {
                 .orElseThrow(() -> new WarehouseAccessDeniedException(
                     "No existe asignación entre usuario " + userId + " y almacén " + warehouseId));
 
-        if (userWarehouseRepository.countWarehousesByUserId(userId) <= 1) {
+        // Contar solo almacenes ACTIVOS
+        long activeWarehouseCount = userWarehouseRepository.findByUserIdWithActiveWarehouses(userId)
+                .stream()
+                .filter(UserWarehouseEntity::getIsActive)
+                .count();
+
+        if (activeWarehouseCount <= 1) {
             throw new IllegalStateException("No se puede revocar el último almacén asignado al usuario");
         }
         
-        userWarehouseRepository.delete(assignment);
-        log.info("Acceso revocado: Usuario {} -> Almacén {}", userId, warehouseId);
+        // Desactivar en lugar de eliminar (soft delete)
+        assignment.setIsActive(false);
+        userWarehouseRepository.save(assignment);
+        log.info("Acceso revocado (desactivado): Usuario {} -> Almacén {}", userId, warehouseId);
     }
 
     @Override
     public void revokeAllWarehouses(Long userId, Long revokedBy) {
         log.info("Revocando todos los almacenes del usuario {}", userId);
         
-        List<UserWarehouseEntity> assignments = userWarehouseRepository.findByUserIdWithActiveWarehouses(userId);
-        
-        if (!assignments.isEmpty()) {
-            userWarehouseRepository.deleteAll(assignments);
-            log.info("Revocados {} almacenes del usuario {}", assignments.size(), userId);
+        List<UserWarehouseEntity> activeAssignments = userWarehouseRepository.findByUserIdWithActiveWarehouses(userId);
+
+        if (!activeAssignments.isEmpty()) {
+            // Desactivar todos en lugar de eliminar (soft delete)
+            activeAssignments.forEach(assignment -> assignment.setIsActive(false));
+            userWarehouseRepository.saveAll(activeAssignments);
+            log.info("Revocados (desactivados) {} almacenes del usuario {}", activeAssignments.size(), userId);
         } else {
-            log.info("Usuario {} no tiene almacenes asignados", userId);
+            log.info("Usuario {} no tiene almacenes activos asignados", userId);
         }
     }
 
@@ -147,3 +169,4 @@ public class UserWarehouseServiceImpl implements UserWarehouseService {
                 .build();
     }
 }
+

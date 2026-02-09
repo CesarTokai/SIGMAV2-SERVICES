@@ -49,10 +49,14 @@ public class UserWarehouseEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
     public UserWarehouseEntity(Long userId, WarehouseEntity warehouse, Long assignedBy) {
         this.userId = userId;
         this.warehouse = warehouse;
         this.assignedBy = assignedBy;
+        this.isActive = true;
 
         // Inicializar fechas en caso de que la auditoría no esté configurada
         if (this.createdAt == null) {
