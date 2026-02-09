@@ -3,7 +3,7 @@ package tokai.com.mx.SIGMAV2.modules.warehouse.application.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
-import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.UserWarehouseRepository;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WarehouseAccessService {
 
-    private final UserWarehouseAssignmentRepository assignmentRepository;
+    private final UserWarehouseRepository userWarehouseRepository;
 
     // Roles con acceso total a todos los almacenes
     private static final List<String> ROLES_WITH_FULL_ACCESS = List.of("ADMINISTRADOR", "AUXILIAR");
@@ -41,8 +41,8 @@ public class WarehouseAccessService {
             return;
         }
 
-        // Para otros roles (ALMACENISTA, AUXILIAR_DE_CONTEO), verificar asignación
-        boolean hasAccess = assignmentRepository.existsByUserIdAndWarehouseIdAndIsActiveTrue(userId, warehouseId);
+        // Para otros roles (ALMACENISTA, AUXILIAR_DE_CONTEO), verificar asignación en user_warehouses
+        boolean hasAccess = userWarehouseRepository.existsByUserIdAndWarehouseIdAndWarehouseDeletedAtIsNull(userId, warehouseId);
 
         if (!hasAccess) {
             throw new PermissionDeniedException(
@@ -69,8 +69,11 @@ public class WarehouseAccessService {
             return null; // null indica acceso total
         }
 
-        // Para otros roles, devolver solo los almacenes asignados
-        return assignmentRepository.findWarehouseIdsByUserId(userId);
+        // Para otros roles, devolver solo los almacenes asignados activos
+        return userWarehouseRepository.findByUserIdWithActiveWarehouses(userId)
+                .stream()
+                .map(uw -> uw.getWarehouse().getId())
+                .toList();
     }
 
     /**

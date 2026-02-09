@@ -66,22 +66,19 @@ public class RequestRecoveryPasswordService {
         validateUserAndRole(email, role);
 
         try {
-            // Determinar solicitudes según jerarquía de roles
-            switch(role.toUpperCase()) {
-                case "ADMINISTRADOR":
-                    return requestRecoveryPasswordRepository.getRequestByRole(
-                            ERole.ALMACENISTA, BeanRequestStatus.PENDING, pageable);
-                case "ALMACENISTA":
-                    return requestRecoveryPasswordRepository.getRequestByRole(
-                            ERole.AUXILIAR, BeanRequestStatus.PENDING, pageable);
-                case "AUXILIAR":
-                    return requestRecoveryPasswordRepository.getRequestByRole(
-                            ERole.AUXILIAR_DE_CONTEO, BeanRequestStatus.PENDING, pageable);
-                default:
-                    log.warn("Rol sin permisos para ver solicitudes: {}", role);
-                    throw new UnauthorizedAccessException(
-                            "No tienes permisos para ver solicitudes de recuperación de contraseña");
+            // Solo ADMINISTRADOR puede consultar solicitudes de recuperación de contraseña
+            if(!role.toUpperCase().equals("ADMINISTRADOR")) {
+                log.warn("Rol {} sin permisos para ver solicitudes de recuperación", role);
+                throw new UnauthorizedAccessException(
+                        "Solo los administradores pueden consultar solicitudes de recuperación de contraseña");
             }
+
+            // ADMINISTRADOR ve todas las solicitudes pendientes de todos los usuarios
+            return requestRecoveryPasswordRepository.findByStatus(BeanRequestStatus.PENDING, pageable);
+
+        } catch (UnauthorizedAccessException e) {
+            log.error("Acceso no autorizado: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error al buscar solicitudes: {}", e.getMessage(), e);
             throw new CustomException("Error interno al buscar solicitudes de recuperación");
@@ -94,6 +91,13 @@ public class RequestRecoveryPasswordService {
         String role = SessionInformation.getRole();
 
         log.info("Completando solicitud de recuperación por usuario: {}", email);
+
+        // Solo ADMINISTRADOR puede completar solicitudes de recuperación
+        if(!role.toUpperCase().equals("ADMINISTRADOR")) {
+            log.warn("Rol {} sin permisos para completar solicitudes de recuperación", role);
+            throw new UnauthorizedAccessException(
+                    "Solo los administradores pueden completar solicitudes de recuperación de contraseña");
+        }
 
         // Validaciones de entrada
         if(payload == null) {
@@ -118,15 +122,6 @@ public class RequestRecoveryPasswordService {
         if(request.get().getStatus() == BeanRequestStatus.REJECTED)
             throw new CustomException("The request was rejected by the user");
 
-        // Validación de rol
-        if(!role.equals("ADMINISTRADOR")){
-            if(!user.getRole().equals(request.get().getUser().getRole()))
-                throw new CustomException("Something went wrong");
-        }else{
-            if(!request.get().getUser().getRole().equals(ERole.ALMACENISTA))
-                throw new CustomException("Something went wrong");
-        }
-
         BeanUser userToUpdate = request.get().getUser();
         if (!userToUpdate.isVerified() || !userToUpdate.isStatus()) {
             throw new CustomException("The account is either not verified or blocked");
@@ -147,6 +142,15 @@ public class RequestRecoveryPasswordService {
         String email = SessionInformation.getUserName();
         String role = SessionInformation.getRole();
 
+        log.info("Rechazando solicitud de recuperación por usuario: {}", email);
+
+        // Solo ADMINISTRADOR puede rechazar solicitudes de recuperación
+        if(!role.toUpperCase().equals("ADMINISTRADOR")) {
+            log.warn("Rol {} sin permisos para rechazar solicitudes de recuperación", role);
+            throw new UnauthorizedAccessException(
+                    "Solo los administradores pueden rechazar solicitudes de recuperación de contraseña");
+        }
+
         var userDomain = userRepository.findByEmail(email);
         if(userDomain.isEmpty())
             throw new CustomException("Something went wrong");
@@ -164,14 +168,6 @@ public class RequestRecoveryPasswordService {
 
         if(request.get().getStatus() == BeanRequestStatus.REJECTED)
             throw new CustomException("The request was rejected by the user");
-
-        if(!role.equals("ADMINISTRADOR")){
-            if(!user.getRole().equals(request.get().getUser().getRole()))
-                throw new CustomException("Something went wrong");
-        }else{
-            if(!request.get().getUser().getRole().equals(ERole.ALMACENISTA))
-                throw new CustomException("Something went wrong");
-        }
 
         request.get().setStatus(BeanRequestStatus.REJECTED);
         requestRecoveryPasswordRepository.save(request.get());
@@ -220,22 +216,20 @@ public class RequestRecoveryPasswordService {
         validateUserAndRole(email, role);
 
         try {
-            switch(role.toUpperCase()) {
-                case "ADMINISTRADOR":
-                    // Ver historial de solicitudes de ALMACENISTA aceptadas y rechazadas
-                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
-                            ERole.ALMACENISTA, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
-                case "ALMACENISTA":
-                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
-                            ERole.AUXILIAR, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
-                case "AUXILIAR":
-                    return requestRecoveryPasswordRepository.getRequestByRoleAndStatuses(
-                            ERole.AUXILIAR_DE_CONTEO, List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
-                default:
-                    log.warn("Rol sin permisos para ver historial: {}", role);
-                    throw new UnauthorizedAccessException(
-                            "No tienes permisos para ver el historial de solicitudes de recuperación de contraseña");
+            // Solo ADMINISTRADOR puede ver historial de recuperación de contraseña
+            if(!role.toUpperCase().equals("ADMINISTRADOR")) {
+                log.warn("Rol {} sin permisos para ver historial de recuperación", role);
+                throw new UnauthorizedAccessException(
+                        "Solo los administradores pueden consultar el historial de recuperación de contraseña");
             }
+
+            // ADMINISTRADOR ve todo el historial de solicitudes aceptadas y rechazadas de todos los usuarios
+            return requestRecoveryPasswordRepository.findByStatuses(
+                    List.of(BeanRequestStatus.ACCEPTED, BeanRequestStatus.REJECTED), pageable);
+
+        } catch (UnauthorizedAccessException e) {
+            log.error("Acceso no autorizado: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error al buscar historial de solicitudes: {}", e.getMessage(), e);
             throw new CustomException("Error interno al buscar historial de solicitudes de recuperación");
@@ -267,3 +261,4 @@ public class RequestRecoveryPasswordService {
         return userDomain.get();
     }
 }
+
