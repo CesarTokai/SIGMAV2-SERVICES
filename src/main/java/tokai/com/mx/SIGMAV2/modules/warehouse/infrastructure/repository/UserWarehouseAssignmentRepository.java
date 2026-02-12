@@ -72,6 +72,17 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
            countQuery = "SELECT COUNT(DISTINCT u.userId) FROM UserWarehouseAssignment u WHERE u.isActive = true")
     Page<UserWarehouseCountProjection> findUsersWithActiveWarehouses(Pageable pageable);
 
+    /**
+     * Obtiene una página de usuarios con el conteo de almacenes asignados (sin importar si están activos)
+     * @param pageable Información de paginación
+     * @return Página de usuarios con conteo de almacenes
+     */
+    @Query(value = "SELECT u.userId AS userId, COUNT(u.warehouseId) AS warehousesCount " +
+                   "FROM UserWarehouseAssignment u " +
+                   "GROUP BY u.userId",
+           countQuery = "SELECT COUNT(DISTINCT u.userId) FROM UserWarehouseAssignment u")
+    Page<UserWarehouseCountProjection> findUsersWithWarehouses(Pageable pageable);
+
     interface UserWarehouseCountProjection {
         Long getUserId();
         Long getWarehousesCount();

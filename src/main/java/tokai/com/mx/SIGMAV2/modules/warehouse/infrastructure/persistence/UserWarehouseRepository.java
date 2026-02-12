@@ -1,5 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,4 +47,17 @@ public interface UserWarehouseRepository extends JpaRepository<UserWarehouseEnti
 
     @Query("SELECT COUNT(w) > 0 FROM WarehouseEntity w WHERE LOWER(w.nameWarehouse) = LOWER(:name) AND w.id != :id AND w.deletedAt IS NULL")
     boolean existsByNameExcludingId(@Param("name") String name, @Param("id") Long id);
+
+    @Query(value = "SELECT uw.userId AS userId, COUNT(uw.warehouse.id) AS warehousesCount " +
+                   "FROM UserWarehouseEntity uw " +
+                   "GROUP BY uw.userId",
+           countQuery = "SELECT COUNT(DISTINCT uw.userId) FROM UserWarehouseEntity uw")
+    Page<UserWarehouseCountProjection> findUsersWithWarehouses(Pageable pageable);
+
+    interface UserWarehouseCountProjection {
+        Long getUserId();
+        Long getWarehousesCount();
+    }
 }
+
+

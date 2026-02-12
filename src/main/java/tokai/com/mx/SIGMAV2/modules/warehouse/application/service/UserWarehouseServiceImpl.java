@@ -84,20 +84,9 @@ public class UserWarehouseServiceImpl implements UserWarehouseService {
                 .orElseThrow(() -> new WarehouseAccessDeniedException(
                     "No existe asignación entre usuario " + userId + " y almacén " + warehouseId));
 
-        // Contar solo almacenes ACTIVOS
-        long activeWarehouseCount = userWarehouseRepository.findByUserIdWithActiveWarehouses(userId)
-                .stream()
-                .filter(UserWarehouseEntity::getIsActive)
-                .count();
-
-        if (activeWarehouseCount <= 1) {
-            throw new IllegalStateException("No se puede revocar el último almacén asignado al usuario");
-        }
-        
-        // Desactivar en lugar de eliminar (soft delete)
-        assignment.setIsActive(false);
-        userWarehouseRepository.save(assignment);
-        log.info("Acceso revocado (desactivado): Usuario {} -> Almacén {}", userId, warehouseId);
+        // Eliminar la asignación completamente (hard delete)
+        userWarehouseRepository.delete(assignment);
+        log.info("Acceso revocado (eliminado): Usuario {} -> Almacén {}", userId, warehouseId);
     }
 
     @Override

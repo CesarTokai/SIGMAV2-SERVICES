@@ -455,7 +455,14 @@ public class AdminUserController {
             @RequestParam(defaultValue = "email") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
 
-        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+        // Validar que sortBy sea un campo válido en UserWarehouseAssignment
+        // Solo permite: userId, warehousesCount
+        String validSortBy = "userId";
+        if (sortBy != null && (sortBy.equals("warehousesCount") || sortBy.equals("userId"))) {
+            validSortBy = sortBy;
+        }
+
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, validSortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
 
         var assignmentsPage = userWarehouseAssignmentRepository.findUsersWithActiveWarehouses(pageable);

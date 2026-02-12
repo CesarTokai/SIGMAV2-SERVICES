@@ -22,6 +22,7 @@ import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.UserWarehouseAssignme
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.UserWarehouseService;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.WarehouseService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.UserWarehouseRepository;
 
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +47,7 @@ public class MainWarehouseController {
     private final UserWarehouseService userWarehouseService;
     private final UserService userService;
     private final WarehouseAccessValidator accessValidator;
+    private final UserWarehouseRepository userWarehouseRepository;
 
     // ============ CRUD DE ALMACENES ============
 
@@ -374,6 +376,80 @@ public class MainWarehouseController {
         } catch (Exception e) {
             log.error("Error al obtener mis almacenes: {}", e.getMessage(), e);
             return handleError("Error interno al obtener los almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener usuarios con almacenes asignados (para UI de asignación)
+     */
+    @GetMapping("/users-with-assignments")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> getUsersWithAssignments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "userId") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+
+        log.info("Obteniendo usuarios con almacenes asignados - page: {}, size: {}", page, size);
+
+        try {
+            // Validar que sortBy sea un campo válido
+            String validSortBy = "userId";
+            if (sortBy != null && (sortBy.equals("warehousesCount") || sortBy.equals("userId"))) {
+                validSortBy = sortBy;
+            }
+
+            Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, validSortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            // Obtener página de usuarios con almacenes asignados desde user_warehouses
+            var assignmentsPage = userWarehouseRepository.findUsersWithWarehouses(pageable);
+
+            List<Map<String, Object>> users = assignmentsPage.getContent().stream()
+                    .map(projection -> {
+                        Map<String, Object> userMap = new HashMap<>();
+                        userMap.put("userId", projection.getUserId());
+                        userMap.put("warehousesCount", projection.getWarehousesCount());
+
+                        // Obtener IDs de almacenes del usuario
+                        List<Long> warehouseIds = userWarehouseRepository.findByUserIdWithActiveWarehouses(projection.getUserId())
+                                .stream()
+                                .map(uw -> uw.getWarehouse().getId())
+                                .collect(Collectors.toList());
+                        userMap.put("warehouseIds", warehouseIds);
+
+                        // Obtener información del usuario si está disponible
+                        userService.findById(projection.getUserId()).ifPresent(user -> {
+                            userMap.put("email", user.getEmail());
+                            userMap.put("role", user.getRole().name());
+                            userMap.put("status", user.isStatus());
+                        });
+
+                        return userMap;
+                    })
+                    .collect(Collectors.toList());
+
+            // Si no hay resultados, hacer un log informativo
+            if (assignmentsPage.getTotalElements() == 0) {
+                log.warn("No se encontraron usuarios con almacenes asignados. " +
+                        "Verifique que existan registros en la tabla user_warehouses");
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", users);
+            response.put("totalElements", assignmentsPage.getTotalElements());
+            response.put("totalPages", assignmentsPage.getTotalPages());
+            response.put("currentPage", assignmentsPage.getNumber());
+            response.put("pageSize", assignmentsPage.getSize());
+            response.put("hasNext", assignmentsPage.hasNext());
+            response.put("hasPrevious", assignmentsPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error al obtener usuarios con almacenes asignados: {}", e.getMessage(), e);
+            return handleError("Error interno al obtener usuarios", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

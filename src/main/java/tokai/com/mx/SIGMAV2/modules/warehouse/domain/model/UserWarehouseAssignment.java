@@ -23,11 +23,11 @@ import java.time.LocalDateTime;
 public class UserWarehouseAssignment {
 
     @Id
-    @Column(name = "id_user", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @Id
-    @Column(name = "id_warehouse", nullable = false)
+    @Column(name = "warehouse_id", nullable = false)
     private Long warehouseId;
 
     @Column(name = "assigned_at", nullable = false)
@@ -38,6 +38,12 @@ public class UserWarehouseAssignment {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     /**
      * Clase para clave primaria compuesta
