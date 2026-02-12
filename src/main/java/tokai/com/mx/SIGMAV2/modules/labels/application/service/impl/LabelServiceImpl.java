@@ -309,7 +309,10 @@ public class LabelServiceImpl implements LabelService {
         }
 
         // Validar acceso al almacén del marbete
-        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        // NOTA: AUXILIAR_DE_CONTEO puede registrar conteos sin restricción de almacén
+        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        }
 
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new InvalidLabelStateException(
@@ -396,7 +399,10 @@ public class LabelServiceImpl implements LabelService {
         }
 
         // Validar acceso al almacén del marbete
-        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        // NOTA: AUXILIAR_DE_CONTEO puede registrar conteos sin restricción de almacén
+        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        }
 
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new InvalidLabelStateException(
@@ -459,7 +465,10 @@ public class LabelServiceImpl implements LabelService {
         Label label = optLabel.get();
 
         // Validar acceso al almacén del marbete
-        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        // NOTA: AUXILIAR_DE_CONTEO puede actualizar conteos sin restricción de almacén
+        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        }
 
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
@@ -523,8 +532,11 @@ public class LabelServiceImpl implements LabelService {
                 label.getProductId(), label.getWarehouseId(), label.getEstado());
 
             // Validar acceso al almacén del marbete
+            // NOTA: AUXILIAR_DE_CONTEO puede actualizar conteos sin restricción de almacén
             log.debug("Validando acceso al almacén {}", label.getWarehouseId());
-            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+            if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+                warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+            }
 
             if (label.getEstado() == Label.State.CANCELADO) {
                 log.error("❌ Marbete está CANCELADO");
@@ -1224,14 +1236,9 @@ public class LabelServiceImpl implements LabelService {
         // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
 
-        // Buscar el marbete por folio
+        // Buscar el marbete por folio (sin importar periodo/almacen)
         Label label = jpaLabelRepository.findById(folio)
             .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
-
-        // Validar que pertenece al periodo y almacén especificado
-        if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
-            throw new InvalidLabelStateException("El marbete no pertenece al periodo/almacén especificado");
-        }
 
         // Obtener información del producto
         ProductEntity product = productRepository.findById(label.getProductId())
