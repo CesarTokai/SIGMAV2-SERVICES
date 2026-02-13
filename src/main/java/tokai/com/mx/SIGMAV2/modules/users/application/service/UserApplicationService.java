@@ -536,19 +536,26 @@ public class UserApplicationService implements UserService {
     @Override
     @Transactional
     public User toggleUserStatus(Long userId) {
-        log.info("Cambiando estado del usuario ID: {}", userId);
-        
+        log.info("🔄 TOGGLE STATUS - Iniciando cambio de estado para usuario ID: {}", userId);
+
         Optional<User> optionalUser = userRepository.findById(userId);
         if (optionalUser.isEmpty()) {
             throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
         }
         
         User user = optionalUser.get();
+        log.info("👤 Usuario encontrado: {}, Status ACTUAL: {}", user.getEmail(), user.isStatus());
+
         boolean newStatus = !user.isStatus();
+        log.info("🔄 Cambiando status de {} a {}", user.isStatus(), newStatus);
+
         user.setStatus(newStatus);
         user.setUpdatedAt(LocalDateTime.now());
         
+        log.info("💾 Guardando usuario con nuevo status: {}", newStatus);
         User updatedUser = userRepository.save(user);
+        log.info("✅ Usuario guardado. Status NUEVO en retorno: {}", updatedUser.isStatus());
+
         log.info("Estado del usuario ID: {} cambiado a {}", userId, newStatus ? "ACTIVO" : "INACTIVO");
         
         return updatedUser;

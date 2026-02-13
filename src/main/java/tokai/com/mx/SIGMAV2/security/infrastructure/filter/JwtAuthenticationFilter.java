@@ -137,11 +137,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Optional<BeanUser> maybe = jpaUserRepository.findByEmail(username);
                 if (maybe.isPresent()) {
                     BeanUser beanUser = maybe.get();
+                    log.warn("🔍 VALIDACIÓN DE STATUS - Usuario: {}, Status en BD: {}, Activo: {}",
+                             username, beanUser.isStatus(), beanUser.isStatus() ? "SÍ" : "NO");
                     if (!beanUser.isStatus()) {
                         // Usuario inactivo: rechazar con 403
+                        log.warn("❌ USUARIO DESACTIVADO - Rechazando acceso para: {}", username);
                         sendForbiddenResponse(response, "El usuario se encuentra inactivo");
                         return;
                     }
+                    log.warn("✅ Usuario activo - Permitiendo acceso");
+                } else {
+                    log.warn("⚠️  Usuario {} no encontrado en BD", username);
                 }
             }
 

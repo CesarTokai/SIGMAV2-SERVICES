@@ -106,6 +106,11 @@ public class UserDetailsServicePer implements UserDetailsService {
             tokai.com.mx.SIGMAV2.modules.users.domain.model.User domainUser2 = userRepository.findByEmail(authRequest.getEmail()).orElseThrow(() -> new CustomException("User or password incorrect"));
             BeanUser user2 = securityUserAdapter.toLegacyUser(domainUser2);
 
+            // VALIDAR SI EL USUARIO ESTÁ ACTIVO - PRIMERO ANTES DE CUALQUIER OTRA COSA
+            if (!user2.isStatus()) {
+                throw new CustomException("El usuario está desactivado. Contacta al administrador.");
+            }
+
             // Check if account is not verified
             if (!user2.isVerified()) {
                 if (!passwordEncoder.matches(authRequest.getPassword(), user2.getPasswordHash())) {
@@ -147,10 +152,6 @@ public class UserDetailsServicePer implements UserDetailsService {
                 throw new CustomException("account not verified");
             }
 
-            // Validar si el usuario está activo
-            if (!user2.isStatus()) {
-                throw new CustomException("El usuario está desactivado. Contacta al administrador.");
-            }
 
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     userDetails.getUsername(),

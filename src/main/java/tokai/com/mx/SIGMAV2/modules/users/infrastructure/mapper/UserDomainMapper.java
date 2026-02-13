@@ -18,7 +18,7 @@ public class UserDomainMapper {
     public User toDomain(BeanUser entity) {
         if (entity == null) return null;
         
-        return new User(
+        User user = new User(
                 entity.getId(),
                 entity.getEmail(),
                 entity.getPasswordHash(),
@@ -31,6 +31,13 @@ public class UserDomainMapper {
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
+
+        // Mapear campos de auditoría
+        user.setLastLoginAt(entity.getLastLoginAt());
+        user.setLastActivityAt(entity.getLastActivityAt());
+        user.setPasswordChangedAt(entity.getPasswordChangedAt());
+
+        return user;
     }
 
     /**
@@ -51,7 +58,10 @@ public class UserDomainMapper {
         entity.setVerificationCode(domain.getVerificationCode());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
-        
+        entity.setLastLoginAt(domain.getLastLoginAt());
+        entity.setLastActivityAt(domain.getLastActivityAt());
+        entity.setPasswordChangedAt(domain.getPasswordChangedAt());
+
         return entity;
     }
 

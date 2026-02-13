@@ -32,12 +32,21 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     public User save(User user) {
-        log.debug("Guardando usuario: {}", user.getEmail());
+        log.debug("💾 Guardando usuario: {}", user.getEmail());
+        log.info("📝 Usuario ANTES de mapear - Status: {}, Email: {}", user.isStatus(), user.getEmail());
+
         BeanUser beanUser = userMapper.toBean(user);
+        log.info("🔄 Usuario DESPUÉS de mapear a BeanUser - Status: {}, Email: {}", beanUser.isStatus(), beanUser.getEmail());
+
         // Usar saveAndFlush para forzar que JPA envíe el UPDATE/INSERT inmediatamente
         BeanUser savedBeanUser = jpaUserRepository.saveAndFlush(beanUser);
-        log.debug("Usuario guardado: id={}, email={}, verificationCode={}", savedBeanUser.getId(), savedBeanUser.getEmail(), savedBeanUser.getVerificationCode());
-        return userMapper.toDomain(savedBeanUser);
+        log.info("✅ Usuario GUARDADO EN BD - Status: {}, Email: {}", savedBeanUser.isStatus(), savedBeanUser.getEmail());
+
+        User returnedUser = userMapper.toDomain(savedBeanUser);
+        log.info("🎯 Usuario EN RETORNO - Status: {}, Email: {}", returnedUser.isStatus(), returnedUser.getEmail());
+        log.debug("Usuario guardado: id={}, email={}, status={}", savedBeanUser.getId(), savedBeanUser.getEmail(), savedBeanUser.isStatus());
+
+        return returnedUser;
     }
 
     @Override
