@@ -162,10 +162,18 @@ public class UserDetailsServicePer implements UserDetailsService {
             String accessToken = jwtUtils.createToken(authentication);
 
             // marcar usuario como activo y actualizar last_login_at
-            user2.setLastLoginAt(java.time.LocalDateTime.now());
-            user2.setLastActivityAt(java.time.LocalDateTime.now());
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            user2.setLastLoginAt(now);
+            user2.setLastActivityAt(now);
+
+            log.info("🔐 LOGIN EXITOSO - Usuario: {} (ID: {})", user2.getEmail(), user2.getId());
+            log.info("⏰ Estableciendo lastLoginAt a: {}", now);
+            log.info("⏰ Estableciendo lastActivityAt a: {}", now);
+
             tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
             userRepository.save(updatedDomain);
+
+            log.info("💾 Usuario guardado en BD - lastLoginAt actualizado a: {}", now);
 
             // registrar auditoría de login exitoso
             try {

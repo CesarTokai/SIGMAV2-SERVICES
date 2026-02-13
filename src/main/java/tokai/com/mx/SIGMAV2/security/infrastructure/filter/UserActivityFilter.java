@@ -54,12 +54,24 @@ public class UserActivityFilter extends OncePerRequestFilter {
 
     private void updateUserActivity(String email) {
         try {
-            userRepository.findByEmail(email).ifPresent(user -> {
-                user.setLastActivityAt(LocalDateTime.now());
-                userRepository.save(user);
-            });
+            log.info("🔄 Intentando actualizar actividad para usuario: {}", email);
+
+            userRepository.findByEmail(email).ifPresentOrElse(
+                user -> {
+                    log.info("✅ Usuario encontrado: {} (ID: {})", email, user.getId());
+                    LocalDateTime now = LocalDateTime.now();
+                    user.setLastActivityAt(now);
+                    log.info("⏰ Estableciendo lastActivityAt a: {}", now);
+
+                    userRepository.save(user);
+                    log.info("💾 Usuario guardado exitosamente: {} - lastActivityAt actualizado a: {}", email, now);
+                },
+                () -> {
+                    log.warn("❌ Usuario NO encontrado en BD: {}", email);
+                }
+            );
         } catch (Exception e) {
-            log.debug("No se pudo actualizar actividad para {}: {}", email, e.getMessage());
+            log.error("❌ Error al actualizar actividad para {}: {}", email, e.getMessage(), e);
         }
     }
 }

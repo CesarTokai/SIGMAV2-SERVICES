@@ -31,7 +31,10 @@ public class SecurityUserAdapter {
         beanUser.setVerificationCode(domainUser.getVerificationCode());
         beanUser.setCreatedAt(domainUser.getCreatedAt());
         beanUser.setUpdatedAt(domainUser.getUpdatedAt());
-        
+        beanUser.setLastLoginAt(domainUser.getLastLoginAt());
+        beanUser.setLastActivityAt(domainUser.getLastActivityAt());
+        beanUser.setPasswordChangedAt(domainUser.getPasswordChangedAt());
+
         return beanUser;
     }
 
@@ -41,7 +44,7 @@ public class SecurityUserAdapter {
     public User toDomainUser(BeanUser beanUser) {
         if (beanUser == null) return null;
         
-        return new User(
+        User user = new User(
                 beanUser.getId(),
                 beanUser.getEmail(),
                 beanUser.getPasswordHash(),
@@ -54,6 +57,13 @@ public class SecurityUserAdapter {
                 beanUser.getCreatedAt(),
                 beanUser.getUpdatedAt()
         );
+
+        // Mapear campos adicionales que no están en el constructor
+        user.setLastLoginAt(beanUser.getLastLoginAt());
+        user.setLastActivityAt(beanUser.getLastActivityAt());
+        user.setPasswordChangedAt(beanUser.getPasswordChangedAt());
+
+        return user;
     }
 
     private ERole mapRoleToLegacy(Role domainRole) {
