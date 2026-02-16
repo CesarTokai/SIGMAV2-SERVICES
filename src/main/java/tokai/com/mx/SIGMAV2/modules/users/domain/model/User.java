@@ -21,6 +21,7 @@ public class User {
     private LocalDateTime lastLoginAt;
     private LocalDateTime lastActivityAt;
     private LocalDateTime passwordChangedAt;
+    private LocalDateTime lastBlockedAt;
 
     // Constructor por defecto
     public User() {}

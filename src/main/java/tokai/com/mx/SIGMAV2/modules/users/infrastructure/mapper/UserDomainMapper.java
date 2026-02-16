@@ -36,6 +36,7 @@ public class UserDomainMapper {
         user.setLastLoginAt(entity.getLastLoginAt());
         user.setLastActivityAt(entity.getLastActivityAt());
         user.setPasswordChangedAt(entity.getPasswordChangedAt());
+        user.setLastBlockedAt(entity.getLastBlockedAt());
 
         return user;
     }
@@ -61,6 +62,7 @@ public class UserDomainMapper {
         entity.setLastLoginAt(domain.getLastLoginAt());
         entity.setLastActivityAt(domain.getLastActivityAt());
         entity.setPasswordChangedAt(domain.getPasswordChangedAt());
+        entity.setLastBlockedAt(domain.getLastBlockedAt());
 
         return entity;
     }

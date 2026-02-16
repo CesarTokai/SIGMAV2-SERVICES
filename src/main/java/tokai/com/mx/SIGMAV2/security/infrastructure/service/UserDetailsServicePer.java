@@ -20,6 +20,8 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanR
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaPasswordResetAttemptRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanPasswordResetAttempt;
 import tokai.com.mx.SIGMAV2.security.infrastructure.adapter.SecurityUserAdapter;
 import tokai.com.mx.SIGMAV2.security.SecurityCode;
 import tokai.com.mx.SIGMAV2.security.infrastructure.dto.RequestAuthDTO;
@@ -40,6 +42,8 @@ import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tokai.com.mx.SIGMAV2.modules.users.application.service.UserActivityLogService;
+
 @Service
 @Transactional
 public class UserDetailsServicePer implements UserDetailsService {
@@ -50,13 +54,15 @@ public class UserDetailsServicePer implements UserDetailsService {
     final IRequestRecoveryPassword recoveryPasswordRepository;
     final SecurityUserAdapter securityUserAdapter;
     final AuditService auditService;
+    final JpaPasswordResetAttemptRepository passwordResetAttemptRepository;
+    final UserActivityLogService activityLogService;
 
     @Value("${spring.datasource.url:unknown}")
     private String datasourceUrl;
 
     private static final Logger log = LoggerFactory.getLogger(UserDetailsServicePer.class);
 
-    public UserDetailsServicePer(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils, MailSenderImpl mailService, IRequestRecoveryPassword recoveryPasswordRepository, SecurityUserAdapter securityUserAdapter, AuditService auditService) {
+    public UserDetailsServicePer(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils, MailSenderImpl mailService, IRequestRecoveryPassword recoveryPasswordRepository, SecurityUserAdapter securityUserAdapter, AuditService auditService, JpaPasswordResetAttemptRepository passwordResetAttemptRepository, UserActivityLogService activityLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
@@ -64,6 +70,8 @@ public class UserDetailsServicePer implements UserDetailsService {
         this.recoveryPasswordRepository = recoveryPasswordRepository;
         this.securityUserAdapter = securityUserAdapter;
         this.auditService = auditService;
+        this.passwordResetAttemptRepository = passwordResetAttemptRepository;
+        this.activityLogService = activityLogService;
     }
 
 
@@ -133,14 +141,28 @@ public class UserDetailsServicePer implements UserDetailsService {
             // validate password
             if (!passwordEncoder.matches(authRequest.getPassword(), userDetails.getPassword())) {
                 user2.setAttempts(user2.getAttempts() + 1);
+                boolean bloqueado = false;
                 if (user2.getAttempts() == 3) {
                     user2.setStatus(false);
                     user2.setLastTryAt(java.time.LocalDateTime.now());
+                    user2.setLastBlockedAt(java.time.LocalDateTime.now());
                     user2.setAttempts(0);
+                    bloqueado = true;
                 }
                 user2.setLastTryAt(java.time.LocalDateTime.now());
                 tokai.com.mx.SIGMAV2.modules.users.domain.model.User updatedDomain = securityUserAdapter.toDomainUser(user2);
                 userRepository.save(updatedDomain);
+
+                // Registrar intento fallido y bloqueo si aplica
+                try {
+                    activityLogService.logFailedLogin(user2, "Contraseña incorrecta");
+                    if (bloqueado) {
+                        activityLogService.logBlocked(user2, "3 intentos fallidos de login");
+                    }
+                } catch (Exception e) {
+                    log.warn("Error al registrar actividad de login fallido: {}", e.getMessage());
+                }
+
                 throw new CustomException("User or password incorrect");
             }
 
@@ -175,6 +197,13 @@ public class UserDetailsServicePer implements UserDetailsService {
             userRepository.save(updatedDomain);
 
             log.info("💾 Usuario guardado en BD - lastLoginAt actualizado a: {}", now);
+
+            // Registrar actividad de login
+            try {
+                activityLogService.logLogin(user2);
+            } catch (Exception e) {
+                log.warn("Error al registrar actividad de login: {}", e.getMessage());
+            }
 
             // registrar auditoría de login exitoso
             try {
@@ -286,10 +315,47 @@ public class UserDetailsServicePer implements UserDetailsService {
 
         BeanUser user = securityUserAdapter.toLegacyUser(domainUserOpt.get());
 
+        // Verificar intentos fallidos en los últimos 15 minutos
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMinutes(15);
+        long failedAttempts = passwordResetAttemptRepository.countFailedCodeAttemptsFromUser(user, since);
+
+        if (failedAttempts >= 3) {
+            // Registrar el bloqueo explícitamente
+            BeanPasswordResetAttempt blockEvent = new BeanPasswordResetAttempt();
+            blockEvent.setUser(user);
+            blockEvent.setAttemptType("CODE_VALIDATION_BLOCKED");
+            blockEvent.setSuccessful(false);
+            blockEvent.setAttemptAt(java.time.LocalDateTime.now());
+            blockEvent.setErrorMessage("Usuario bloqueado: 3 intentos fallidos en 15 minutos");
+            passwordResetAttemptRepository.save(blockEvent);
+
+            log.warn("❌ BLOQUEADO: Usuario {} ha excedido 3 intentos fallidos de código en los últimos 15 minutos", user.getEmail());
+            throw new CustomException("Demasiados intentos fallidos. Intente de nuevo más tarde");
+        }
+
+        // Validar código
         if (!user.getVerificationCode().equals(payload.verificationCode())){
-            log.debug("Verification code mismatch for email={}", user.getEmail());
+            // Registrar intento fallido
+            BeanPasswordResetAttempt attempt = new BeanPasswordResetAttempt();
+            attempt.setUser(user);
+            attempt.setAttemptType("CODE_VALIDATION");
+            attempt.setSuccessful(false);
+            attempt.setAttemptAt(java.time.LocalDateTime.now());
+            attempt.setErrorMessage("Código de verificación incorrecto");
+            passwordResetAttemptRepository.save(attempt);
+
+            log.warn("⚠️ Intento fallido de código para usuario: {} (intento {} en 15 min)", user.getEmail(), failedAttempts + 1);
             throw new CustomException("Verification code is incorrect");
         }
+
+        // Registrar intento exitoso
+        BeanPasswordResetAttempt successAttempt = new BeanPasswordResetAttempt();
+        successAttempt.setUser(user);
+        successAttempt.setAttemptType("CODE_VALIDATION");
+        successAttempt.setSuccessful(true);
+        successAttempt.setAttemptAt(java.time.LocalDateTime.now());
+        passwordResetAttemptRepository.save(successAttempt);
+        log.info("✅ Código de verificación validado exitosamente para usuario: {}", user.getEmail());
 
         int count = recoveryPasswordRepository.countAllByUserAndStatus(user, BeanRequestStatus.PENDING);
         log.debug("Pending password recovery requests for {} = {}", user.getEmail(), count);

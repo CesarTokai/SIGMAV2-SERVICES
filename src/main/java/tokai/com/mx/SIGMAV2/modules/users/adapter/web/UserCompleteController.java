@@ -14,6 +14,9 @@ import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.Perso
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.UserWarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
+import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanRequestStatus;
+import tokai.com.mx.SIGMAV2.security.infrastructure.adapter.SecurityUserAdapter;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,8 @@ public class UserCompleteController {
     private final UserService userService;
     private final PersonalInformationService personalInformationService;
     private final UserWarehouseRepository userWarehouseRepository;
+    private final IRequestRecoveryPassword requestRecoveryPasswordRepository;
+    private final SecurityUserAdapter securityUserAdapter;
 
     /**
      * Obtiene información completa del usuario autenticado (usuario + información personal)
@@ -714,10 +719,20 @@ public class UserCompleteController {
             security.put("isVerified", user.isVerified());
             security.put("failedAttempts", user.getAttempts());
             security.put("lastFailedAttempt", user.getLastTryAt());
-            security.put("isBlocked", user.isBlocked());
+            security.put("lastBlocked", user.getLastBlockedAt());
             security.put("status", user.isStatus());
-            security.put("verificationCodesCount", (user.getVerificationCode() != null && !user.getVerificationCode().isEmpty()) ? 1 : 0);
-            security.put("hasVerificationCode", (user.getVerificationCode() != null && !user.getVerificationCode().isEmpty()));
+
+            // Agregar información de solicitudes de cambio de contraseña
+            try {
+                tokai.com.mx.SIGMAV2.modules.users.model.BeanUser beanUser = securityUserAdapter.toLegacyUser(user);
+                int pendingRequests = requestRecoveryPasswordRepository.countAllByUserAndStatus(beanUser, BeanRequestStatus.PENDING);
+                security.put("pendingPasswordChangeRequests", pendingRequests);
+
+                log.debug("Usuario {} - Solicitudes pendientes de cambio: {}", email, pendingRequests);
+            } catch (Exception e) {
+                log.warn("No se pudo obtener solicitudes de cambio de contraseña: {}", e.getMessage());
+                security.put("pendingPasswordChangeRequests", 0);
+            }
 
             log.info("Retornando seguridad para usuario: {}", email);
             return ResponseEntity.ok(Map.of("success", true, "data", security));
@@ -757,10 +772,19 @@ public class UserCompleteController {
             security.put("isVerified", user.isVerified());
             security.put("failedAttempts", user.getAttempts());
             security.put("lastFailedAttempt", user.getLastTryAt());
-            security.put("isBlocked", user.isBlocked());
+            security.put("lastBlocked", user.getLastBlockedAt());
             security.put("status", user.isStatus());
-            security.put("verificationCodesCount", (user.getVerificationCode() != null && !user.getVerificationCode().isEmpty()) ? 1 : 0);
-            security.put("hasVerificationCode", (user.getVerificationCode() != null && !user.getVerificationCode().isEmpty()));
+
+            // Agregar información de solicitudes de cambio de contraseña pendientes para este usuario
+            try {
+                tokai.com.mx.SIGMAV2.modules.users.model.BeanUser beanUser = securityUserAdapter.toLegacyUser(user);
+                int pendingRequests = requestRecoveryPasswordRepository.countAllByUserAndStatus(beanUser, BeanRequestStatus.PENDING);
+                security.put("pendingPasswordChangeRequests", pendingRequests);
+                log.debug("Usuario {} tiene {} solicitudes pendientes de cambio de contraseña", user.getEmail(), pendingRequests);
+            } catch (Exception e) {
+                log.warn("No se pudo obtener solicitudes de cambio de contraseña para usuario ID {}: {}", userId, e.getMessage());
+                security.put("pendingPasswordChangeRequests", 0);
+            }
 
             return ResponseEntity.ok(Map.of("success", true, "data", security));
 
@@ -770,6 +794,7 @@ public class UserCompleteController {
                 .body(Map.of("success", false, "message", "Error interno al obtener seguridad"));
         }
     }
+
 
     /**
      * Obtiene almacenes asignados de un usuario por email (POST con body)

@@ -34,6 +34,7 @@ public class UserMapper {
         user.setLastLoginAt(beanUser.getLastLoginAt());
         user.setLastActivityAt(beanUser.getLastActivityAt());
         user.setPasswordChangedAt(beanUser.getPasswordChangedAt());
+        user.setLastBlockedAt(beanUser.getLastBlockedAt());
 
         return user;
     }
@@ -59,6 +60,7 @@ public class UserMapper {
         beanUser.setLastLoginAt(user.getLastLoginAt());
         beanUser.setLastActivityAt(user.getLastActivityAt());
         beanUser.setPasswordChangedAt(user.getPasswordChangedAt());
+        beanUser.setLastBlockedAt(user.getLastBlockedAt());
 
         return beanUser;
     }

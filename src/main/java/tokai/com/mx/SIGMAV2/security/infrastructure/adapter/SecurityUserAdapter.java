@@ -34,6 +34,7 @@ public class SecurityUserAdapter {
         beanUser.setLastLoginAt(domainUser.getLastLoginAt());
         beanUser.setLastActivityAt(domainUser.getLastActivityAt());
         beanUser.setPasswordChangedAt(domainUser.getPasswordChangedAt());
+        beanUser.setLastBlockedAt(domainUser.getLastBlockedAt());
 
         return beanUser;
     }
@@ -62,6 +63,7 @@ public class SecurityUserAdapter {
         user.setLastLoginAt(beanUser.getLastLoginAt());
         user.setLastActivityAt(beanUser.getLastActivityAt());
         user.setPasswordChangedAt(beanUser.getPasswordChangedAt());
+        user.setLastBlockedAt(beanUser.getLastBlockedAt());
 
         return user;
     }

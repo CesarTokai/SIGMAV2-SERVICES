@@ -31,9 +31,13 @@ public interface JpaUserRepository extends JpaRepository<BeanUser, Long> {
     void deleteByEmail(String email);
     
     // Método para incrementar intentos fallidos
+    // Después de 3 intentos fallidos, bloquea la cuenta (status = false) y resetea intentos
     @Modifying
     @Transactional
-    @Query("UPDATE BeanUser u SET u.attempts = u.attempts + 1, u.lastTryAt = CURRENT_TIMESTAMP WHERE u.email = :email")
+    @Query("UPDATE BeanUser u SET u.attempts = CASE WHEN u.attempts + 1 >= 3 THEN 0 ELSE u.attempts + 1 END, " +
+           "u.lastTryAt = CURRENT_TIMESTAMP, " +
+           "u.status = CASE WHEN u.attempts + 1 >= 3 THEN false ELSE u.status END " +
+           "WHERE u.email = :email")
     void incrementAttemptsByEmail(@Param("email") String email);
     
     // ============ MÉTODOS ADMINISTRATIVOS ============

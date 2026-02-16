@@ -56,6 +56,9 @@ public class BeanUser {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    @Column(name = "last_blocked_at")
+    private LocalDateTime lastBlockedAt;
+
     // Relación con PersonalInformation - Eliminación en cascada
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private BeanPersonalInformation personalInformation;

@@ -11,6 +11,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserMapper;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import jakarta.persistence.EntityManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class UserRepositoryAdapter implements UserRepository {
 
     private final JpaUserRepository jpaUserRepository;
     private final UserMapper userMapper;
+    private final EntityManager entityManager;
 
     @Override
     public User save(User user) {
@@ -38,13 +40,15 @@ public class UserRepositoryAdapter implements UserRepository {
         BeanUser beanUser = userMapper.toBean(user);
         log.info("🔄 Usuario DESPUÉS de mapear a BeanUser - Status: {}, Email: {}", beanUser.isStatus(), beanUser.getEmail());
 
-        // Usar saveAndFlush para forzar que JPA envíe el UPDATE/INSERT inmediatamente
-        BeanUser savedBeanUser = jpaUserRepository.saveAndFlush(beanUser);
-        log.info("✅ Usuario GUARDADO EN BD - Status: {}, Email: {}", savedBeanUser.isStatus(), savedBeanUser.getEmail());
+        // Usar merge() para asegurar que JPA detecta y actualiza todos los cambios en entidades detached
+        BeanUser managedBeanUser = entityManager.merge(beanUser);
+        entityManager.flush();
 
-        User returnedUser = userMapper.toDomain(savedBeanUser);
+        log.info("✅ Usuario GUARDADO EN BD - Status: {}, Email: {}", managedBeanUser.isStatus(), managedBeanUser.getEmail());
+
+        User returnedUser = userMapper.toDomain(managedBeanUser);
         log.info("🎯 Usuario EN RETORNO - Status: {}, Email: {}", returnedUser.isStatus(), returnedUser.getEmail());
-        log.debug("Usuario guardado: id={}, email={}, status={}", savedBeanUser.getId(), savedBeanUser.getEmail(), savedBeanUser.isStatus());
+        log.debug("Usuario guardado: id={}, email={}, status={}", managedBeanUser.getId(), managedBeanUser.getEmail(), managedBeanUser.isStatus());
 
         return returnedUser;
     }
@@ -85,7 +89,27 @@ public class UserRepositoryAdapter implements UserRepository {
     @Override
     public void incrementAttempts(String email) {
         log.debug("Incrementando intentos para usuario: {}", email);
+
+        // Obtener usuario antes del incremento para logging
+        Optional<BeanUser> userBefore = jpaUserRepository.findByEmail(email);
+
         jpaUserRepository.incrementAttemptsByEmail(email);
+
+        // Obtener usuario después del incremento para validar cambio
+        Optional<BeanUser> userAfter = jpaUserRepository.findByEmail(email);
+
+        if (userBefore.isPresent() && userAfter.isPresent()) {
+            BeanUser before = userBefore.get();
+            BeanUser after = userAfter.get();
+            log.info("✅ Intentos incrementados - Email: {}, Antes: {}, Después: {}, Status: {}",
+                    email, before.getAttempts(), after.getAttempts(), after.isStatus());
+
+            if (after.getAttempts() == 0 && !after.isStatus()) {
+                log.warn("⚠️ USUARIO BLOQUEADO - Email: {}, Razón: 3 intentos fallidos excedidos", email);
+            }
+        } else {
+            log.warn("⚠️ No se pudo obtener usuario para validación: {}", email);
+        }
     }
 
     // ============ MÉTODOS ADMINISTRATIVOS ============
