@@ -504,6 +504,24 @@ public class LabelsController {
         return ResponseEntity.ok(labels);
     }
 
+    @GetMapping("/by-folio/{folio}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO> getLabelByFolio(
+            @PathVariable Long folio) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("Consultando datos del marbete {} para cancelación", folio);
+
+        // Obtener el marbete primero para saber su período y almacén real
+        var labelService = this.labelService;
+        // Llamar a getLabelStatus SIN período/almacén específico
+        // El servicio obtendrá los valores reales del marbete
+        var response = labelService.getLabelStatus(folio, null, null, userId, userRole);
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<Void> cancelLabel(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.CancelLabelRequestDTO dto) {
@@ -511,6 +529,8 @@ public class LabelsController {
         String userRole = getUserRoleFromToken();
 
         log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+        log.info("📝 Request: folio={}, periodId={}, warehouseId={}, motivo={}",
+            dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), dto.getMotivoCancelacion());
 
         labelService.cancelLabel(dto, userId, userRole);
 

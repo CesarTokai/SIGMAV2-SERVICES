@@ -96,6 +96,30 @@ public class LabelServiceImpl implements LabelService {
 
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
+        // REGLA DE NEGOCIO: Crear o buscar LabelRequest para este producto
+        Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
+            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+        LabelRequest labelRequest;
+        if (existing.isPresent()) {
+            labelRequest = existing.get();
+            log.info("📋 Usando LabelRequest existente (ID: {}) para producto {}",
+                labelRequest.getIdLabelRequest(), dto.getProductId());
+        } else {
+            // Crear nuevo LabelRequest
+            labelRequest = new LabelRequest();
+            labelRequest.setProductId(dto.getProductId());
+            labelRequest.setWarehouseId(dto.getWarehouseId());
+            labelRequest.setPeriodId(dto.getPeriodId());
+            labelRequest.setRequestedLabels(dto.getLabelsToGenerate());
+            labelRequest.setFoliosGenerados(0);
+            labelRequest.setCreatedBy(userId);
+            labelRequest.setCreatedAt(LocalDateTime.now());
+            labelRequest = persistence.save(labelRequest);
+            log.info("📋 LabelRequest creado (ID: {}) para producto {}",
+                labelRequest.getIdLabelRequest(), dto.getProductId());
+        }
+
         int cantidad = dto.getLabelsToGenerate();
         long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
 
@@ -105,6 +129,7 @@ public class LabelServiceImpl implements LabelService {
         for (long folio = range[0]; folio <= range[1]; folio++) {
             Label label = new Label();
             label.setFolio(folio);
+            label.setLabelRequestId(labelRequest.getIdLabelRequest()); // ✅ ASIGNAR LabelRequest
             label.setPeriodId(dto.getPeriodId());
             label.setWarehouseId(dto.getWarehouseId());
             label.setProductId(dto.getProductId());
@@ -988,6 +1013,31 @@ public class LabelServiceImpl implements LabelService {
         for (ProductBatchDTO product : dto.getProducts()) {
             int cantidad = product.getLabelsToGenerate();
 
+            // REGLA DE NEGOCIO: Crear o buscar LabelRequest para este producto/periodo/almacén
+            // Esto asegura que todos los marbetes tengan un id_label_request válido
+            Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
+                product.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+
+            LabelRequest labelRequest;
+            if (existing.isPresent()) {
+                labelRequest = existing.get();
+                log.info("📋 Usando LabelRequest existente (ID: {}) para producto {}",
+                    labelRequest.getIdLabelRequest(), product.getProductId());
+            } else {
+                // Crear nuevo LabelRequest
+                labelRequest = new LabelRequest();
+                labelRequest.setProductId(product.getProductId());
+                labelRequest.setWarehouseId(dto.getWarehouseId());
+                labelRequest.setPeriodId(dto.getPeriodId());
+                labelRequest.setRequestedLabels(cantidad);
+                labelRequest.setFoliosGenerados(0);
+                labelRequest.setCreatedBy(userId);
+                labelRequest.setCreatedAt(now);
+                labelRequest = persistence.save(labelRequest);
+                log.info("📋 LabelRequest creado (ID: {}) para producto {}",
+                    labelRequest.getIdLabelRequest(), product.getProductId());
+            }
+
             // Asignar folios consecutivos
             long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
 
@@ -996,6 +1046,7 @@ public class LabelServiceImpl implements LabelService {
             for (long folio = range[0]; folio <= range[1]; folio++) {
                 Label label = new Label();
                 label.setFolio(folio);
+                label.setLabelRequestId(labelRequest.getIdLabelRequest()); // ✅ ASIGNAR LabelRequest
                 label.setPeriodId(dto.getPeriodId());
                 label.setWarehouseId(dto.getWarehouseId());
                 label.setProductId(product.getProductId());
@@ -1009,8 +1060,8 @@ public class LabelServiceImpl implements LabelService {
             persistence.saveAll(labels);
             totalGenerados += cantidad;
 
-            log.info("✅ Producto {}: {} marbetes (folios {}-{})",
-                product.getProductId(), cantidad, range[0], range[1]);
+            log.info("✅ Producto {}: {} marbetes (folios {}-{}) asignados a LabelRequest {}",
+                product.getProductId(), cantidad, range[0], range[1], labelRequest.getIdLabelRequest());
         }
 
         log.info("✅ Total generado: {} marbetes", totalGenerados);
@@ -1019,7 +1070,7 @@ public class LabelServiceImpl implements LabelService {
     @Override
     public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         var builder = tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO.builder();
-        builder.folio(folio).periodId(periodId).warehouseId(warehouseId);
+        builder.folio(folio);
         String mensaje;
         try {
             // Buscar el marbete
@@ -1031,8 +1082,16 @@ public class LabelServiceImpl implements LabelService {
                 return builder.build();
             }
             var label = optLabel.get();
+
+            // ✅ USAR VALORES REALES DEL MARBETE si no se proporcionan
+            Long actualPeriodId = periodId != null ? periodId : label.getPeriodId();
+            Long actualWarehouseId = warehouseId != null ? warehouseId : label.getWarehouseId();
+
+            builder.periodId(actualPeriodId);
+            builder.warehouseId(actualWarehouseId);
             builder.productId(label.getProductId());
             builder.estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO");
+
             // Buscar producto
             var product = productRepository.findById(label.getProductId()).orElse(null);
             if (product != null) {
@@ -1046,7 +1105,7 @@ public class LabelServiceImpl implements LabelService {
                 builder.nombreAlmacen(warehouse.getNameWarehouse());
             }
             // Buscar impresiones
-            var prints = persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, warehouseId);
+            var prints = persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), actualPeriodId, actualWarehouseId);
             boolean impreso = !prints.isEmpty();
             String fechaImpresion = null;
             if (impreso) {
@@ -1283,16 +1342,32 @@ public class LabelServiceImpl implements LabelService {
     public void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole) {
         log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
 
-        // Validar acceso al almacén
-        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
-
         // Buscar el marbete
         Label label = jpaLabelRepository.findById(dto.getFolio())
             .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
 
-        // Validar que pertenece al periodo y almacén especificado
-        if (!label.getPeriodId().equals(dto.getPeriodId()) || !label.getWarehouseId().equals(dto.getWarehouseId())) {
-            throw new InvalidLabelStateException("El marbete no pertenece al periodo/almacén especificado");
+        // ✅ NUEVA LÓGICA: Obtener automáticamente período/almacén si no se proporcionan
+        Long periodId = dto.getPeriodId() != null ? dto.getPeriodId() : label.getPeriodId();
+        Long warehouseId = dto.getWarehouseId() != null ? dto.getWarehouseId() : label.getWarehouseId();
+
+        log.info("📍 Usando período={}, almacén={} para cancelación", periodId, warehouseId);
+
+        // Validar acceso al almacén
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+
+        // Validar que pertenece al periodo y almacén REAL del marbete
+        if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
+            String mensaje = String.format(
+                "❌ MARBETE INCORRECTO: El folio %d NO pertenece a período %d, almacén %d. " +
+                "Este marbete pertenece a PERÍODO %d, ALMACÉN %d.",
+                dto.getFolio(),
+                periodId,
+                warehouseId,
+                label.getPeriodId(),
+                label.getWarehouseId()
+            );
+            log.error(mensaje);
+            throw new InvalidLabelStateException(mensaje);
         }
 
         // Validar que no esté ya cancelado
@@ -1324,6 +1399,17 @@ public class LabelServiceImpl implements LabelService {
         log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
             dto.getFolio(), labelRequest.getRequestedLabels());
 
+        // REGLA DE NEGOCIO: Si el marbete tiene conteos registrados (C1 o C2),
+        // se deben eliminar para evitar incongruencias en reportes de exportación
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        if (!countEvents.isEmpty()) {
+            log.info("📊 El marbete {} tiene {} evento(s) de conteo. Eliminando conteos para evitar incongruencias en reportes.",
+                dto.getFolio(), countEvents.size());
+
+            // Eliminar todos los eventos de conteo asociados al marbete
+            jpaLabelCountEventRepository.deleteAll(countEvents);
+            log.info("✅ Conteos eliminados exitosamente para el marbete {}", dto.getFolio());
+        }
 
         // Cambiar estado a CANCELADO
         label.setEstado(Label.State.CANCELADO);
