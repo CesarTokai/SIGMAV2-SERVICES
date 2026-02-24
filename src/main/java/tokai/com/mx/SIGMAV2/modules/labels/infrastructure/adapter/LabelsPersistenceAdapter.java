@@ -386,6 +386,57 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
             .collect(Collectors.toList());
     }
 
+     /**
+     * 🔄 REFUERZO: Encuentra marbetes ya impresos para REIMPRESIÓN EXTRAORDINARIA
+     *
+     * @param periodId ID del período
+     * @param warehouseId ID del almacén
+     * @param folios Lista de folios específicos a reimprimir
+     * @return Lista de marbetes en estado IMPRESO
+     * @throws IllegalArgumentException si folios es null o vacío
+     * @throws IllegalStateException si algún folio no está impreso
+     */
+    public List<Label> findImpresosForReimpresion(Long periodId, Long warehouseId, Collection<Long> folios) {
+        log.info("🔄 Buscando marbetes para reimpresión extraordinaria: período={}, almacén={}, folios={}",
+            periodId, warehouseId, folios != null ? folios.size() : 0);
+
+        if (folios == null || folios.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Reimpresión extraordinaria requiere folios específicos");
+        }
+
+        // Buscar todos los folios en el conjunto
+        List<Label> labels = jpaLabelRepository.findByFolioInAndPeriodIdAndWarehouseId(
+            folios, periodId, warehouseId);
+
+        if (labels.isEmpty()) {
+            throw new IllegalStateException(
+                String.format("No se encontraron marbetes para reimprimir en período %d, almacén %d",
+                    periodId, warehouseId));
+        }
+
+        // Filtrar solo los que están IMPRESOS
+        List<Label> impresos = labels.stream()
+            .filter(l -> l.getEstado() == Label.State.IMPRESO)
+            .collect(Collectors.toList());
+
+        // Validar que TODOS están IMPRESOS
+        if (impresos.size() != labels.size()) {
+            List<Long> noImpresos = labels.stream()
+                .filter(l -> l.getEstado() != Label.State.IMPRESO)
+                .map(Label::getFolio)
+                .collect(Collectors.toList());
+
+            throw new IllegalStateException(
+                String.format("Los siguientes folios no están impresos y no pueden reimprimirse: %s. " +
+                    "Estado requerido: IMPRESO. Para impresión normal, use la operación de impresión estándar.",
+                    noImpresos));
+        }
+
+        log.info("✅ Encontrados {} marbetes impresos para reimpresión extraordinaria", impresos.size());
+        return impresos;
+    }
+
     /**
      * Valida una lista de marbetes antes de imprimirlos
      * @param labels Lista de marbetes a validar

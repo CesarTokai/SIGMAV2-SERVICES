@@ -345,9 +345,22 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
     @Override
     public ResponseEntity<?> exportExistences(MultiWarehouseSearchDTO search) {
-        // Export filtered results to CSV
         Page<MultiWarehouseExistence> page = multiWarehouseRepository.findExistences(search, PageRequest.of(0, Integer.MAX_VALUE));
         List<MultiWarehouseExistence> list = page.getContent();
+        list = list.stream()
+            .sorted((a, b) -> {
+                String keyA = a.getWarehouseKey();
+                String keyB = b.getWarehouseKey();
+                try {
+                    Long numA = Long.parseLong(keyA);
+                    Long numB = Long.parseLong(keyB);
+                    return numA.compareTo(numB); // Orden numérico: 1, 2, 3, 10, 55...
+                } catch (NumberFormatException e) {
+                    return keyA.compareTo(keyB); // Orden alfabético para claves no numéricas
+                }
+            })
+            .collect(Collectors.toList());
+
         String header = "Clave Producto,Producto,Clave Almacen,Almacen,Estado,Existencias";
         String rows = list.stream().map(e -> String.join(",",
                 safe(e.getProductCode()),

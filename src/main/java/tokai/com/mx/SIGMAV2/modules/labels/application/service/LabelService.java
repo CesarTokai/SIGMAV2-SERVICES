@@ -23,6 +23,17 @@ public interface LabelService {
 
     byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole);
 
+    /**
+     * 🔄 REIMPRESIÓN EXTRAORDINARIA: Reimprimir marbetes ya impresos
+     * Método específico para reimpresión extraordinaria de marbetes en estado IMPRESO.
+     *
+     * @param dto DTO con folios específicos a reimprimir
+     * @param userId ID del usuario que hace la reimpresión
+     * @param userRole Rol del usuario
+     * @return byte[] PDF con los marbetes reimprimidos
+     */
+    byte[] extraordinaryReprint(PrintRequestDTO dto, Long userId, String userRole);
+
     // Contar marbetes pendientes de impresión
     tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO getPendingPrintCount(
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto,

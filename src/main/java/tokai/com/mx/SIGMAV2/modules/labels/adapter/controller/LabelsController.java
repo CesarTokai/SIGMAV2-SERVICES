@@ -22,6 +22,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDT
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 
+    import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -77,10 +78,10 @@ public class LabelsController {
         log.info("Generando marbetes para usuario {} con rol {}", userId, userRole);
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO response =
-            labelService.generateBatch(dto, userId, userRole);
+                labelService.generateBatch(dto, userId, userRole);
 
         log.info("Generación completada: {} total, {} con existencias, {} sin existencias",
-            response.getTotalGenerados(), response.getGeneradosConExistencias(), response.getGeneradosSinExistencias());
+                response.getTotalGenerados(), response.getGeneradosConExistencias(), response.getGeneradosSinExistencias());
 
         return ResponseEntity.ok(response);
     }
@@ -102,72 +103,72 @@ public class LabelsController {
             if (pdfBytes == null || pdfBytes.length == 0) {
                 log.error("El servicio retornó un PDF vacío o null");
                 return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                        "error", "No se pudo generar el PDF",
-                        "message", "El PDF generado está vacío. Verifique que existan marbetes pendientes de impresión."
-                    ));
+                        .body(java.util.Map.of(
+                                "error", "No se pudo generar el PDF",
+                                "message", "El PDF generado está vacío. Verifique que existan marbetes pendientes de impresión."
+                        ));
             }
 
             // Construir nombre del archivo más descriptivo
             String timestamp = java.time.LocalDateTime.now()
-                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             // Sanitizar los valores para prevenir inyección en headers
             String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
             String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
             String filename = String.format("marbetes_P%s_A%s_%s.pdf",
-                safePeriodId, safeWarehouseId, timestamp);
+                    safePeriodId, safeWarehouseId, timestamp);
 
             // Configurar headers para descarga del PDF usando ContentDisposition builder (más seguro)
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                org.springframework.http.ContentDisposition.attachment()
-                    .filename(filename)
-                    .build()
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename)
+                            .build()
             );
             headers.setContentLength(pdfBytes.length);
 
             log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
 
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
+                    .headers(headers)
+                    .body(pdfBytes);
 
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
             log.warn("Error de estado al intentar imprimir: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                .body(java.util.Map.of(
-                    "error", "Estado inválido",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Estado inválido",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
             log.warn("Folios no encontrados: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                .body(java.util.Map.of(
-                    "error", "Folios no encontrados",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Folios no encontrados",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException e) {
             log.warn("Catálogos no cargados: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                .body(java.util.Map.of(
-                    "error", "Catálogos no cargados",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Catálogos no cargados",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
             log.warn("Permiso denegado: {}", e.getMessage());
             return ResponseEntity.status(403)
-                .body(java.util.Map.of(
-                    "error", "Permiso denegado",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Permiso denegado",
+                            "message", e.getMessage()
+                    ));
         } catch (Exception e) {
             log.error("Error inesperado al generar PDF de marbetes", e);
             return ResponseEntity.status(500)
-                .body(java.util.Map.of(
-                    "error", "Error interno del servidor",
-                    "message", "Error al generar el PDF de marbetes: " + e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Error interno del servidor",
+                            "message", "Error al generar el PDF de marbetes: " + e.getMessage()
+                    ));
         }
     }
 
@@ -183,10 +184,10 @@ public class LabelsController {
         log.info("Endpoint /pending-print-count llamado por usuario {} con rol {}", userId, userRole);
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO response =
-            labelService.getPendingPrintCount(dto, userId, userRole);
+                labelService.getPendingPrintCount(dto, userId, userRole);
 
         log.info("Marbetes pendientes: {} para periodo {} y almacén {}",
-            response.getCount(), dto.getPeriodId(), dto.getWarehouseId());
+                response.getCount(), dto.getPeriodId(), dto.getWarehouseId());
 
         return ResponseEntity.ok(response);
     }
@@ -228,32 +229,32 @@ public class LabelsController {
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
             log.warn("❌ Folio no encontrado o sin C1: {}", e.getMessage());
             return ResponseEntity.status(404)
-                .body(java.util.Map.of(
-                    "error", "Conteo no encontrado",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Conteo no encontrado",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
             log.warn("❌ Estado inválido: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                .body(java.util.Map.of(
-                    "error", "Estado inválido",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Estado inválido",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
             log.warn("❌ Permiso denegado: {}", e.getMessage());
             return ResponseEntity.status(403)
-                .body(java.util.Map.of(
-                    "error", "Permiso denegado",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Permiso denegado",
+                            "message", e.getMessage()
+                    ));
         } catch (Exception e) {
             log.error("❌ Error inesperado al actualizar C1 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
             return ResponseEntity.status(500)
-                .body(java.util.Map.of(
-                    "error", "Error interno del servidor",
-                    "message", "Error al actualizar el conteo C1: " + e.getMessage(),
-                    "details", e.getClass().getSimpleName()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Error interno del servidor",
+                            "message", "Error al actualizar el conteo C1: " + e.getMessage(),
+                            "details", e.getClass().getSimpleName()
+                    ));
         }
     }
 
@@ -274,32 +275,32 @@ public class LabelsController {
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
             log.warn("❌ Folio no encontrado o sin C2: {}", e.getMessage());
             return ResponseEntity.status(404)
-                .body(java.util.Map.of(
-                    "error", "Conteo no encontrado",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Conteo no encontrado",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
             log.warn("❌ Estado inválido: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                .body(java.util.Map.of(
-                    "error", "Estado inválido",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Estado inválido",
+                            "message", e.getMessage()
+                    ));
         } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
             log.warn("❌ Permiso denegado: {}", e.getMessage());
             return ResponseEntity.status(403)
-                .body(java.util.Map.of(
-                    "error", "Permiso denegado",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Permiso denegado",
+                            "message", e.getMessage()
+                    ));
         } catch (Exception e) {
             log.error("❌ Error inesperado al actualizar C2 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
             return ResponseEntity.status(500)
-                .body(java.util.Map.of(
-                    "error", "Error interno del servidor",
-                    "message", "Error al actualizar el conteo C2: " + e.getMessage(),
-                    "details", e.getClass().getSimpleName()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Error interno del servidor",
+                            "message", "Error al actualizar el conteo C2: " + e.getMessage(),
+                            "details", e.getClass().getSimpleName()
+                    ));
         }
     }
 
@@ -335,7 +336,7 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
-        // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
+    // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
     @PostMapping("/generate-and-print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<?> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
@@ -350,7 +351,7 @@ public class LabelsController {
 
             log.info("Verificando marbetes pendientes...");
             tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO countDto =
-                new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO();
+                    new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO();
             countDto.setPeriodId(dto.getPeriodId());
             countDto.setWarehouseId(dto.getWarehouseId());
 
@@ -359,10 +360,10 @@ public class LabelsController {
             if (countResponse.getCount() == 0) {
                 log.error("No se generaron marbetes o no hay pendientes");
                 return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                        "error", "No hay marbetes pendientes",
-                        "message", "No se pudieron generar los marbetes o ya fueron impresos"
-                    ));
+                        .body(java.util.Map.of(
+                                "error", "No hay marbetes pendientes",
+                                "message", "No se pudieron generar los marbetes o ya fueron impresos"
+                        ));
             }
 
             log.info("Marbetes pendientes: {}", countResponse.getCount());
@@ -377,42 +378,42 @@ public class LabelsController {
             if (pdfBytes == null || pdfBytes.length == 0) {
                 log.error("El PDF generado está vacío");
                 return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                        "error", "Error generando PDF",
-                        "message", "El PDF está vacío"
-                    ));
+                        .body(java.util.Map.of(
+                                "error", "Error generando PDF",
+                                "message", "El PDF está vacío"
+                        ));
             }
 
             String timestamp = java.time.LocalDateTime.now()
-                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             // Sanitizar los valores para prevenir inyección en headers
             String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
             String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
             String filename = String.format("marbetes_P%s_A%s_%s.pdf",
-                safePeriodId, safeWarehouseId, timestamp);
+                    safePeriodId, safeWarehouseId, timestamp);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
-                org.springframework.http.ContentDisposition.attachment()
-                    .filename(filename)
-                    .build()
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename)
+                            .build()
             );
             headers.setContentLength(pdfBytes.length);
 
             log.info("✅ Generación e impresión completada exitosamente: {} KB", pdfBytes.length / 1024);
 
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
+                    .headers(headers)
+                    .body(pdfBytes);
 
         } catch (Exception e) {
             log.error("❌ Error en generate-and-print: {}", e.getMessage(), e);
             return ResponseEntity.status(500)
-                .body(java.util.Map.of(
-                    "error", "Error en generación e impresión",
-                    "message", e.getMessage()
-                ));
+                    .body(java.util.Map.of(
+                            "error", "Error en generación e impresión",
+                            "message", e.getMessage()
+                    ));
         }
     }
 
@@ -461,10 +462,10 @@ public class LabelsController {
         String userRole = getUserRoleFromToken();
 
         log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}, userId={}",
-            periodId, warehouseId, userId);
+                periodId, warehouseId, userId);
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> cancelledLabels =
-            labelService.getCancelledLabels(periodId, warehouseId, userId, userRole);
+                labelService.getCancelledLabels(periodId, warehouseId, userId, userRole);
 
         return ResponseEntity.ok(cancelledLabels);
     }
@@ -477,10 +478,10 @@ public class LabelsController {
         String userRole = getUserRoleFromToken();
 
         log.info("Actualizando existencias de marbete cancelado folio={}, userId={}",
-            dto.getFolio(), userId);
+                dto.getFolio(), userId);
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO updated =
-            labelService.updateCancelledStock(dto, userId, userRole);
+                labelService.updateCancelledStock(dto, userId, userRole);
 
         return ResponseEntity.ok(updated);
     }
@@ -495,10 +496,10 @@ public class LabelsController {
         String userRole = getUserRoleFromToken();
 
         log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
-            productId, periodId, warehouseId);
+                productId, periodId, warehouseId);
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> labels =
-            labelService.getLabelsByProduct(productId, periodId, warehouseId, userId, userRole);
+                labelService.getLabelsByProduct(productId, periodId, warehouseId, userId, userRole);
 
         return ResponseEntity.ok(labels);
     }
@@ -528,7 +529,7 @@ public class LabelsController {
         log.info("Consultando marbete {} para conteo en periodo {} y almacén {}", folio, periodId, warehouseId);
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
-            labelService.getLabelForCount(folio, periodId, warehouseId, userId, userRole);
+                labelService.getLabelForCount(folio, periodId, warehouseId, userId, userRole);
 
         return ResponseEntity.ok(label);
     }
@@ -543,7 +544,7 @@ public class LabelsController {
         log.info("Consultando marbete {} para conteo en periodo {} y almacén {} (POST)", dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId());
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
-            labelService.getLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+                labelService.getLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
 
         return ResponseEntity.ok(label);
     }
@@ -558,7 +559,7 @@ public class LabelsController {
         log.info("Listando marbetes disponibles para conteo en periodo {} y almacén {}", dto.getPeriodId(), dto.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> labels =
-            labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+                labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
 
         log.info("Devolviendo {} marbetes disponibles para conteo", labels.size());
         return ResponseEntity.ok(labels);
@@ -575,7 +576,7 @@ public class LabelsController {
         log.info("Generando reporte de distribución para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO> report =
-            labelService.getDistributionReport(filter, userId, userRole);
+                labelService.getDistributionReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -590,7 +591,7 @@ public class LabelsController {
         log.info("Generando reporte de listado para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO> report =
-            labelService.getLabelListReport(filter, userId, userRole);
+                labelService.getLabelListReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -605,7 +606,7 @@ public class LabelsController {
         log.info("Generando reporte de marbetes pendientes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO> report =
-            labelService.getPendingLabelsReport(filter, userId, userRole);
+                labelService.getPendingLabelsReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -620,12 +621,12 @@ public class LabelsController {
         log.info("Generando reporte de marbetes con diferencias para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO> report =
-            labelService.getDifferencesReport(filter, userId, userRole);
+                labelService.getDifferencesReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
 
-        @PostMapping("/reports/cancelled")
+    @PostMapping("/reports/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO>> getCancelledLabelsReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
@@ -635,7 +636,7 @@ public class LabelsController {
         log.info("Generando reporte de marbetes cancelados para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO> report =
-            labelService.getCancelledLabelsReport(filter, userId, userRole);
+                labelService.getCancelledLabelsReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -651,7 +652,7 @@ public class LabelsController {
         log.info("Generando reporte comparativo para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO> report =
-            labelService.getComparativeReport(filter, userId, userRole);
+                labelService.getComparativeReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -667,7 +668,7 @@ public class LabelsController {
         log.info("Generando reporte de almacén con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO> report =
-            labelService.getWarehouseDetailReport(filter, userId, userRole);
+                labelService.getWarehouseDetailReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -683,7 +684,7 @@ public class LabelsController {
         log.info("Generando reporte de producto con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
 
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO> report =
-            labelService.getProductDetailReport(filter, userId, userRole);
+                labelService.getProductDetailReport(filter, userId, userRole);
 
         return ResponseEntity.ok(report);
     }
@@ -701,10 +702,152 @@ public class LabelsController {
         log.info("Generando archivo TXT de existencias para periodo {} por usuario {}", dto.getPeriodId(), userId);
 
         tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO response =
-            labelService.generateInventoryFile(dto.getPeriodId(), userId, userRole);
+                labelService.generateInventoryFile(dto.getPeriodId(), userId, userRole);
 
         log.info("Archivo generado: {}", response.getFileName());
         return ResponseEntity.ok(response);
     }
-}
 
+    // ==================== REIMPRESIÓN EXTRAORDINARIA ====================
+
+    /**
+     * 🔍 CONSULTA: Listar marbetes IMPRESOS disponibles para reimpresión extraordinaria
+     * El usuario consulta esta API para VER qué marbetes puede reimprimir
+     */
+    @PostMapping("/for-extraordinary-reprint/list")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getImpresosForExtraordinaryReprint(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCountListRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("🔍 Consultando marbetes IMPRESOS para reimpresión: periodo={}, almacén={}",
+            dto.getPeriodId(), dto.getWarehouseId());
+
+        try {
+            // Obtener lista de marbetes impresos disponibles para reimpresión
+            List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> labelsForCount =
+                labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
+
+            // Convertir a formato más simple para selección en interfaz
+            List<java.util.Map<String, Object>> result = new ArrayList<>();
+
+            for (tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label : labelsForCount) {
+                java.util.Map<String, Object> item = new java.util.HashMap<>();
+                item.put("folio", label.getFolio());
+                item.put("producto", label.getClaveProducto() + " - " + label.getDescripcionProducto());
+                item.put("claveProducto", label.getClaveProducto());
+                item.put("descripcionProducto", label.getDescripcionProducto());
+                item.put("almacen", label.getClaveAlmacen() + " - " + label.getNombreAlmacen());
+                item.put("claveAlmacen", label.getClaveAlmacen());
+                item.put("nombreAlmacen", label.getNombreAlmacen());
+                item.put("conteo1", label.getConteo1());
+                item.put("conteo2", label.getConteo2());
+                item.put("diferencia", label.getDiferencia());
+                item.put("estado", label.getEstado());
+                item.put("mensaje", label.getMensaje());
+                result.add(item);
+            }
+
+            log.info("✅ Se encontraron {} marbetes IMPRESOS disponibles para reimpresión", result.size());
+            return ResponseEntity.ok(result);
+
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
+            log.warn("❌ Permiso denegado: {}", e.getMessage());
+            return ResponseEntity.status(403)
+                .body(java.util.Collections.emptyList());
+        } catch (Exception e) {
+            log.error("❌ Error consultando marbetes impresos: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(java.util.Collections.emptyList());
+        }
+    }
+
+    // 🔄 REIMPRESIÓN EXTRAORDINARIA: Endpoint separado y específico
+    @PostMapping("/extraordinary-reprint")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<?> extraordinaryReprint(@Valid @RequestBody PrintRequestDTO dto) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("🔄 Endpoint /extraordinary-reprint llamado por usuario {} con rol {}", userId, userRole);
+        log.info("Parámetros: periodo={}, almacén={}, folios a reimprimir={}",
+                dto.getPeriodId(), dto.getWarehouseId(),
+                dto.getFolios() != null ? dto.getFolios().size() : 0);
+
+        try {
+            // Generar el PDF de reimpresión
+            byte[] pdfBytes = labelService.extraordinaryReprint(dto, userId, userRole);
+
+            // Validar que el PDF se generó correctamente
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.error("El servicio retornó un PDF vacío o null en extraordinaryReprint");
+                return ResponseEntity.badRequest()
+                        .body(java.util.Map.of(
+                                "error", "No se pudo generar el PDF",
+                                "message", "El PDF de reimpresión generado está vacío"
+                        ));
+            }
+
+            // Sanitizar los valores para prevenir inyección en headers
+            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
+            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
+            String timestamp = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = String.format("marbetes_REIMPRESION_P%s_A%s_%s.pdf",
+                    safePeriodId, safeWarehouseId, timestamp);
+
+            // Configurar headers para descarga del PDF
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename)
+                            .build()
+            );
+            headers.setContentLength(pdfBytes.length);
+
+            log.info("✅ Reimpresión extraordinaria completada: {} KB", pdfBytes.length / 1024);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            log.warn("🔄 Error de estado en reimpresión extraordinaria: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                            "error", "Estado inválido para reimpresión",
+                            "message", e.getMessage()
+                    ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
+            log.warn("🔄 Folios no encontrados en reimpresión extraordinaria: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                            "error", "Folios no encontrados",
+                            "message", e.getMessage()
+                    ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException e) {
+            log.warn("🔄 Catálogos no cargados en reimpresión extraordinaria: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of(
+                            "error", "Catálogos no cargados",
+                            "message", e.getMessage()
+                    ));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
+            log.warn("🔄 Permiso denegado en reimpresión extraordinaria: {}", e.getMessage());
+            return ResponseEntity.status(403)
+                    .body(java.util.Map.of(
+                            "error", "Permiso denegado",
+                            "message", e.getMessage()
+                    ));
+        } catch (Exception e) {
+            log.error("❌ Error inesperado en reimpresión extraordinaria", e);
+            return ResponseEntity.status(500)
+                    .body(java.util.Map.of(
+                            "error", "Error interno del servidor",
+                            "message", "Error en reimpresión extraordinaria: " + e.getMessage()
+                    ));
+        }
+    }
+}

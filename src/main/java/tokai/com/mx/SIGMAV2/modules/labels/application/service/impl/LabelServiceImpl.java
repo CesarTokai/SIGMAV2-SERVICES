@@ -132,7 +132,12 @@ public class LabelServiceImpl implements LabelService {
     @Transactional
     @Override
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
-        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}", dto.getPeriodId(), dto.getWarehouseId());
+        boolean isExtraordinary = dto.getForceReprint() != null && dto.getForceReprint();
+
+        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, folios={}",
+            dto.getPeriodId(), dto.getWarehouseId(),
+            isExtraordinary ? "EXTRAORDINARIA" : "NORMAL",
+            dto.getFolios() != null ? dto.getFolios().size() : "TODOS");
 
         // Validaciones básicas
         if (userRole == null || userRole.trim().isEmpty()) {
@@ -140,27 +145,45 @@ public class LabelServiceImpl implements LabelService {
         }
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // Buscar marbetes pendientes
+        // Buscar marbetes según tipo de impresión
         List<Label> labels;
-        if (dto.getFolios() != null && !dto.getFolios().isEmpty()) {
-            // Modo selectivo: folios específicos
-            labels = persistence.findByFoliosInAndPeriodAndWarehouse(
-                dto.getFolios(), dto.getPeriodId(), dto.getWarehouseId());
-            if (labels.size() != dto.getFolios().size()) {
-                throw new LabelNotFoundException("Algunos folios no existen");
-            }
-        } else if (dto.getProductId() != null) {
-            // Filtrar por producto
-            labels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
-                dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
-        } else {
-            // Todos los pendientes
-            labels = persistence.findPendingLabelsByPeriodAndWarehouse(
-                dto.getPeriodId(), dto.getWarehouseId());
-        }
 
-        if (labels.isEmpty()) {
-            throw new InvalidLabelStateException("No hay marbetes pendientes de impresión");
+        if (isExtraordinary) {
+            // 🔄 NUEVA RAMA: Reimpresión extraordinaria
+            if (dto.getFolios() == null || dto.getFolios().isEmpty()) {
+                throw new InvalidLabelStateException(
+                    "Reimpresión extraordinaria requiere folios específicos. Proporcione lista de folios a reimprimir.");
+            }
+
+            labels = persistence.findImpresosForReimpresion(
+                dto.getPeriodId(),
+                dto.getWarehouseId(),
+                dto.getFolios());
+
+            log.info("🔄 Reimpresión extraordinaria: {} marbetes encontrados para reimprimir", labels.size());
+
+        } else {
+            // ✅ RAMA EXISTENTE: Impresión normal
+            if (dto.getFolios() != null && !dto.getFolios().isEmpty()) {
+                // Modo selectivo: folios específicos
+                labels = persistence.findByFoliosInAndPeriodAndWarehouse(
+                    dto.getFolios(), dto.getPeriodId(), dto.getWarehouseId());
+                if (labels.size() != dto.getFolios().size()) {
+                    throw new LabelNotFoundException("Algunos folios no existen");
+                }
+            } else if (dto.getProductId() != null) {
+                // Filtrar por producto
+                labels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
+                    dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+            } else {
+                // Todos los pendientes
+                labels = persistence.findPendingLabelsByPeriodAndWarehouse(
+                    dto.getPeriodId(), dto.getWarehouseId());
+            }
+
+            if (labels.isEmpty()) {
+                throw new InvalidLabelStateException("No hay marbetes pendientes de impresión");
+            }
         }
 
         if (labels.size() > 500) {
@@ -178,18 +201,22 @@ public class LabelServiceImpl implements LabelService {
         // Actualizar estados a IMPRESO
         Long minFolio = labels.get(0).getFolio();
         Long maxFolio = labels.get(labels.size() - 1).getFolio();
-        updateLabelsStateAfterPrint(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
+        updateLabelsStateAfterPrint(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, isExtraordinary);
 
-        log.info("✅ PDF generado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
+        log.info("✅ PDF generado: {} KB, {} marbetes (tipo: {})",
+            pdfBytes.length / 1024, labels.size(),
+            isExtraordinary ? "extraordinaria" : "normal");
         return pdfBytes;
     }
 
     /**
      * 🔒 Actualiza estado de marbetes a IMPRESO después de generar PDF
+     * @param isExtraordinary true si es reimpresión extraordinaria, false si es impresión normal
      */
     @Transactional
     protected LabelPrint updateLabelsStateAfterPrint(Long periodId, Long warehouseId,
-                                                     Long minFolio, Long maxFolio, Long userId) {
+                                                     Long minFolio, Long maxFolio, Long userId,
+                                                     boolean isExtraordinary) {
         return persistence.printLabelsRange(periodId, warehouseId, minFolio, maxFolio, userId);
     }
 
@@ -845,6 +872,105 @@ public class LabelServiceImpl implements LabelService {
     }
 
     /**
+     * 🔄 REIMPRESIÓN EXTRAORDINARIA: Reimprimir marbetes ya impresos
+     *
+     * Método específico y explícito para reimpresión extraordinaria.
+     * Válido SOLO para marbetes en estado IMPRESO.
+     *
+     * @param dto DTO con folios específicos a reimprimir
+     * @param userId ID del usuario que hace la reimpresión
+     * @param userRole Rol del usuario
+     * @return byte[] PDF con los marbetes reimprimidos
+     * @throws InvalidLabelStateException si algún folio no está en estado IMPRESO
+     * @throws PermissionDeniedException si el usuario no tiene permisos
+     * @throws LabelNotFoundException si algún folio no existe
+     */
+    @Transactional
+    @Override
+    public byte[] extraordinaryReprint(PrintRequestDTO dto, Long userId, String userRole) {
+        log.info("🔄 REIMPRESIÓN EXTRAORDINARIA iniciada: periodo={}, almacén={}, folios={}",
+            dto.getPeriodId(), dto.getWarehouseId(),
+            dto.getFolios() != null ? dto.getFolios().size() : 0);
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 1: Validaciones de seguridad
+        // ═════════════════════════════════════════════════════════════════
+        if (userRole == null || userRole.trim().isEmpty()) {
+            throw new PermissionDeniedException("Rol de usuario requerido");
+        }
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 2: Validación de parámetros
+        // ═════════════════════════════════════════════════════════════════
+        if (dto.getFolios() == null || dto.getFolios().isEmpty()) {
+            throw new InvalidLabelStateException(
+                "Reimpresión extraordinaria requiere lista de folios específicos. " +
+                "No se puede reimprimir sin especificar qué marbetes reimprimir.");
+        }
+
+        log.debug("Folios a reimprimir: {}", dto.getFolios());
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 3: Búsqueda de marbetes YA IMPRESOS
+        // ═════════════════════════════════════════════════════════════════
+        // Este método valida que TODOS estén en estado IMPRESO
+        List<Label> labels = persistence.findImpresosForReimpresion(
+            dto.getPeriodId(),
+            dto.getWarehouseId(),
+            dto.getFolios());
+
+        log.info("🔄 Se encontraron {} marbetes en estado IMPRESO para reimprimir", labels.size());
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 4: Validaciones de límite
+        // ═════════════════════════════════════════════════════════════════
+        if (labels.size() > 500) {
+            throw new InvalidLabelStateException(
+                "Límite máximo: 500 marbetes por reimpresión extraordinaria");
+        }
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 5: Ordenamiento por folio
+        // ═════════════════════════════════════════════════════════════════
+        labels.sort(Comparator.comparing(Label::getFolio));
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 6: Generación del PDF
+        // ═════════════════════════════════════════════════════════════════
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException(
+                "Error generando PDF de reimpresión: el archivo generado está vacío");
+        }
+
+        log.debug("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
+
+        // ═════════════════════════════════════════════════════════════════
+        // PASO 7: Actualización de timestamps (auditoría)
+        // ═════════════════════════════════════════════════════════════════
+        Long minFolio = labels.get(0).getFolio();
+        Long maxFolio = labels.get(labels.size() - 1).getFolio();
+
+        LabelPrint result = updateLabelsStateAfterPrint(
+            dto.getPeriodId(),
+            dto.getWarehouseId(),
+            minFolio,
+            maxFolio,
+            userId,
+            true);  // true = es reimpresión extraordinaria
+
+        log.info("✅ REIMPRESIÓN EXTRAORDINARIA completada: {} KB, {} marbetes",
+            pdfBytes.length / 1024, labels.size());
+        log.info("📝 Registro de auditoría: {} folios {} al {} reimprimidos por usuario {}",
+            result.getCantidadImpresa(), result.getFolioInicial(),
+            result.getFolioFinal(), userId);
+
+        return pdfBytes;
+    }
+
+    /**
      * 🚀 MÉTODO SIMPLIFICADO: Genera marbetes directamente sin solicitudes previas
      * Este método reemplaza todo el flujo antiguo de request -> generate
      */
@@ -1176,8 +1302,17 @@ public class LabelServiceImpl implements LabelService {
 
         // REGLA DE NEGOCIO: No se pueden cancelar marbetes sin folios asignados
         // Obtener el LabelRequest para verificar la cantidad de folios
+        // Validar primero que labelRequestId no sea nulo
+        if (label.getLabelRequestId() == null) {
+            log.warn("⚠️ El marbete {} tiene id_label_request = NULL. Esto indica un problema de integridad de datos.", dto.getFolio());
+            throw new InvalidLabelStateException(
+                "El marbete no tiene una solicitud de folios válida asociada. " +
+                "Este es un problema de integridad de datos que debe ser revisado por administración."
+            );
+        }
+
         LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId())
-            .orElseThrow(() -> new RuntimeException("LabelRequest no encontrado para el marbete"));
+            .orElseThrow(() -> new RuntimeException("LabelRequest no encontrado para el marbete con id: " + label.getLabelRequestId()));
 
         if (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0) {
             throw new InvalidLabelStateException(
