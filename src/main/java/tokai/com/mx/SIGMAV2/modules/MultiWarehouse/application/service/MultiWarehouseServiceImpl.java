@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.*;
+import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.MultiWarehouseImportResponseDTO;
+import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web.dto.ProductoBajaDTO;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseExistence;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseImportLog;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.infrastructure.persistence.MultiWarehouseRepository;
@@ -34,7 +36,6 @@ import java.util.stream.Collectors;
 import java.security.MessageDigest;
 import java.security.DigestInputStream;
 import java.io.InputStream;
-
 @Service
 @RequiredArgsConstructor
 public class MultiWarehouseServiceImpl implements MultiWarehouseService {
@@ -150,20 +151,28 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
         // Calcular hash del archivo
         String fileHash = calculateSHA256(file);
-        String stage = "default"; // Puedes ajustar si manejas varias etapas
+        String stage = "default";
         Optional<MultiWarehouseImportLog> existingLog = importLogRepository.findByPeriodAndStageAndFileHash(period, stage, fileHash);
         if (existingLog.isPresent()) {
-            // Ya se importó este archivo para este periodo y etapa
-            MultiWarehouseImportLog log = new MultiWarehouseImportLog();
-            log.setFileName(file.getOriginalFilename());
-            log.setPeriod(period);
-            log.setImportDate(LocalDateTime.now());
-            log.setStatus("NO_CHANGES");
-            log.setMessage("El archivo ya fue importado previamente para este periodo y etapa. No se aplicaron cambios.");
-            log.setFileHash(fileHash);
-            log.setStage(stage);
-            importLogRepository.save(log);
-            return ResponseEntity.ok(log);
+            // Ya se importó este archivo exacto — devolver DTO consistente
+            MultiWarehouseImportLog noChangesLog = new MultiWarehouseImportLog();
+            noChangesLog.setFileName(file.getOriginalFilename());
+            noChangesLog.setPeriod(period);
+            noChangesLog.setImportDate(LocalDateTime.now());
+            noChangesLog.setStatus("NO_CHANGES");
+            noChangesLog.setMessage("El archivo ya fue importado previamente para este periodo y etapa. No se aplicaron cambios.");
+            noChangesLog.setFileHash(fileHash);
+            noChangesLog.setStage(stage);
+            importLogRepository.save(noChangesLog);
+
+            return ResponseEntity.ok(MultiWarehouseImportResponseDTO.builder()
+                .importLog(noChangesLog)
+                .tieneWarnings(false)
+                .mensajeWarning(null)
+                .productosDadosDeBaja(Collections.emptyList())
+                .totalProcesados(0).totalActualizados(0).totalCreados(0)
+                .totalAlmacenesCreados(0).totalProductosCreados(0).totalDadosDeBaja(0)
+                .build());
         }
 
         // Validar estado del periodo: rechazar si CLOSED o LOCKED
@@ -179,22 +188,23 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             }
         }
 
-        // Persist import log entry
-        MultiWarehouseImportLog log = new MultiWarehouseImportLog();
-        log.setFileName(file.getOriginalFilename());
-        log.setPeriod(period);
-        log.setImportDate(LocalDateTime.now());
-        log.setStatus("STARTED");
-        log.setMessage("Importación iniciada");
-        log.setFileHash(fileHash);
-        log.setStage(stage);
-        MultiWarehouseImportLog savedLog = importLogRepository.save(log);
+        // Registrar inicio de importación
+        MultiWarehouseImportLog importLog = new MultiWarehouseImportLog();
+        importLog.setFileName(file.getOriginalFilename());
+        importLog.setPeriod(period);
+        importLog.setImportDate(LocalDateTime.now());
+        importLog.setStatus("STARTED");
+        importLog.setMessage("Importación iniciada");
+        importLog.setFileHash(fileHash);
+        importLog.setStage(stage);
+        MultiWarehouseImportLog savedLog = importLogRepository.save(importLog);
 
-        int processed;
-        int warehousesCreated;
-        int productsCreated;
+        int processed = 0;
+        int warehousesCreated = 0;
+        int productsCreated = 0;
         int existingUpdated = 0;
         int markedAsInactive = 0;
+        List<ProductoBajaDTO> productosDadosDeBaja = new ArrayList<>();
 
         try {
             String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
@@ -205,7 +215,6 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 parsedData = parseXlsx(file);
             }
 
-            // Obtener el ID del periodo (si existe) o usar un valor predeterminado
             Long periodId = perOpt.map(Period::getId).orElse(null);
             if (periodId == null) {
                 throw new IllegalStateException("No se pudo determinar el ID del periodo para " + period);
@@ -221,14 +230,12 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             productsCreated = (int) productMap.values().stream().filter(id -> id != null).count() -
                             (int) productRepository.count();
 
-            // Obtener registros existentes de multiwarehouse para el periodo
+            // Obtener registros existentes para el periodo
             List<MultiWarehouseExistence> existingRecords = multiWarehouseRepository.findAll()
                 .stream()
                 .filter(e -> e.getPeriodId().equals(periodId))
                 .toList();
 
-            // Crear mapa de registros existentes para búsqueda rápida
-            // Usar warehouseKey en lugar de warehouseName para la identificación correcta
             Map<String, MultiWarehouseExistence> existingMap = existingRecords.stream()
                 .collect(Collectors.toMap(
                     e -> e.getProductCode() + "|" + e.getWarehouseKey(),
@@ -236,40 +243,34 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 ));
 
             // REGLA DE NEGOCIO 3 y 4: Actualizar existentes o crear nuevos
-            List<MultiWarehouseExistence> toSave = new java.util.ArrayList<>();
+            List<MultiWarehouseExistence> toSave = new ArrayList<>();
             Long maxId = multiWarehouseRepository.findMaxId().orElse(0L);
 
             for (MultiWarehouseExistence newData : parsedData) {
                 String key = newData.getProductCode() + "|" + newData.getWarehouseKey();
-
-                // Asignar warehouseId basado en el mapa de almacenes (usa warehouseKey)
                 Long warehouseId = warehouseMap.get(newData.getWarehouseKey());
                 newData.setWarehouseId(warehouseId);
                 newData.setPeriodId(periodId);
-
-                // Obtener productId desde el mapa de productos
                 Long productId = productMap.get(newData.getProductCode());
 
                 if (existingMap.containsKey(key)) {
-                    // REGLA 4: Actualizar registro existente
                     MultiWarehouseExistence existing = existingMap.get(key);
                     existing.setStock(newData.getStock());
                     existing.setStatus(newData.getStatus());
                     existing.setProductName(newData.getProductName());
-                    existing.setWarehouseName(newData.getWarehouseName()); // Actualizar nombre por si cambió
+                    existing.setWarehouseName(newData.getWarehouseName());
                     toSave.add(existing);
                     existingUpdated++;
                 } else {
-                    // REGLA 3: Crear nuevo registro
                     newData.setId(++maxId);
                     toSave.add(newData);
                 }
 
-                // IMPORTANTE: Sincronizar con inventory_stock
                 syncToInventoryStock(productId, warehouseId, periodId, newData.getStock(), newData.getStatus());
             }
 
             // REGLA DE NEGOCIO 5: Marcar como "B" (baja) productos no presentes en Excel
+            // y capturar su detalle para el warning
             Set<String> excelKeys = parsedData.stream()
                 .map(e -> e.getProductCode() + "|" + e.getWarehouseKey())
                 .collect(Collectors.toSet());
@@ -280,16 +281,25 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     existing.setStatus("B");
                     toSave.add(existing);
                     markedAsInactive++;
+
+                    // Guardar detalle para mostrarlo en la pestaña de bajas
+                    productosDadosDeBaja.add(ProductoBajaDTO.builder()
+                        .claveProducto(existing.getProductCode())
+                        .nombreProducto(existing.getProductName())
+                        .claveAlmacen(existing.getWarehouseKey())
+                        .nombreAlmacen(existing.getWarehouseName())
+                        .existenciasAnteriores(existing.getStock())
+                        .build());
                 }
             }
 
-            // Guardar todos los cambios
             if (!toSave.isEmpty()) {
                 multiWarehouseRepository.saveAll(toSave);
             }
 
             processed = toSave.size();
-            savedLog.setStatus("SUCCESS");
+            boolean hayWarnings = markedAsInactive > 0;
+            savedLog.setStatus(hayWarnings ? "SUCCESS_WITH_WARNINGS" : "SUCCESS");
             savedLog.setMessage(String.format(
                 "Importación completada. Registros procesados: %d, " +
                 "Almacenes creados: %d, Productos creados: %d, " +
@@ -304,7 +314,25 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         } finally {
             importLogRepository.save(savedLog);
         }
-        return ResponseEntity.ok(savedLog);
+
+        // Construir y devolver respuesta enriquecida con warning y detalle de bajas
+        boolean hayWarningsFinal = markedAsInactive > 0;
+        return ResponseEntity.ok(MultiWarehouseImportResponseDTO.builder()
+            .importLog(savedLog)
+            .tieneWarnings(hayWarningsFinal)
+            .mensajeWarning(hayWarningsFinal
+                ? String.format(
+                    "⚠️ %d producto(s) fueron marcados como BAJA porque no aparecieron en el archivo Excel. " +
+                    "Revisa la pestaña 'Productos dados de baja' para ver el detalle.", markedAsInactive)
+                : null)
+            .productosDadosDeBaja(productosDadosDeBaja)
+            .totalProcesados(processed)
+            .totalActualizados(existingUpdated)
+            .totalCreados(processed - existingUpdated - markedAsInactive)
+            .totalAlmacenesCreados(warehousesCreated)
+            .totalProductosCreados(productsCreated)
+            .totalDadosDeBaja(markedAsInactive)
+            .build());
     }
 
     @Override
@@ -793,6 +821,31 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             log.error("Error al sincronizar inventory_stock para productId={}, warehouseId={}, periodId={}: {}",
                      productId, warehouseId, periodId, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Devuelve todos los productos con status=B para un periodo dado.
+     * El frontend lo usará para mostrar la pestaña de "Productos dados de baja".
+     */
+    @Override
+    public ResponseEntity<?> getProductosDadosDeBaja(Long periodId) {
+        if (periodId == null) {
+            return ResponseEntity.badRequest().body("periodId es obligatorio");
+        }
+
+        List<MultiWarehouseExistence> bajas = multiWarehouseRepository.findInactiveByPeriodId(periodId);
+
+        List<ProductoBajaDTO> result = bajas.stream()
+            .map(e -> ProductoBajaDTO.builder()
+                .claveProducto(e.getProductCode())
+                .nombreProducto(e.getProductName())
+                .claveAlmacen(e.getWarehouseKey())
+                .nombreAlmacen(e.getWarehouseName())
+                .existenciasAnteriores(e.getStock())
+                .build())
+            .toList();
+
+        return ResponseEntity.ok(result);
     }
 
     /**

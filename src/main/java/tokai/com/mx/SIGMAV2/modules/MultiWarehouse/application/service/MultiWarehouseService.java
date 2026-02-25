@@ -14,4 +14,10 @@ public interface MultiWarehouseService {
     ResponseEntity<?> exportExistences(MultiWarehouseSearchDTO search);
     ResponseEntity<?> getImportLog(Long id);
     ResponseEntity<?> getStock(String productCode, String warehouseKey, Long periodId);
+
+    /**
+     * Devuelve la lista de productos que están en estado BAJA (B) para un periodo dado.
+     * Útil para mostrar en la pestaña de "Productos dados de baja" en el frontend.
+     */
+    ResponseEntity<?> getProductosDadosDeBaja(Long periodId);
 }

@@ -41,4 +41,8 @@ public interface MultiWarehouseRepository extends JpaRepository<MultiWarehouseEx
     // Buscar registros existentes para actualización
     @Query("SELECT e FROM MultiWarehouseExistence e WHERE e.periodId = :periodId AND e.status <> 'B'")
     List<MultiWarehouseExistence> findActiveByPeriodId(@Param("periodId") Long periodId);
+
+    // Buscar productos dados de baja (status = B) por periodo
+    @Query("SELECT e FROM MultiWarehouseExistence e WHERE e.periodId = :periodId AND e.status = 'B' ORDER BY e.warehouseKey, e.productCode")
+    List<MultiWarehouseExistence> findInactiveByPeriodId(@Param("periodId") Long periodId);
 }

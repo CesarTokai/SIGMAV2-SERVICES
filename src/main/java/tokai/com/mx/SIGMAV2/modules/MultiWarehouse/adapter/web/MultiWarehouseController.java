@@ -62,6 +62,18 @@ public class MultiWarehouseController {
         return multiWarehouseService.getImportLog(id);
     }
 
+    /**
+     * Devuelve la lista de productos en estado BAJA (B) para el periodo indicado.
+     * El frontend lo usa para mostrar la pestaña estática "Productos dados de baja".
+     *
+     * GET /api/sigmav2/multi-warehouse/productos-baja?periodId=16
+     */
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @GetMapping("/productos-baja")
+    public ResponseEntity<?> getProductosDadosDeBaja(@RequestParam Long periodId) {
+        return multiWarehouseService.getProductosDadosDeBaja(periodId);
+    }
+
     @PostMapping("/stock")
     public ResponseEntity<?> getStock(@RequestBody MultiWarehouseStockRequestDTO request) {
         return multiWarehouseService.getStock(
