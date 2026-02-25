@@ -31,5 +31,7 @@ public class LabelForCountDTO {
     private String estado;
     private Boolean impreso;
     private String mensaje;
+    private BigDecimal existQty;
+    private String existQtyUnidad;
 }
 

@@ -1510,6 +1510,26 @@ public class LabelServiceImpl implements LabelService {
             mensaje = "Listo para registrar el primer conteo";
         }
 
+        // ✅ OBTENER EXISTENCIAS DEL INVENTARIO
+        java.math.BigDecimal existQty = null;
+        String existQtyUnidad = product.getUniMed();
+
+        try {
+            var stockOpt = inventoryStockRepository
+                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+
+            if (stockOpt.isPresent()) {
+                existQty = stockOpt.get().getExistQty();
+                log.info("📦 Existencias obtenidas para producto {}: {}", label.getProductId(), existQty);
+            } else {
+                log.warn("⚠️ No se encontraron existencias para producto {} en almacén {} período {}",
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            }
+        } catch (Exception e) {
+            log.error("❌ Error obteniendo existencias para producto {}: {}", label.getProductId(), e.getMessage());
+        }
+
         return tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
             .folio(label.getFolio())
             .periodId(label.getPeriodId())
@@ -1526,6 +1546,8 @@ public class LabelServiceImpl implements LabelService {
             .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
             .impreso(impreso)
             .mensaje(mensaje)
+            .existQty(existQty)                    // ✅ AGREGAR EXISTENCIAS
+            .existQtyUnidad(existQtyUnidad)        // ✅ AGREGAR UNIDAD
             .build();
     }
 
@@ -1598,6 +1620,19 @@ public class LabelServiceImpl implements LabelService {
                     mensaje = "Pendiente C1";
                 }
 
+                // ✅ OBTENER EXISTENCIAS DEL INVENTARIO
+                java.math.BigDecimal existQty = null;
+                try {
+                    var stockOpt = inventoryStockRepository
+                        .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                            label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+                    if (stockOpt.isPresent()) {
+                        existQty = stockOpt.get().getExistQty();
+                    }
+                } catch (Exception e) {
+                    log.debug("Error obteniendo existencias para folio {}: {}", label.getFolio(), e.getMessage());
+                }
+
                 tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO dto =
                     tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
                         .folio(label.getFolio())
@@ -1615,6 +1650,8 @@ public class LabelServiceImpl implements LabelService {
                         .estado(label.getEstado().name())
                         .impreso(true)
                         .mensaje(mensaje)
+                        .existQty(existQty)                    // ✅ AGREGAR EXISTENCIAS
+                        .existQtyUnidad(product.getUniMed())   // ✅ AGREGAR UNIDAD
                         .build();
 
                 result.add(dto);
