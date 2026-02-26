@@ -1346,58 +1346,37 @@ public class LabelServiceImpl implements LabelService {
         Label label = jpaLabelRepository.findById(dto.getFolio())
             .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
 
-        // ✅ NUEVA LÓGICA: Obtener automáticamente período/almacén si no se proporcionan
-        Long periodId = dto.getPeriodId() != null ? dto.getPeriodId() : label.getPeriodId();
-        Long warehouseId = dto.getWarehouseId() != null ? dto.getWarehouseId() : label.getWarehouseId();
+        // Siempre usar los datos REALES del marbete (periodId/warehouseId del DTO son opcionales y se ignoran)
+        Long periodId = label.getPeriodId();
+        Long warehouseId = label.getWarehouseId();
 
-        log.info("📍 Usando período={}, almacén={} para cancelación", periodId, warehouseId);
+        log.info("📍 Usando período={}, almacén={} del marbete para cancelación", periodId, warehouseId);
 
         // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
 
-        // Validar que pertenece al periodo y almacén REAL del marbete
-        if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
-            String mensaje = String.format(
-                "❌ MARBETE INCORRECTO: El folio %d NO pertenece a período %d, almacén %d. " +
-                "Este marbete pertenece a PERÍODO %d, ALMACÉN %d.",
-                dto.getFolio(),
-                periodId,
-                warehouseId,
-                label.getPeriodId(),
-                label.getWarehouseId()
-            );
-            log.error(mensaje);
-            throw new InvalidLabelStateException(mensaje);
-        }
 
         // Validar que no esté ya cancelado
         if (label.getEstado() == Label.State.CANCELADO) {
             throw new LabelAlreadyCancelledException(dto.getFolio());
         }
 
-        // REGLA DE NEGOCIO: No se pueden cancelar marbetes sin folios asignados
-        // Obtener el LabelRequest para verificar la cantidad de folios
-        // Validar primero que labelRequestId no sea nulo
+        // Validar requestedLabels solo si el marbete tiene referencia a LabelRequest
         if (label.getLabelRequestId() == null) {
-            log.warn("⚠️ El marbete {} tiene id_label_request = NULL. Esto indica un problema de integridad de datos.", dto.getFolio());
-            throw new InvalidLabelStateException(
-                "El marbete no tiene una solicitud de folios válida asociada. " +
-                "Este es un problema de integridad de datos que debe ser revisado por administración."
-            );
+            log.warn("⚠️ Marbete {} tiene id_label_request=NULL (dato histórico). Se permite cancelar de todas formas.", dto.getFolio());
+        } else {
+            LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId())
+                .orElse(null);
+            if (labelRequest != null &&
+                (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0)) {
+                throw new InvalidLabelStateException(
+                    "No se puede cancelar un marbete sin folios asignados. " +
+                    "Este marbete tiene 0 folios solicitados y no debe ser cancelado."
+                );
+            }
+            log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
+                dto.getFolio(), labelRequest != null ? labelRequest.getRequestedLabels() : "N/A");
         }
-
-        LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId())
-            .orElseThrow(() -> new RuntimeException("LabelRequest no encontrado para el marbete con id: " + label.getLabelRequestId()));
-
-        if (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0) {
-            throw new InvalidLabelStateException(
-                "No se puede cancelar un marbete sin folios asignados. " +
-                "Este marbete tiene 0 folios solicitados y no debe ser cancelado."
-            );
-        }
-
-        log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
-            dto.getFolio(), labelRequest.getRequestedLabels());
 
         // REGLA DE NEGOCIO: Si el marbete tiene conteos registrados (C1 o C2),
         // se deben eliminar para evitar incongruencias en reportes de exportación
@@ -1454,12 +1433,12 @@ public class LabelServiceImpl implements LabelService {
     public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         log.info("Obteniendo información del marbete {} para conteo", folio);
 
-        // Validar acceso al almacén
-        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-
-        // Buscar el marbete por folio (sin importar periodo/almacen)
+        // Buscar el marbete primero para obtener su warehouseId real
         Label label = jpaLabelRepository.findById(folio)
             .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+
+        // Validar acceso usando el warehouseId REAL del marbete
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
         // Obtener información del producto
         ProductEntity product = productRepository.findById(label.getProductId())

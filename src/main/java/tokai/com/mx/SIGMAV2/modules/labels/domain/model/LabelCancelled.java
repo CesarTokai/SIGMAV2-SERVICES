@@ -5,8 +5,9 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * Entidad para registrar marbetes cancelados por falta de existencias.
- * Estos marbetes pueden ser reactivados si posteriormente se registran existencias.
+ * Entidad para registrar el historial de marbetes cancelados.
+ * Guarda auditoría completa: quién canceló, cuándo, por qué y las existencias al momento de cancelar.
+ * Los conteos C1/C2 son eliminados al cancelar para evitar incongruencias en reportes.
  */
 @Entity
 @Table(name = "labels_cancelled")
@@ -21,7 +22,7 @@ public class LabelCancelled {
     @Column(name = "folio", nullable = false, unique = true)
     private Long folio;
 
-    @Column(name = "id_label_request", nullable = false)
+    @Column(name = "id_label_request", nullable = true)
     private Long labelRequestId;
 
     @Column(name = "id_period", nullable = false)

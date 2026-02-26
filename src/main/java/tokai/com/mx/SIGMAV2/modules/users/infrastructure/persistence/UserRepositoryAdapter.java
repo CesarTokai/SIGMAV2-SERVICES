@@ -12,6 +12,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserMapper;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import jakarta.persistence.EntityManager;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +34,7 @@ public class UserRepositoryAdapter implements UserRepository {
     private final EntityManager entityManager;
 
     @Override
+    @Transactional
     public User save(User user) {
         log.debug("💾 Guardando usuario: {}", user.getEmail());
         log.info("📝 Usuario ANTES de mapear - Status: {}, Email: {}", user.isStatus(), user.getEmail());
