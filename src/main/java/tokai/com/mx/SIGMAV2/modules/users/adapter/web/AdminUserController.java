@@ -11,20 +11,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.RegisterUserCommand;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeService;
-import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.VerificationCodeLogRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
-import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.WarehouseRepository;
-import tokai.com.mx.SIGMAV2.security.infrastructure.repository.RevokedTokenRepository;
 
 import jakarta.validation.Valid;
 import tokai.com.mx.SIGMAV2.shared.response.CustomResponse;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,11 +36,7 @@ public class AdminUserController {
 
     private final UserService userService;
     private final VerificationCodeService verificationCodeService;
-    private final VerificationCodeLogRepository verificationCodeLogRepository;
-    private final JpaPersonalInformationRepository personalInformationRepository;
     private final UserWarehouseAssignmentRepository userWarehouseAssignmentRepository;
-    private final WarehouseRepository warehouseRepository;
-    private final RevokedTokenRepository revokedTokenRepository;
 
     /**
      * Crea un nuevo usuario desde el panel de administración
@@ -54,8 +45,13 @@ public class AdminUserController {
     public ResponseEntity<CustomResponse<AdminUserResponse>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
         log.info("Creando usuario desde panel de administración: {}", request.getEmail());
         try {
-            UserRequest userRequest = mapToUserRequest(request);
-            User user = userService.register(userRequest);
+            RegisterUserCommand command = new RegisterUserCommand(
+                    request.getEmail(), request.getPassword(), request.getRole(),
+                    request.getName(), request.getFirstLastName(), request.getSecondLastName(),
+                    request.getPhoneNumber(), request.getComments(),
+                    request.isStatus(), request.isPreVerified()
+            );
+            User user = userService.register(command);
 
             AdminUserResponse userResponse = convertToAdminUserResponse(user);
 
@@ -494,23 +490,6 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Mapea AdminCreateUserRequest a UserRequest
-     */
-    private UserRequest mapToUserRequest(AdminCreateUserRequest request) {
-        UserRequest userRequest = new UserRequest();
-        userRequest.setEmail(request.getEmail());
-        userRequest.setPassword(request.getPassword());
-        userRequest.setRole(request.getRole());
-        userRequest.setName(request.getName());
-        userRequest.setFirstLastName(request.getFirstLastName());
-        userRequest.setSecondLastName(request.getSecondLastName());
-        userRequest.setPhoneNumber(request.getPhoneNumber());
-        userRequest.setComments(request.getComments());
-        userRequest.setStatus(request.isStatus());
-        userRequest.setPreVerified(request.isPreVerified());
-        return userRequest;
-    }
 
     /**
      * Convierte User a AdminUserResponse con información adicional

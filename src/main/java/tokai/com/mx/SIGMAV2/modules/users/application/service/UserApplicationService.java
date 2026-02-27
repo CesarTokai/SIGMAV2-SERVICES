@@ -8,15 +8,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
-import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.RegisterUserCommand;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
+import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
-import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
-import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,22 +37,24 @@ public class UserApplicationService implements UserService {
     private final VerificationCodeService verificationCodeService;
     private final PersonalInformationRepository personalInformationRepository;
 
+    // ── registro ──────────────────────────────────────────────────────────
+
     /**
      * Registrar un nuevo usuario con validaciones completas.
      */
     @Override
     @Transactional
-    public User register(UserRequest request) {
-        log.info("Iniciando registro de usuario: {}", request.getEmail());
+    public User register(RegisterUserCommand command) {
+        log.info("Iniciando registro de usuario: {}", command.getEmail());
 
         // Validar campos obligatorios
-        validateRequiredFields(request);
+        validateRequiredFields(command);
 
         // Validaciones de formato
-        ValidationUtils.validateEmail(request.getEmail());
-        ValidationUtils.validatePassword(request.getPassword());
+        ValidationUtils.validateEmail(command.getEmail());
+        ValidationUtils.validatePassword(command.getPassword());
 
-        String normalizedEmail = request.getEmail().toLowerCase().trim();
+        String normalizedEmail = command.getEmail().toLowerCase().trim();
 
         // Verificar si ya existe el usuario
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -62,16 +64,16 @@ public class UserApplicationService implements UserService {
 
         try {
             // Crear y guardar usuario
-            User user = createUser(request, normalizedEmail);
+            User user = createUser(command, normalizedEmail);
             User savedUser = userRepository.save(user);
 
             log.info("Usuario registrado exitosamente con ID: {}", savedUser.getId());
 
             // Crear información personal asociada
-            createPersonalInformation(request, savedUser);
+            createPersonalInformation(command, savedUser);
 
             // Enviar correo de verificación si el usuario no está pre-verificado
-            if (!isPreVerified(request)) {
+            if (!isPreVerified(command)) {
                 sendVerificationEmail(savedUser);
             }
 
@@ -83,106 +85,75 @@ public class UserApplicationService implements UserService {
         }
     }
 
-    private void validateRequiredFields(UserRequest request) {
-        if (request.getName() == null || request.getName().trim().isEmpty()) {
+    private void validateRequiredFields(RegisterUserCommand command) {
+        if (command.getName() == null || command.getName().trim().isEmpty())
             throw new CustomException("El campo 'name' es obligatorio y no puede estar vacío.");
-        }
-        if (request.getFirstLastName() == null || request.getFirstLastName().trim().isEmpty()) {
+        if (command.getFirstLastName() == null || command.getFirstLastName().trim().isEmpty())
             throw new CustomException("El campo 'firstLastName' es obligatorio y no puede estar vacío.");
-        }
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+        if (command.getEmail() == null || command.getEmail().trim().isEmpty())
             throw new CustomException("El campo 'email' es obligatorio y no puede estar vacío.");
-        }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+        if (command.getPassword() == null || command.getPassword().trim().isEmpty())
             throw new CustomException("El campo 'password' es obligatorio y no puede estar vacío.");
-        }
-        if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+        if (command.getRole() == null || command.getRole().trim().isEmpty())
             throw new CustomException("El campo 'role' es obligatorio y no puede estar vacío.");
-        }
     }
 
-    private User createUser(UserRequest request, String normalizedEmail) {
-        String encryptedPassword = passwordEncoder.encode(request.getPassword());
+    private User createUser(RegisterUserCommand command, String normalizedEmail) {
+        String encryptedPassword = passwordEncoder.encode(command.getPassword());
+        boolean status     = command.getStatus()      != null && command.getStatus();
+        boolean preVerified = isPreVerified(command);
 
-        // Determinar status basado en el request o valor por defecto (false)
-        boolean status = request.getStatus() != null ? request.getStatus() : false;
-
-        // Determinar si está pre-verificado
-        boolean preVerified = isPreVerified(request);
-
-        // Generar código de verificación solo si no está pre-verificado
         String verificationCode = null;
         if (!preVerified) {
             verificationCode = verificationCodeService.generateVerificationCode(
-                normalizedEmail, "Registro inicial");
+                    normalizedEmail, "Registro inicial");
         }
 
-        return new User(
-                null, // ID será asignado por la base de datos
-                normalizedEmail,
-                encryptedPassword,
-                Role.valueOf(request.getRole().toUpperCase()),
-                status, // Status configurable desde el request
-                preVerified, // Pre-verificado si se especifica
-                0, // attempts
-                null, // lastTryAt
-                verificationCode, // Código solo si no está pre-verificado
-                LocalDateTime.now(), // createdAt
-                LocalDateTime.now() // updatedAt
-        );
+        return new User(null, normalizedEmail, encryptedPassword,
+                Role.valueOf(command.getRole().toUpperCase()),
+                status, preVerified, 0, null,
+                verificationCode, LocalDateTime.now(), LocalDateTime.now());
     }
 
-    private void createPersonalInformation(UserRequest request, User savedUser) {
+    private void createPersonalInformation(RegisterUserCommand command, User savedUser) {
         try {
-            // Crear información personal usando el dominio model correcto
             PersonalInformation personalInfo = new PersonalInformation(
-                    null, // ID será asignado por la base de datos
-                    savedUser.getId(), // user_id del usuario guardado
-                    request.getName(),
-                    request.getFirstLastName(),
-                    request.getSecondLastName(),
-                    request.getPhoneNumber(),
-                    null, // image - opcional
-                    request.getComments(),
-                    LocalDateTime.now(), // createdAt
-                    LocalDateTime.now()  // updatedAt
-            );
-
+                    null, savedUser.getId(),
+                    command.getName(), command.getFirstLastName(),
+                    command.getSecondLastName(), command.getPhoneNumber(),
+                    null, command.getComments(),
+                    LocalDateTime.now(), LocalDateTime.now());
             personalInformationRepository.save(personalInfo);
-            log.info("Información personal creada exitosamente para usuario ID: {}", savedUser.getId());
-
+            log.info("Información personal creada para usuario ID: {}", savedUser.getId());
         } catch (Exception e) {
             log.error("Error al crear información personal para usuario {}: {}", savedUser.getId(), e.getMessage());
             throw new CustomException("Error al crear información personal: " + e.getMessage());
         }
     }
 
-    private boolean isPreVerified(UserRequest request) {
-        return request.getPreVerified() != null && request.getPreVerified();
+    private boolean isPreVerified(RegisterUserCommand command) {
+        return command.getPreVerified() != null && command.getPreVerified();
     }
 
     private void sendVerificationEmail(User user) {
         try {
             String subject = "SIGMAV2 - Código de Verificación";
             String message = String.format(
-                "Hola,\n\n" +
-                "Gracias por registrarte en SIGMAV2.\n\n" +
+                "Hola,\n\nGracias por registrarte en SIGMAV2.\n\n" +
                 "Tu código de verificación es: %s\n\n" +
                 "Por favor, ingresa este código para activar tu cuenta.\n\n" +
                 "Este código tiene una validez de 24 horas.\n\n" +
                 "Si no solicitaste este registro, puedes ignorar este correo.\n\n" +
-                "Saludos,\n" +
-                "Equipo SIGMAV2",
-                user.getVerificationCode()
-            );
-
+                "Saludos,\nEquipo SIGMAV2",
+                user.getVerificationCode());
             mailSender.send(user.getEmail(), subject, message);
             log.info("Correo de verificación enviado a: {}", user.getEmail());
         } catch (Exception e) {
             log.warn("No se pudo enviar correo de verificación a {}: {}", user.getEmail(), e.getMessage());
-            // No lanzamos excepción para no afectar el registro
         }
     }
+
+    // ── findByEmail ───────────────────────────────────────────────────────
 
     /**
      * Buscar un usuario por email
@@ -192,9 +163,7 @@ public class UserApplicationService implements UserService {
         log.info("Buscando usuario por email: {}", email);
         
         ValidationUtils.validateEmail(email);
-        String normalizedEmail = email.toLowerCase().trim();
-        
-        return userRepository.findByEmail(normalizedEmail);
+        return userRepository.findByEmail(email.toLowerCase().trim());
     }
 
     /**
@@ -217,9 +186,7 @@ public class UserApplicationService implements UserService {
     @Override
     public boolean existsByEmail(String email) {
         ValidationUtils.validateEmail(email);
-        String normalizedEmail = email.toLowerCase().trim();
-        
-        return userRepository.existsByEmail(normalizedEmail);
+        return userRepository.existsByEmail(email.toLowerCase().trim());
     }
 
     /**
@@ -233,13 +200,13 @@ public class UserApplicationService implements UserService {
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
         
-        if (!userRepository.existsByEmail(normalizedEmail)) {
+        if (!userRepository.existsByEmail(normalizedEmail))
             throw new UserNotFoundException("Usuario no encontrado: " + email);
-        }
-        
+
         userRepository.deleteByEmail(normalizedEmail);
-        log.info("Usuario eliminado exitosamente: {}", normalizedEmail);
     }
+
+    // ── verificación ──────────────────────────────────────────────────────
 
     /**
      * Verifica un usuario con email y código
@@ -250,50 +217,21 @@ public class UserApplicationService implements UserService {
         
         ValidationUtils.validateEmail(email);
         ValidationUtils.validateVerificationCode(code);
-        
         String normalizedEmail = email.toLowerCase().trim();
-        
-        // Verificar el código usando el nuevo servicio
-        if (!verificationCodeService.validateVerificationCode(normalizedEmail, code)) {
-            throw new InvalidVerificationCodeException(
-                "Código de verificación inválido para el usuario: " + email
-            );
-        }
-        
-        // Buscar usuario
-        Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado: " + email);
-        }
-        
-        User user = optionalUser.get();
-        
-        // Verificar si el usuario ya está verificado
-        if (user.isVerified()) {
-            log.warn("Intento de verificación de usuario ya verificado: {}", normalizedEmail);
-            throw new UserAlreadyExistsException("El usuario ya está verificado");
-        }
-        
-        try {
-            // Marcar como verificado usando método de dominio
-            user.markAsVerified();
-            User updatedUser = userRepository.save(user);
-            
-            log.info("Usuario verificado exitosamente: {}", normalizedEmail);
-            return Optional.of(updatedUser);
-            
-        } catch (Exception e) {
-            log.error("Error al verificar usuario {}: {}", normalizedEmail, e.getMessage(), e);
-            throw new CustomException("Error interno al verificar el usuario. Intente nuevamente.");
-        }
-    }
 
-    /**
-     * Busca un usuario por email y código de verificación
-     */
-    @Override
-    public Optional<User> verifyByUsernameAndCode(String email, String code) {
-        return verify(email, code);
+        // Verificar el código usando el nuevo servicio
+        if (!verificationCodeService.validateVerificationCode(normalizedEmail, code))
+            throw new InvalidVerificationCodeException("Código de verificación inválido para: " + email);
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
+
+        // Verificar si el usuario ya está verificado
+        if (user.isVerified())
+            throw new UserAlreadyExistsException("El usuario ya está verificado");
+
+        user.markAsVerified();
+        return Optional.of(userRepository.save(user));
     }
 
     /**
@@ -307,71 +245,32 @@ public class UserApplicationService implements UserService {
         // Validar email
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
-        
-        // Buscar usuario
-        Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
-        if (optionalUser.isEmpty()) {
-            log.warn("Intento de reenvío de código para usuario inexistente: {}", normalizedEmail);
-            throw new UserNotFoundException("Usuario no encontrado: " + email);
-        }
-        
-        User user = optionalUser.get();
-        
-        // Verificar si el usuario ya está verificado
-        if (user.isVerified()) {
-            log.warn("Intento de reenvío de código para usuario ya verificado: {}", normalizedEmail);
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
+
+        if (user.isVerified())
             throw new UserAlreadyExistsException("El usuario ya está verificado");
-        }
-        
+
+        String newCode = verificationCodeService.generateVerificationCode(normalizedEmail, "Reenvío solicitado");
+        user.setVerificationCode(newCode);
+        user.setUpdatedAt(LocalDateTime.now());
+        User updatedUser = userRepository.save(user);
+
         try {
-            // Generar nuevo código usando el servicio especializado
-            String newVerificationCode = verificationCodeService.generateVerificationCode(
-                normalizedEmail, "Reenvío solicitado por usuario");
-            
-            // Actualizar el código en la base de datos
-            user.setVerificationCode(newVerificationCode);
-            user.setUpdatedAt(LocalDateTime.now());
-            User updatedUser = userRepository.save(user);
-            
-            // Enviar nuevo código por correo
             String subject = "SIGMAV2 - Nuevo Código de Verificación";
             String message = String.format(
-                "Hola,\\n\\n" +
-                "Has solicitado un nuevo código de verificación para tu cuenta en SIGMAV2.\\n\\n" +
-                "Tu nuevo código de verificación es: %s\\n\\n" +
-                "Por favor, ingresa este código para activar tu cuenta.\\n\\n" +
-                "Este código tiene una validez de 24 horas.\\n\\n" +
-                "Si no solicitaste este reenvío, puedes ignorar este correo.\\n\\n" +
-                "Saludos,\\n" +
-                "Equipo SIGMAV2",
-                newVerificationCode
-            );
-            
+                "Hola,\n\nHas solicitado un nuevo código de verificación.\n\n" +
+                "Tu nuevo código es: %s\n\n" +
+                "Válido por 24 horas.\n\nSaludos,\nEquipo SIGMAV2",
+                newCode);
             mailSender.send(updatedUser.getEmail(), subject, message);
-            log.info("Nuevo código de verificación enviado exitosamente a: {}", updatedUser.getEmail());
-            
         } catch (Exception e) {
-            log.error("Error al reenviar código de verificación a {}: {}", normalizedEmail, e.getMessage(), e);
-            throw new CustomException("Error interno al reenviar el código de verificación. Intente nuevamente.");
+            log.warn("No se pudo enviar código de reenvío a {}: {}", normalizedEmail, e.getMessage());
         }
     }
 
-    /**
-     * Busca un usuario por username (alias para email)
-     */
-    @Override
-    public Optional<User> findByUsername(String email) {
-        return findByEmail(email);
-    }
-
-    /**
-     * Elimina un usuario por username (alias para email)
-     */
-    @Transactional
-    @Override
-    public void deleteByUsername(String email) {
-        deleteByEmail(email);
-    }
+    // ── actualización ─────────────────────────────────────────────────────
 
     /**
      * Actualiza un usuario existente
@@ -400,30 +299,19 @@ public class UserApplicationService implements UserService {
     public User updateUserRole(Long userId, String role) {
         log.info("Actualizando rol del usuario ID: {} a {}", userId, role);
 
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
-        }
-
-        User user = optionalUser.get();
-
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
         try {
-            Role newRole = Role.valueOf(role.toUpperCase());
-            user.setRole(newRole);
+            user.setRole(Role.valueOf(role.toUpperCase()));
             user.setUpdatedAt(LocalDateTime.now());
-
-            User updatedUser = userRepository.save(user);
-            log.info("Rol del usuario ID: {} actualizado exitosamente a {}", userId, newRole);
-
-            return updatedUser;
-
+            return userRepository.save(user);
         } catch (IllegalArgumentException e) {
             throw new InvalidRoleException("Rol inválido: " + role);
         }
     }
 
-    // ============ MÉTODOS ADMINISTRATIVOS ============
-    
+    // ── administración ────────────────────────────────────────────────────
+
     /**
      * Obtiene todos los usuarios con paginación
      */
@@ -487,22 +375,10 @@ public class UserApplicationService implements UserService {
     public User updateVerificationStatus(Long userId, boolean verified) {
         log.info("Actualizando estado de verificación del usuario ID: {} a {}", userId, verified);
         
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
-        }
-        
-        User user = optionalUser.get();
-        
-        if (verified) {
-            user.markAsVerified();
-            log.info("Usuario ID: {} marcado como verificado por administrador", userId);
-        } else {
-            user.setVerified(false);
-            user.setUpdatedAt(LocalDateTime.now());
-            log.info("Usuario ID: {} marcado como no verificado por administrador", userId);
-        }
-        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
+        if (verified) user.markAsVerified();
+        else { user.setVerified(false); user.setUpdatedAt(LocalDateTime.now()); }
         return userRepository.save(user);
     }
     
@@ -514,20 +390,12 @@ public class UserApplicationService implements UserService {
     public User resetUserAttempts(Long userId) {
         log.info("Reseteando intentos del usuario ID: {}", userId);
         
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
-        }
-        
-        User user = optionalUser.get();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
         user.setAttempts(0);
         user.setLastTryAt(null);
         user.setUpdatedAt(LocalDateTime.now());
-        
-        User updatedUser = userRepository.save(user);
-        log.info("Intentos reseteados para usuario ID: {}", userId);
-        
-        return updatedUser;
+        return userRepository.save(user);
     }
     
     /**
@@ -538,27 +406,11 @@ public class UserApplicationService implements UserService {
     public User toggleUserStatus(Long userId) {
         log.info("🔄 TOGGLE STATUS - Iniciando cambio de estado para usuario ID: {}", userId);
 
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
-        }
-        
-        User user = optionalUser.get();
-        log.info("👤 Usuario encontrado: {}, Status ACTUAL: {}", user.getEmail(), user.isStatus());
-
-        boolean newStatus = !user.isStatus();
-        log.info("🔄 Cambiando status de {} a {}", user.isStatus(), newStatus);
-
-        user.setStatus(newStatus);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
+        user.setStatus(!user.isStatus());
         user.setUpdatedAt(LocalDateTime.now());
-        
-        log.info("💾 Guardando usuario con nuevo status: {}", newStatus);
-        User updatedUser = userRepository.save(user);
-        log.info("✅ Usuario guardado. Status NUEVO en retorno: {}", updatedUser.isStatus());
-
-        log.info("Estado del usuario ID: {} cambiado a {}", userId, newStatus ? "ACTIVO" : "INACTIVO");
-        
-        return updatedUser;
+        return userRepository.save(user);
     }
     
     /**
@@ -569,19 +421,11 @@ public class UserApplicationService implements UserService {
     public User forceVerifyUser(Long userId) {
         log.info("Forzando verificación del usuario ID: {}", userId);
         
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new UserNotFoundException("Usuario no encontrado con ID: " + userId);
-        }
-        
-        User user = optionalUser.get();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
         user.markAsVerified();
-        user.setAttempts(0); // Resetear intentos también
-        
-        User updatedUser = userRepository.save(user);
-        log.info("Usuario ID: {} verificado forzosamente por administrador", userId);
-        
-        return updatedUser;
+        user.setAttempts(0);
+        return userRepository.save(user);
     }
     
     /**

@@ -57,7 +57,9 @@ public class User {
         this.lastTryAt = LocalDateTime.now();
         if (this.attempts >= 3) {
             this.status = false;
-            this.attempts = 0;
+            this.lastBlockedAt = LocalDateTime.now();
+            // No se resetea attempts para mantener historial real;
+            // el reset explícito lo hace un admin con resetAttempts()
         }
     }
 

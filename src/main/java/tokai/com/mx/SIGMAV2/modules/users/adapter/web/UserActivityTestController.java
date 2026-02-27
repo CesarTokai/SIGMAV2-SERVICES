@@ -2,6 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.users.adapter.web;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/sigmav2/users")
 @RequiredArgsConstructor
+@Profile("dev")
 public class UserActivityTestController {
 
     private final UserService userService;
