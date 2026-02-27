@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.ImageResponse;
-import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.PersonalInformationRequest;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.CreatePersonalInformationCommand;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.ImageValidationResult;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.ImageService;
@@ -170,23 +170,24 @@ public class ImageServiceImpl implements ImageService {
     }
 
     /**
-     * Crea información personal básica para permitir subir imagen
+     * Crea información personal básica para permitir subir imagen.
+     * Usa Command object para no depender de DTOs del adaptador web.
      */
     private void createBasicPersonalInformation(Long userId) {
         try {
-            // Obtener información del usuario para usar su email como nombre temporal
             Optional<User> userOpt = userService.findById(userId);
             String defaultName = generateDefaultName(userOpt);
 
-            PersonalInformationRequest basicRequest = new PersonalInformationRequest();
-            basicRequest.setName(defaultName);
-            basicRequest.setFirstLastName("Sin especificar");
-            basicRequest.setSecondLastName("");
-            basicRequest.setPhoneNumber("");
-            
-            personalInformationService.createOrUpdate(userId, basicRequest);
+            CreatePersonalInformationCommand command = new CreatePersonalInformationCommand(
+                defaultName,
+                "Sin especificar",
+                "",
+                ""
+            );
+
+            personalInformationService.createOrUpdate(userId, command);
             log.info("Información personal básica creada para usuario ID: {} con nombre: {}", userId, defaultName);
-            
+
         } catch (Exception e) {
             log.error("Error al crear información personal básica para usuario ID {}: {}", userId, e.getMessage());
             throw new RuntimeException("Error al crear información personal básica: " + e.getMessage(), e);

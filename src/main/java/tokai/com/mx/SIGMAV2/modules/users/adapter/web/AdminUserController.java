@@ -15,7 +15,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.*;
 import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.VerificationCodeLogRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
 import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
 import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.WarehouseRepository;

@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.CreatePersonalInformationCommand;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.UpdatePersonalInformationCommand;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.PersonalInformationService;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.PersonalInformationRequest;
-import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.UpdatePersonalInformationRequest;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
@@ -32,7 +32,7 @@ public class PersonalInformationApplicationService implements PersonalInformatio
      * Crea o actualiza información personal del usuario
      */
     @Transactional
-    public PersonalInformation createOrUpdate(Long userId, PersonalInformationRequest request) {
+    public PersonalInformation createOrUpdate(Long userId, CreatePersonalInformationCommand command) {
         log.info("Creando o actualizando información personal para usuario ID: {}", userId);
 
         // Validar que el usuario existe
@@ -42,29 +42,28 @@ public class PersonalInformationApplicationService implements PersonalInformatio
         Optional<PersonalInformation> existingInfo = personalInformationRepository.findByUserId(userId);
 
         PersonalInformation personalInfo;
-        
+
         if (existingInfo.isPresent()) {
             // Actualizar información existente
             personalInfo = existingInfo.get();
             personalInfo.updateInformation(
-
-                request.getName(),
-                request.getFirstLastName(),
-                request.getSecondLastName(),
-                request.getPhoneNumber()
+                command.getName(),
+                command.getFirstLastName(),
+                command.getSecondLastName(),
+                command.getPhoneNumber()
             );
             log.info("Actualizando información personal existente para usuario ID: {}", userId);
         } else {
             // Crear nueva información personal
             personalInfo = new PersonalInformation(
-                null, // ID será asignado por la base de datos
+                null,
                 userId,
-                request.getName(),
-                request.getFirstLastName(),
-                request.getSecondLastName(),
-                request.getPhoneNumber(),
-                null, // imagen inicial null
-                null, // comments inicial null
+                command.getName(),
+                command.getFirstLastName(),
+                command.getSecondLastName(),
+                command.getPhoneNumber(),
+                null,
+                null,
                 LocalDateTime.now(),
                 LocalDateTime.now()
             );
@@ -82,34 +81,31 @@ public class PersonalInformationApplicationService implements PersonalInformatio
     }
 
     /**
-     * Actualiza información personal existente
+     * Actualiza información personal existente (solo campos no nulos)
      */
     @Transactional
-    public PersonalInformation update(Long userId, UpdatePersonalInformationRequest request) {
+    public PersonalInformation update(Long userId, UpdatePersonalInformationCommand command) {
         log.info("Actualizando información personal para usuario ID: {}", userId);
 
-        // Validar que el usuario existe
         validateUserExists(userId);
 
-        // Buscar información personal existente
         PersonalInformation personalInfo = personalInformationRepository.findByUserId(userId)
             .orElseThrow(() -> new UserNotFoundException(
                 "No se encontró información personal para el usuario ID: " + userId));
 
-        // Actualizar solo los campos que no son nulos
-        if (request.getName() != null) {
-            personalInfo.setName(request.getName());
+        if (command.getName() != null) {
+            personalInfo.setName(command.getName());
         }
-        if (request.getFirstLastName() != null) {
-            personalInfo.setFirstLastName(request.getFirstLastName());
+        if (command.getFirstLastName() != null) {
+            personalInfo.setFirstLastName(command.getFirstLastName());
         }
-        if (request.getSecondLastName() != null) {
-            personalInfo.setSecondLastName(request.getSecondLastName());
+        if (command.getSecondLastName() != null) {
+            personalInfo.setSecondLastName(command.getSecondLastName());
         }
-        if (request.getPhoneNumber() != null) {
-            personalInfo.setPhoneNumber(request.getPhoneNumber());
+        if (command.getPhoneNumber() != null) {
+            personalInfo.setPhoneNumber(command.getPhoneNumber());
         }
-        
+
         personalInfo.setUpdatedAt(LocalDateTime.now());
 
         try {
@@ -194,30 +190,17 @@ public class PersonalInformationApplicationService implements PersonalInformatio
     }
 
     /**
-     * Busca información personal y detalles de usuario por ID de usuario
+     * Busca información personal por ID de usuario.
+     * Los datos de User (email, role, status) se obtienen por separado en la capa del adaptador.
      */
     public Optional<PersonalInformation> findByUserIdWithUserDetails(Long userId) {
-        log.info("Buscando información personal y detalles de usuario para ID: {}", userId);
+        log.info("Buscando información personal para ID: {}", userId);
 
         if (userId == null) {
             throw new IllegalArgumentException("El ID del usuario es obligatorio");
         }
 
-        Optional<PersonalInformation> personalInfoOpt = personalInformationRepository.findByUserId(userId);
-
-        if (personalInfoOpt.isPresent()) {
-            PersonalInformation personalInfo = personalInfoOpt.get();
-
-            // Obtener detalles adicionales del usuario
-            User user = userService.findById(userId)
-                    .orElseThrow(() -> new CustomException("Usuario no encontrado para ID: " + userId));
-
-            personalInfo.setEmail(user.getEmail());
-            personalInfo.setRole(user.getRole().toString());
-            personalInfo.setStatus(user.isStatus());
-        }
-
-        return personalInfoOpt;
+        return personalInformationRepository.findByUserId(userId);
     }
 
     /**

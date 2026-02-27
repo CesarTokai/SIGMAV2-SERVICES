@@ -1,27 +1,28 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input;
 
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.CreatePersonalInformationCommand;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
-import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.PersonalInformationRequest;
-import tokai.com.mx.SIGMAV2.modules.personal_information.adapter.web.dto.UpdatePersonalInformationRequest;
+import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.UpdatePersonalInformationCommand;
 
 import java.util.Optional;
 
 /**
- * Puerto de entrada - Define los casos de uso del módulo de información personal
- * Esta interfaz representa la API del dominio (hexágono)
+ * Puerto de entrada - Define los casos de uso del módulo de información personal.
+ * Esta interfaz representa la API del dominio (hexágono).
+ * NOTA: No debe depender de DTOs de la capa de adaptadores (web/dto).
  */
 public interface PersonalInformationService {
-    
+
     /**
      * Crea o actualiza información personal del usuario
      */
-    PersonalInformation createOrUpdate(Long userId, PersonalInformationRequest request);
-    
+    PersonalInformation createOrUpdate(Long userId, CreatePersonalInformationCommand command);
+
     /**
      * Actualiza información personal existente
      */
-    PersonalInformation update(Long userId, UpdatePersonalInformationRequest request);
-    
+    PersonalInformation update(Long userId, UpdatePersonalInformationCommand command);
+
     /**
      * Busca información personal por ID de usuario
      */

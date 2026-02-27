@@ -13,7 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import java.time.LocalDateTime;

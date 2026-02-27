@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
 
 @Getter
 @Setter

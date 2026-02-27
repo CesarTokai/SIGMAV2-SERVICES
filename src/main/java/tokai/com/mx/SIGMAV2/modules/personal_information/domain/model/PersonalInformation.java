@@ -6,8 +6,9 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Entidad de dominio pura - Información Personal del Usuario
- * Sin dependencias de frameworks externos
+ * Entidad de dominio pura - Información Personal del Usuario.
+ * Sin dependencias de frameworks externos.
+ * NOTA: email, role y status pertenecen al dominio de Users, no deben vivir aquí.
  */
 @Getter
 @Setter
@@ -22,35 +23,14 @@ public class PersonalInformation {
     private String comments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String email;
-    private String role;
-    private boolean status;
 
     // Constructor por defecto
     public PersonalInformation() {}
 
-    // Constructor completo ordenado
+    // Constructor completo
     public PersonalInformation(Long id, Long userId, String name, String firstLastName,
-                             String secondLastName, String phoneNumber, byte[] image,
-                             String comments, LocalDateTime createdAt, LocalDateTime updatedAt,
-                             String email, String role, boolean status) {
-        this.id = id;
-        this.userId = userId;
-        this.name = name;
-        this.firstLastName = firstLastName;
-        this.secondLastName = secondLastName;
-        this.phoneNumber = phoneNumber;
-        this.image = image;
-        this.comments = comments;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.email = email;
-        this.role = role;
-        this.status = status;
-    }
-
-    // Constructor adicional para manejar casos con valores nulos
-    public PersonalInformation(Long id, Long userId, String name, String firstLastName, String secondLastName, String phoneNumber, byte[] image, String comments, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                               String secondLastName, String phoneNumber, byte[] image,
+                               String comments, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.name = name;
@@ -78,7 +58,7 @@ public class PersonalInformation {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Métodos de dominio para obtener el nombre completo
+    // Método de dominio para obtener el nombre completo
     public String getFullName() {
         StringBuilder fullName = new StringBuilder();
         if (name != null) fullName.append(name);
@@ -87,9 +67,11 @@ public class PersonalInformation {
         return fullName.toString().trim();
     }
 
-    // Métodos de dominio para verificar información básica completa
+    // Método de dominio para verificar información básica completa
     public boolean hasCompleteBasicInfo() {
-        return name != null && !name.trim().isEmpty() && 
+        return name != null && !name.trim().isEmpty() &&
                firstLastName != null && !firstLastName.trim().isEmpty();
     }
 }
+
+

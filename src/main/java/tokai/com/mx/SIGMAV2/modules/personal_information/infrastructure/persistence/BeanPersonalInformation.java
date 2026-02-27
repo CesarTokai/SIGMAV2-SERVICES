@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.personal_information.domain.model;
+package tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,6 +7,10 @@ import jakarta.persistence.*;
 import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import java.time.LocalDateTime;
 
+/**
+ * Entidad JPA para persistencia de información personal.
+ * Vive en infrastructure/persistence, NO en domain/model.
+ */
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
@@ -25,29 +29,28 @@ public class BeanPersonalInformation {
     @Column(name = "personal_information_id")
     private Long personalInformationId;
 
-
-    @Column(name ="name", nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name ="first_last_name")  // Cambiar a nullable = true
+    @Column(name = "first_last_name")
     private String firstLastName;
 
-    @Column(name ="second_last_name")
+    @Column(name = "second_last_name")
     private String secondLastName;
 
-    @Column(name ="phone_number")
+    @Column(name = "phone_number")
     private String phoneNumber;
 
-    @Lob  // Agregar esta anotación para LONGBLOB
-    @Column(name ="image", columnDefinition = "LONGBLOB")
+    @Lob
+    @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
-    
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
+
     @Column(name = "comments")
     private String comments;
 
@@ -58,7 +61,7 @@ public class BeanPersonalInformation {
         }
         updatedAt = LocalDateTime.now();
     }
-    
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
@@ -73,3 +76,4 @@ public class BeanPersonalInformation {
     )
     private BeanUser user;
 }
+

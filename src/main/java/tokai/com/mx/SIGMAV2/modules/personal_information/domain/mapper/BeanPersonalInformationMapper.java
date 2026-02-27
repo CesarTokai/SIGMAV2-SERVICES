@@ -1,6 +1,6 @@
 package tokai.com.mx.SIGMAV2.modules.personal_information.domain.mapper;
 
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 
 public class BeanPersonalInformationMapper {
