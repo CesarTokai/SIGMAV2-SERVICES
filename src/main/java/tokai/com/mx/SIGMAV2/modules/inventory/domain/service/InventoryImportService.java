@@ -7,7 +7,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.InventoryImportRequestDTO;
@@ -28,8 +27,12 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.DigestInputStream;
 
-
-@Service
+/**
+ * @deprecated Reemplazado por InventoryImportApplicationService en application/service.
+ * Esta clase no está registrada como bean de Spring.
+ */
+@Deprecated
+@SuppressWarnings("DeprecatedIsStillUsed")
 public class InventoryImportService implements InventoryImportUseCase {
 
     private final ProductRepository productRepository;
@@ -153,7 +156,7 @@ public class InventoryImportService implements InventoryImportUseCase {
             job.setStartedAt(LocalDateTime.now());
             job.setFinishedAt(LocalDateTime.now());
             job.setTotalRecords(stats.totalRows);
-            job.setStatus(errors.isEmpty() ? "SUCCESS" : "WARNING");
+            job.setStatus(errors.isEmpty() ? InventoryImportJob.ImportStatus.SUCCESS : InventoryImportJob.ImportStatus.WARNING);
             job.setInsertedRows(stats.inserted);
             job.setUpdatedRows(stats.updated);
             job.setSkippedRows(0);

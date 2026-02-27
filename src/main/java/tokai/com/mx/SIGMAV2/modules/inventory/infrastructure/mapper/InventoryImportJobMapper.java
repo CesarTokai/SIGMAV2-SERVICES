@@ -16,7 +16,9 @@ public class InventoryImportJobMapper {
         d.setStartedAt(e.getStartedAt());
         d.setFinishedAt(e.getFinishedAt());
         d.setTotalRecords(e.getTotalRecords() != null ? e.getTotalRecords() : 0);
-        d.setStatus(e.getStatus());
+        d.setStatus(e.getStatus() != null
+                ? InventoryImportJob.ImportStatus.valueOf(e.getStatus().toUpperCase())
+                : InventoryImportJob.ImportStatus.ERROR);
         d.setInsertedRows(e.getInsertedRows());
         d.setUpdatedRows(e.getUpdatedRows());
         d.setSkippedRows(e.getSkippedRows());
@@ -39,7 +41,7 @@ public class InventoryImportJobMapper {
         e.setStartedAt(d.getStartedAt());
         e.setFinishedAt(d.getFinishedAt());
         e.setTotalRecords(d.getTotalRecords());
-        e.setStatus(d.getStatus());
+        e.setStatus(d.getStatus() != null ? d.getStatus().name() : null);
         e.setInsertedRows(d.getInsertedRows());
         e.setUpdatedRows(d.getUpdatedRows());
         e.setSkippedRows(d.getSkippedRows());

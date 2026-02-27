@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.domain.service;
 
-
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportJobUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryImportJobRepository;
@@ -8,13 +9,12 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryImpor
 import java.util.List;
 import java.util.Optional;
 
+@Service
+@RequiredArgsConstructor
 public class InventoryImportJobService implements InventoryImportJobUseCase {
 
     private final InventoryImportJobRepository importJobRepository;
 
-    public InventoryImportJobService(InventoryImportJobRepository importJobRepository) {
-        this.importJobRepository = importJobRepository;
-    }
 
     @Override
     public List<InventoryImportJob> listImportJobs() {

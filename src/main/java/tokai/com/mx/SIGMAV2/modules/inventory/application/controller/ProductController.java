@@ -2,6 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.inventory.application.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.ProductRepository;
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sigmav2/products")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','USUARIO')")
 public class ProductController {
     private final ProductRepository productRepository;
 
