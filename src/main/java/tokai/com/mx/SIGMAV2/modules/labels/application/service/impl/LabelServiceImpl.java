@@ -1342,6 +1342,11 @@ public class LabelServiceImpl implements LabelService {
     public void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole) {
         log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
 
+        // Validación explícita para dar error claro en lugar del genérico "id must not be null"
+        if (dto.getFolio() == null) {
+            throw new InvalidLabelStateException("El campo 'folio' es obligatorio y no puede ser nulo");
+        }
+
         // Buscar el marbete
         Label label = jpaLabelRepository.findById(dto.getFolio())
             .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));

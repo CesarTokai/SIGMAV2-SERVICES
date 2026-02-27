@@ -5,11 +5,10 @@ import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 public interface PeriodManagementUseCase {
     Period findById(Long id);
-    Period createPeriod(LocalDate date, String comments, BeanUser user);
+    Period createPeriod(LocalDate date, String comments);
     Page<Period> findAll(Pageable pageable);
     Period updateComments(Long id, String comments);
     void deletePeriod(Long id);

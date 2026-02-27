@@ -2,10 +2,10 @@ package tokai.com.mx.SIGMAV2.modules.periods.adapter.web;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.IdDTO;
 import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.UpdatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.CreatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.PeriodResponseDTO;
@@ -16,67 +16,71 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/sigmav2/periods")
 @RequiredArgsConstructor
-
 public class PeriodsManagementController {
+
     private final PeriodManagementUseCase periodManagementUseCase;
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<PeriodResponseDTO> createPeriod(@Valid @RequestBody CreatePeriodDTO createPeriodDTO) {
-        Period period = periodManagementUseCase.createPeriod(createPeriodDTO.getDate(), createPeriodDTO.getComments(), createPeriodDTO.getUser());
+    public ResponseEntity<PeriodResponseDTO> createPeriod(@Valid @RequestBody CreatePeriodDTO dto) {
+        Period period = periodManagementUseCase.createPeriod(dto.getDate(), dto.getComments());
         return ResponseEntity.ok(mapToResponseDTO(period, false));
     }
 
-    @PostMapping("/get")
-    public ResponseEntity<PeriodResponseDTO> getPeriod(@Valid @RequestBody IdDTO idDTO) {
-        Period period = periodManagementUseCase.findById(idDTO.getId());
-        if (period == null) {
-            return ResponseEntity.notFound().build();
-        }
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @GetMapping("/{id}")
+    public ResponseEntity<PeriodResponseDTO> getPeriod(@PathVariable Long id) {
+        Period period = periodManagementUseCase.findById(id);
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
-    @PostMapping("/update-comments")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PutMapping("/{id}/comments")
     public ResponseEntity<PeriodResponseDTO> updatePeriodComments(
+            @PathVariable Long id,
             @Valid @RequestBody UpdatePeriodDTO updatePeriodDTO) {
-        Period period = periodManagementUseCase.updateComments(updatePeriodDTO.getId(), updatePeriodDTO.getComments());
+        Period period = periodManagementUseCase.updateComments(id, updatePeriodDTO.getComments());
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
-
-
-    @PostMapping("/open")
-    public ResponseEntity<PeriodResponseDTO> openPeriod(@Valid @RequestBody IdDTO idDTO) {
-        Period period = periodManagementUseCase.openPeriod(idDTO.getId());
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PutMapping("/{id}/open")
+    public ResponseEntity<PeriodResponseDTO> openPeriod(@PathVariable Long id) {
+        Period period = periodManagementUseCase.openPeriod(id);
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PutMapping("/{id}/close")
+    public ResponseEntity<PeriodResponseDTO> closePeriod(@PathVariable Long id) {
+        Period period = periodManagementUseCase.closePeriod(id);
+        return ResponseEntity.ok(mapToResponseDTO(period, true));
+    }
+
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PutMapping("/{id}/lock")
+    public ResponseEntity<PeriodResponseDTO> lockPeriod(@PathVariable Long id) {
+        Period period = periodManagementUseCase.lockPeriod(id);
+        return ResponseEntity.ok(mapToResponseDTO(period, true));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
     @GetMapping
     public ResponseEntity<Page<PeriodResponseDTO>> getAllPeriods(Pageable pageable) {
         Page<Period> periods = periodManagementUseCase.findAll(pageable);
-        Page<PeriodResponseDTO> responseDTOs = periods.map(p -> mapToResponseDTO(p, false));
-        return ResponseEntity.ok(responseDTOs);
+        return ResponseEntity.ok(periods.map(p -> mapToResponseDTO(p, false)));
     }
 
-    @PostMapping("/delete")
-    public ResponseEntity<Void> deletePeriod(@Valid @RequestBody IdDTO idDTO) {
-        periodManagementUseCase.deletePeriod(idDTO.getId());
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePeriod(@PathVariable Long id) {
+        periodManagementUseCase.deletePeriod(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/close")
-    public ResponseEntity<PeriodResponseDTO> closePeriod(@Valid @RequestBody IdDTO idDTO) {
-        Period period = periodManagementUseCase.closePeriod(idDTO.getId());
-        return ResponseEntity.ok(mapToResponseDTO(period, true));
-    }
-
-    @PostMapping("/lock")
-    public ResponseEntity<PeriodResponseDTO> lockPeriod(@Valid @RequestBody IdDTO idDTO) {
-        Period period = periodManagementUseCase.lockPeriod(idDTO.getId());
-        return ResponseEntity.ok(mapToResponseDTO(period, true));
-    }
-
     private PeriodResponseDTO mapToResponseDTO(Period period, boolean includeDependencies) {
-        boolean hasDeps = includeDependencies && period.getId() != null && periodManagementUseCase.hasDependencies(period.getId());
+        boolean hasDeps = includeDependencies && period.getId() != null
+                && periodManagementUseCase.hasDependencies(period.getId());
         return PeriodResponseDTO.builder()
                 .id(period.getId())
                 .date(period.getDate())

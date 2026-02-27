@@ -13,7 +13,14 @@ public interface JpaPeriodRepository extends JpaRepository<PeriodEntity, Long> {
     boolean existsByDate(LocalDate date);
     Optional<PeriodEntity> findByDate(LocalDate date);
 
-    @Query(value = "SELECT COUNT(*) FROM label_requests WHERE id_period = :periodId", nativeQuery = true)
+    @Query(value = """
+        SELECT (
+            SELECT COUNT(*) FROM label_requests   WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM labels            WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM inventory_stock   WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM multiwarehouse_existences WHERE id_period = :periodId
+        )
+        """, nativeQuery = true)
     long countDependencies(@Param("periodId") Long periodId);
 
     // Cuenta los periodos por año

@@ -221,20 +221,17 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
             }
 
             // REGLA DE NEGOCIO 1: Crear almacenes que no existen
+            long warehousesAntes = warehouseRepository.count();
             Map<String, Long> warehouseMap = createMissingWarehouses(parsedData);
-            warehousesCreated = (int) warehouseMap.values().stream().filter(id -> id != null).count() -
-                              (int) warehouseRepository.count();
+            warehousesCreated = (int) (warehouseRepository.count() - warehousesAntes);
 
             // REGLA DE NEGOCIO 2: Crear productos que no existen en inventario
+            long productosAntes = productRepository.count();
             Map<String, Long> productMap = createMissingProducts(parsedData, periodId);
-            productsCreated = (int) productMap.values().stream().filter(id -> id != null).count() -
-                            (int) productRepository.count();
+            productsCreated = (int) (productRepository.count() - productosAntes);
 
-            // Obtener registros existentes para el periodo
-            List<MultiWarehouseExistence> existingRecords = multiWarehouseRepository.findAll()
-                .stream()
-                .filter(e -> e.getPeriodId().equals(periodId))
-                .toList();
+            // Obtener registros existentes para el periodo usando query específico (evita cargar toda la tabla)
+            List<MultiWarehouseExistence> existingRecords = multiWarehouseRepository.findByPeriodId(periodId);
 
             Map<String, MultiWarehouseExistence> existingMap = existingRecords.stream()
                 .collect(Collectors.toMap(
@@ -244,7 +241,6 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
 
             // REGLA DE NEGOCIO 3 y 4: Actualizar existentes o crear nuevos
             List<MultiWarehouseExistence> toSave = new ArrayList<>();
-            Long maxId = multiWarehouseRepository.findMaxId().orElse(0L);
 
             for (MultiWarehouseExistence newData : parsedData) {
                 String key = newData.getProductCode() + "|" + newData.getWarehouseKey();
@@ -262,7 +258,8 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                     toSave.add(existing);
                     existingUpdated++;
                 } else {
-                    newData.setId(++maxId);
+                    // Nuevo registro — la BD asigna el ID automáticamente
+                    newData.setId(null);
                     toSave.add(newData);
                 }
 
@@ -342,32 +339,93 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
         }
         int step = stepDTO.getStepNumber();
         switch (step) {
-            case 1:
-                // Validar requeridos
-                if (stepDTO.getPeriod() == null || stepDTO.getPeriod().isBlank()) {
+            case 1: {
+                if (stepDTO.getPeriod() == null || stepDTO.getPeriod().isBlank())
                     return ResponseEntity.badRequest().body("Periodo* es obligatorio");
-                }
-                if (stepDTO.getFileName() == null || stepDTO.getFileName().isBlank()) {
+                if (stepDTO.getFileName() == null || stepDTO.getFileName().isBlank())
                     return ResponseEntity.badRequest().body("Archivo multialmacen.xlsx* es obligatorio");
+                LocalDate pd = parsePeriod(stepDTO.getPeriod());
+                if (pd == null) return ResponseEntity.badRequest().body("Formato de periodo inválido. Use MM-yyyy o yyyy-MM");
+                Optional<Period> perOpt = periodRepository.findByDate(pd);
+                if (perOpt.isPresent()) {
+                    Period.PeriodState st = perOpt.get().getState();
+                    if (st == Period.PeriodState.CLOSED || st == Period.PeriodState.LOCKED)
+                        return ResponseEntity.status(409).body("El periodo está " + st + ", no se permite importar");
                 }
-                return ResponseEntity.ok("Paso 1 validado");
-            case 2:
-            case 3:
-                // En un escenario real se detectan y muestran faltantes
-                // Forzamos la regla: Debe resolver faltantes antes de continuar
-                return ResponseEntity.status(409).body("Debe resolver faltantes antes de continuar");
-            case 4:
-                // Confirmación de bajas obligatoria para marcar STATUS = B
-                if (!stepDTO.isConfirmBajas()) {
-                    return ResponseEntity.badRequest().body("Se exige casilla ‘Confirmo las bajas’ para continuar");
+                return ResponseEntity.ok(Map.of("step", 1, "status", "OK",
+                    "message", "Paso 1 validado", "periodExists", perOpt.isPresent()));
+            }
+            case 2: {
+                // Mostrar almacenes activos del periodo para preview
+                if (stepDTO.getPeriod() == null || stepDTO.getPeriod().isBlank())
+                    return ResponseEntity.badRequest().body("Periodo es obligatorio para el paso 2");
+                LocalDate pd = parsePeriod(stepDTO.getPeriod());
+                if (pd == null) return ResponseEntity.badRequest().body("Formato de periodo inválido");
+                Optional<Period> perOpt = periodRepository.findByDate(pd);
+                if (perOpt.isEmpty()) {
+                    return ResponseEntity.ok(Map.of("step", 2, "status", "OK",
+                        "message", "Periodo nuevo, se creará al importar",
+                        "almacenesActivos", Collections.emptyList(), "totalAlmacenesActivos", 0));
                 }
-                return ResponseEntity.ok("Bajas confirmadas");
-            case 5:
-                // Finalizar: generar resumen y log descargable (devolvemos un texto/resumen simple)
-                String resumen = "Importación finalizada. Registros procesados: " + 0 + ", Bajas confirmadas: " + (stepDTO.isConfirmBajas() ? "Sí" : "No");
-                return ResponseEntity.ok(resumen);
+                List<MultiWarehouseExistence> activos = multiWarehouseRepository.findActiveByPeriodId(perOpt.get().getId());
+                Set<String> claves = activos.stream().map(MultiWarehouseExistence::getWarehouseKey).collect(Collectors.toSet());
+                return ResponseEntity.ok(Map.of("step", 2, "status", "OK",
+                    "message", "Revisión de almacenes completada",
+                    "totalAlmacenesActivos", claves.size(), "almacenesActivos", claves));
+            }
+            case 3: {
+                // Mostrar productos dados de baja en el periodo
+                if (stepDTO.getPeriod() == null || stepDTO.getPeriod().isBlank())
+                    return ResponseEntity.badRequest().body("Periodo es obligatorio para el paso 3");
+                LocalDate pd = parsePeriod(stepDTO.getPeriod());
+                if (pd == null) return ResponseEntity.badRequest().body("Formato de periodo inválido");
+                Optional<Period> perOpt = periodRepository.findByDate(pd);
+                if (perOpt.isEmpty()) {
+                    return ResponseEntity.ok(Map.of("step", 3, "status", "OK",
+                        "message", "Periodo nuevo, no hay productos dados de baja",
+                        "productosDadosDeBaja", Collections.emptyList(), "totalDadosDeBaja", 0));
+                }
+                List<MultiWarehouseExistence> bajas = multiWarehouseRepository.findInactiveByPeriodId(perOpt.get().getId());
+                List<Map<String, Object>> bajasDTO = bajas.stream()
+                    .map(e -> Map.<String, Object>of(
+                        "claveProducto",  e.getProductCode()  != null ? e.getProductCode()  : "",
+                        "nombreProducto", e.getProductName()  != null ? e.getProductName()  : "",
+                        "claveAlmacen",   e.getWarehouseKey() != null ? e.getWarehouseKey() : "",
+                        "nombreAlmacen",  e.getWarehouseName()!= null ? e.getWarehouseName(): ""))
+                    .toList();
+                return ResponseEntity.ok(Map.of("step", 3, "status", "OK",
+                    "message", bajas.isEmpty()
+                        ? "No hay productos dados de baja en este periodo"
+                        : bajas.size() + " producto(s) actualmente dados de baja",
+                    "totalDadosDeBaja", bajas.size(), "productosDadosDeBaja", bajasDTO));
+            }
+            case 4: {
+                if (!stepDTO.isConfirmBajas())
+                    return ResponseEntity.badRequest().body("Se requiere confirmar las bajas para continuar");
+                return ResponseEntity.ok(Map.of("step", 4, "status", "OK",
+                    "message", "Bajas confirmadas. Puede proceder con la importación"));
+            }
+            case 5: {
+                // Resumen final del estado del periodo
+                if (stepDTO.getPeriod() != null && !stepDTO.getPeriod().isBlank()) {
+                    LocalDate pd = parsePeriod(stepDTO.getPeriod());
+                    Optional<Period> p5 = pd != null ? periodRepository.findByDate(pd) : Optional.empty();
+                    if (p5.isPresent()) {
+                        List<MultiWarehouseExistence> todos = multiWarehouseRepository.findByPeriodId(p5.get().getId());
+                        long activos5 = todos.stream().filter(e -> !"B".equals(e.getStatus())).count();
+                        long bajas5   = todos.stream().filter(e ->  "B".equals(e.getStatus())).count();
+                        return ResponseEntity.ok(Map.of("step", 5, "status", "OK",
+                            "message", "Importación lista para ejecutar",
+                            "totalRegistros", todos.size(), "totalActivos", activos5,
+                            "totalDadosDeBaja", bajas5, "bajasConfirmadas", stepDTO.isConfirmBajas()));
+                    }
+                }
+                return ResponseEntity.ok(Map.of("step", 5, "status", "OK",
+                    "message", "Resumen generado. Listo para importar",
+                    "bajasConfirmadas", stepDTO.isConfirmBajas()));
+            }
             default:
-                return ResponseEntity.badRequest().body("Paso del wizard no soportado");
+                return ResponseEntity.badRequest().body("Paso del wizard no soportado: " + step);
         }
     }
 
@@ -427,86 +485,83 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Helpers
+    // ─── Constantes de candidatos de columnas ────────────────────────────────
+    private static final String[] COL_ALMACEN  = {"cve_alm","cvealm","almacen_clave","warehouse_key"};
+    private static final String[] COL_PRODUCTO = {"cve_art","cveart","producto","product","codigo","codigo_producto","product_code"};
+    private static final String[] COL_DESC     = {"descr","descripcion","descripción","description","producto_nombre","product_name"};
+    private static final String[] COL_EXIST    = {"exist","existencias","stock","cantidad"};
+    private static final String[] COL_ESTADO   = {"status","estado"};
+
+    /** Índices [iAlmacenKey, iProducto, iDesc, iExist, iEstado] */
+    private int[] parseColumnIndexes(String[] headers, String fileType) {
+        int iAlmacenKey = indexOf(headers, COL_ALMACEN);
+        int iProducto   = indexOf(headers, COL_PRODUCTO);
+        int iDesc       = indexOf(headers, COL_DESC);
+        int iExist      = indexOf(headers, COL_EXIST);
+        int iEstado     = indexOf(headers, COL_ESTADO);
+
+        if (iAlmacenKey < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
+            throw new IllegalArgumentException(
+                "El archivo " + fileType + " no contiene todas las columnas requeridas. Faltantes: " +
+                (iAlmacenKey < 0 ? "Clave Almacén (CVE_ALM) " : "") +
+                (iProducto  < 0 ? "Producto (CVE_ART) "       : "") +
+                (iExist     < 0 ? "Existencias (EXIST) "      : "") +
+                (iEstado    < 0 ? "Estado (STATUS)"           : "")
+            );
+        }
+        return new int[]{iAlmacenKey, iProducto, iDesc, iExist, iEstado};
+    }
+
+    /** Mapea los índices a una entidad MultiWarehouseExistence */
+    private MultiWarehouseExistence mapRowToExistence(String[] values, int[] idx) {
+        MultiWarehouseExistence e = new MultiWarehouseExistence();
+        e.setWarehouseKey(get(values, idx[0]));
+        e.setProductCode(get(values, idx[1]));
+        e.setProductName(idx[2] >= 0 ? get(values, idx[2]) : get(values, idx[1]));
+        e.setStock(parseDecimal(get(values, idx[3])));
+        e.setStatus(normalizeStatus(get(values, idx[4])));
+        return e;
+    }
+
     private List<MultiWarehouseExistence> parseCsv(MultipartFile file) throws Exception {
-        List<MultiWarehouseExistence> list = new java.util.ArrayList<>();
-        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(file.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+        List<MultiWarehouseExistence> list = new ArrayList<>();
+        try (java.io.BufferedReader br = new java.io.BufferedReader(
+                new java.io.InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = br.readLine();
             if (headerLine == null) return list;
             String[] headers = headerLine.split(",");
-            int iAlmacenKey = indexOf(headers, new String[]{"cve_alm","CVE_ALM","almacen_clave","warehouse_key"});
-            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
-            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name","descr","DESCR"});
-            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
-            int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
-
-            // Validar que se encontraron las columnas esenciales
-            if (iAlmacenKey < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
-                throw new IllegalArgumentException("El archivo CSV no contiene todas las columnas requeridas. " +
-                        "Columnas no encontradas: " +
-                        (iAlmacenKey < 0 ? "Clave Almacén (CVE_ALM), " : "") +
-                        (iProducto < 0 ? "Producto (CVE_ART), " : "") +
-                        (iExist < 0 ? "Existencias (EXIST), " : "") +
-                        (iEstado < 0 ? "Estado (STATUS)" : ""));
-            }
+            int[] idx = parseColumnIndexes(headers, "CSV");
 
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
-                String[] cols = splitCsv(line);
-                MultiWarehouseExistence e = new MultiWarehouseExistence();
-                e.setWarehouseKey(get(cols, iAlmacenKey)); // CVE_ALM
-                e.setProductCode(get(cols, iProducto)); // CVE_ART
-                // La descripción viene del inventario, pero si se proporciona en el Excel, la usamos temporalmente
-                e.setProductName(iDesc >= 0 ? get(cols, iDesc) : get(cols, iProducto));
-                e.setStock(parseDecimal(get(cols, iExist))); // EXIST
-                String st = get(cols, iEstado);
-                e.setStatus(normalizeStatus(st)); // STATUS
-                list.add(e);
+                list.add(mapRowToExistence(splitCsv(line), idx));
             }
         }
         return list;
     }
 
     private List<MultiWarehouseExistence> parseXlsx(MultipartFile file) throws Exception {
-        List<MultiWarehouseExistence> list = new java.util.ArrayList<>();
-        try (java.io.InputStream is = file.getInputStream()) {
-            org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(is);
+        List<MultiWarehouseExistence> list = new ArrayList<>();
+        try (java.io.InputStream is = file.getInputStream();
+             org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(is)) {
+
             org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(0);
             java.util.Iterator<org.apache.poi.ss.usermodel.Row> it = sheet.iterator();
-            if (!it.hasNext()) { wb.close(); return list; }
-            org.apache.poi.ss.usermodel.Row header = it.next();
-            int cols = header.getLastCellNum();
-            String[] headers = new String[cols];
-            for (int i=0;i<cols;i++) headers[i] = getCellString(header.getCell(i));
-            int iAlmacenKey = indexOf(headers, new String[]{"cve_alm","CVE_ALM","almacen_clave","warehouse_key"});
-            int iProducto = indexOf(headers, new String[]{"producto","product","codigo","codigo_producto","product_code","cve_art","CVE_ART"});
-            int iDesc = indexOf(headers, new String[]{"descripcion","descripción","description","producto_nombre","product_name","descr","DESCR"});
-            int iExist = indexOf(headers, new String[]{"existencias","stock","cantidad","exist","EXIST"});
-            int iEstado = indexOf(headers, new String[]{"estado","status","STATUS"});
+            if (!it.hasNext()) return list;
 
-            // Validar que se encontraron las columnas esenciales
-            if (iAlmacenKey < 0 || iProducto < 0 || iExist < 0 || iEstado < 0) {
-                throw new IllegalArgumentException("El archivo Excel no contiene todas las columnas requeridas. " +
-                        "Columnas no encontradas: " +
-                        (iAlmacenKey < 0 ? "Clave Almacén (CVE_ALM), " : "") +
-                        (iProducto < 0 ? "Producto (CVE_ART), " : "") +
-                        (iExist < 0 ? "Existencias (EXIST), " : "") +
-                        (iEstado < 0 ? "Estado (STATUS)" : ""));
-            }
+            org.apache.poi.ss.usermodel.Row headerRow = it.next();
+            int cols = headerRow.getLastCellNum();
+            String[] headers = new String[cols];
+            for (int i = 0; i < cols; i++) headers[i] = getCellString(headerRow.getCell(i));
+            int[] idx = parseColumnIndexes(headers, "Excel");
 
             while (it.hasNext()) {
                 org.apache.poi.ss.usermodel.Row row = it.next();
-                MultiWarehouseExistence e = new MultiWarehouseExistence();
-                e.setWarehouseKey(getCellString(row.getCell(iAlmacenKey))); // CVE_ALM
-                e.setProductCode(getCellString(row.getCell(iProducto))); // CVE_ART
-                // La descripción viene del inventario, pero si se proporciona en el Excel, la usamos temporalmente
-                e.setProductName(iDesc >= 0 ? getCellString(row.getCell(iDesc)) : getCellString(row.getCell(iProducto)));
-                e.setStock(parseDecimal(getCellString(row.getCell(iExist)))); // EXIST
-                e.setStatus(normalizeStatus(getCellString(row.getCell(iEstado)))); // STATUS
-                list.add(e);
+                String[] values = new String[cols];
+                for (int i = 0; i < cols; i++) values[i] = getCellString(row.getCell(i));
+                list.add(mapRowToExistence(values, idx));
             }
-            wb.close();
         }
         return list;
     }
@@ -795,17 +850,16 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseService {
                 log.debug("inventory_stock actualizado: productId={}, warehouseId={}, periodId={}, qty={}",
                          productId, warehouseId, periodId, stock);
             } else {
-                // Crear nuevo registro
+                // Crear nuevo registro usando referencias JPA correctas
                 var newStock = new tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity();
 
-                // Establecer relaciones
-                var product = new ProductEntity();
-                product.setIdProduct(productId);
+                // Usar referencias correctas del repositorio en lugar de new Entity()
+                var product = productRepository.getReferenceById(productId);
                 newStock.setProduct(product);
 
-                var warehouse = new tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity();
-                warehouse.setIdWarehouse(warehouseId);
-                newStock.setWarehouse(warehouse);
+                var warehouseRef = warehouseRepository.getReferenceById(warehouseId);
+                newStock.setWarehouse(new tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity());
+                newStock.getWarehouse().setIdWarehouse(warehouseId);
 
                 newStock.setPeriodId(periodId);
                 newStock.setExistQty(stock != null ? stock : java.math.BigDecimal.ZERO);

@@ -52,6 +52,7 @@ public class MultiWarehouseController {
         return multiWarehouseService.processWizardStep(stepDTO);
     }
 
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     @GetMapping("/export")
     public ResponseEntity<?> exportExistences(MultiWarehouseSearchDTO search) {
         return multiWarehouseService.exportExistences(search);

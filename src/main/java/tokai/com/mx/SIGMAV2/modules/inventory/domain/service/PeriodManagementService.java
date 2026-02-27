@@ -6,7 +6,6 @@ import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import java.time.LocalDate;
 
@@ -24,7 +23,7 @@ public class PeriodManagementService implements PeriodManagementUseCase {
     }
 
     @Override
-    public Period createPeriod(LocalDate date, String comments, BeanUser user) {
+    public Period createPeriod(LocalDate date, String comments) {
         throw new UnsupportedOperationException("La creación de periodos solo está permitida para el administrador a través del servicio principal");
     }
 
