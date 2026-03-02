@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.UpdatePeriodDTO;
+import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.UpdatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.CreatePeriodDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.web.dto.PeriodResponseDTO;
 import tokai.com.mx.SIGMAV2.modules.periods.application.port.input.PeriodManagementUseCase;

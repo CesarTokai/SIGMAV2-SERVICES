@@ -15,10 +15,10 @@ public interface JpaPeriodRepository extends JpaRepository<PeriodEntity, Long> {
 
     @Query(value = """
         SELECT (
-            SELECT COUNT(*) FROM label_requests   WHERE id_period = :periodId) +
-           (SELECT COUNT(*) FROM labels            WHERE id_period = :periodId) +
-           (SELECT COUNT(*) FROM inventory_stock   WHERE id_period = :periodId) +
-           (SELECT COUNT(*) FROM multiwarehouse_existences WHERE id_period = :periodId
+            SELECT COUNT(*) FROM label_requests              WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM labels                       WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM inventory_stock              WHERE id_period = :periodId) +
+           (SELECT COUNT(*) FROM multiwarehouse_existences    WHERE period_id = :periodId
         )
         """, nativeQuery = true)
     long countDependencies(@Param("periodId") Long periodId);
