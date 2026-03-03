@@ -1,7 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
- import lombok.AllArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;

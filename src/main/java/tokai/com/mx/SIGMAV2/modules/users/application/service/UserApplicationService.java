@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
@@ -27,7 +26,6 @@ import java.util.Optional;
  * Implementa el puerto de entrada (UserService) y orquesta las operaciones
  */
 @Slf4j
-@Service
 @RequiredArgsConstructor
 public class UserApplicationService implements UserService {
 

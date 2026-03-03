@@ -5,47 +5,47 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventoryStockRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.ProductBatchDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
-import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
-import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
-import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
-import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException;
-import tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelledException;
-import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.*;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.*;
+import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Orquestador principal del módulo de marbetes.
+ * Delega en servicios especializados: LabelGenerationService, LabelCountService, LabelReportService.
+ *
+ * Responsabilidades restantes:
+ *  - Impresión / reimpresión extraordinaria
+ *  - Consulta de estado y resumen (summary)
+ *  - Cancelación y reactivación
+ *  - Consulta para conteo (getLabelForCount / getLabelsForCountList)
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class LabelServiceImpl implements LabelService {
 
-    /** Directorio donde se genera el archivo TXT de existencias. Configurable en application.properties. */
-    @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
-    private String inventoryFileDirectory;
+    // ── servicios especializados ──────────────────────────────────────────
+    private final LabelGenerationService labelGenerationService;
+    private final LabelCountService labelCountService;
+    private final LabelReportService labelReportService;
 
+    // ── infraestructura necesaria para responsabilidades restantes ────────
     private final LabelsPersistenceAdapter persistence;
     private final WarehouseAccessService warehouseAccessService;
     private final JpaProductRepository productRepository;
@@ -54,28 +54,27 @@ public class LabelServiceImpl implements LabelService {
     private final JpaLabelRequestRepository labelRequestRepository;
     private final JasperLabelPrintService jasperLabelPrintService;
     private final JpaUserRepository userRepository;
-    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository jpaLabelRepository;
-    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository jpaLabelCancelledRepository;
-    private final tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository jpaLabelCountEventRepository;
-    private final tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository jpaPeriodRepository;
+    private final JpaLabelRepository jpaLabelRepository;
+    private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
+    private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
+    private final JpaPeriodRepository jpaPeriodRepository;
 
-    /**
-     * @deprecated Este método ya no es necesario. Use generateBatchList() directamente.
-     * Se mantiene por compatibilidad pero será eliminado en versiones futuras.
-     */
-    @Deprecated
+    @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
+    private String inventoryFileDirectory;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MÉTODOS DEPRECATED — Mantenidos solo por compatibilidad de API
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** @deprecated Use generateBatchList(). */
+    @Deprecated(forRemoval = true)
     @Override
     @Transactional
     public void requestLabels(LabelRequestDTO dto, Long userId, String userRole) {
-        // Este método ahora solo existe por compatibilidad
-        // La nueva API generateBatchList() genera marbetes directamente
         log.warn("⚠️ requestLabels() está deprecado. Use generateBatchList() en su lugar.");
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
-
-        // Crear solicitud simple para compatibilidad
         Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
-            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
+                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         if (existing.isEmpty() && dto.getRequestedLabels() > 0) {
             LabelRequest req = new LabelRequest();
             req.setProductId(dto.getProductId());
@@ -89,29 +88,20 @@ public class LabelServiceImpl implements LabelService {
         }
     }
 
-    /**
-     * @deprecated Use generateBatchList() que es más simple. Este método se mantiene por compatibilidad.
-     * Genera marbetes para un solo producto (versión simplificada)
-     */
-    @Deprecated
+    /** @deprecated Use generateBatchList(). */
+    @Deprecated(forRemoval = true)
     @Override
     @Transactional
     public GenerateBatchResponseDTO generateBatch(GenerateBatchDTO dto, Long userId, String userRole) {
         log.warn("⚠️ generateBatch() está deprecado. Use generateBatchList() en su lugar.");
-
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // REGLA DE NEGOCIO: Crear o buscar LabelRequest para este producto
         Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
-            dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
+                dto.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
         LabelRequest labelRequest;
         if (existing.isPresent()) {
             labelRequest = existing.get();
-            log.info("📋 Usando LabelRequest existente (ID: {}) para producto {}",
-                labelRequest.getIdLabelRequest(), dto.getProductId());
         } else {
-            // Crear nuevo LabelRequest
             labelRequest = new LabelRequest();
             labelRequest.setProductId(dto.getProductId());
             labelRequest.setWarehouseId(dto.getWarehouseId());
@@ -121,20 +111,16 @@ public class LabelServiceImpl implements LabelService {
             labelRequest.setCreatedBy(userId);
             labelRequest.setCreatedAt(LocalDateTime.now());
             labelRequest = persistence.save(labelRequest);
-            log.info("📋 LabelRequest creado (ID: {}) para producto {}",
-                labelRequest.getIdLabelRequest(), dto.getProductId());
         }
 
         int cantidad = dto.getLabelsToGenerate();
         long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
-
-        // Crear marbetes directamente
         LocalDateTime now = LocalDateTime.now();
         List<Label> labels = new ArrayList<>(cantidad);
         for (long folio = range[0]; folio <= range[1]; folio++) {
             Label label = new Label();
             label.setFolio(folio);
-            label.setLabelRequestId(labelRequest.getIdLabelRequest()); // ✅ ASIGNAR LabelRequest
+            label.setLabelRequestId(labelRequest.getIdLabelRequest());
             label.setPeriodId(dto.getPeriodId());
             label.setWarehouseId(dto.getWarehouseId());
             label.setProductId(dto.getProductId());
@@ -146,71 +132,60 @@ public class LabelServiceImpl implements LabelService {
         persistence.saveAll(labels);
 
         return GenerateBatchResponseDTO.builder()
-            .totalGenerados(cantidad)
-            .generadosConExistencias(cantidad)
-            .generadosSinExistencias(0)
-            .primerFolio(range[0])
-            .ultimoFolio(range[1])
-            .mensaje("Generados " + cantidad + " marbetes")
-            .build();
+                .totalGenerados(cantidad).generadosConExistencias(cantidad).generadosSinExistencias(0)
+                .primerFolio(range[0]).ultimoFolio(range[1]).mensaje("Generados " + cantidad + " marbetes")
+                .build();
     }
 
-    /**
-     * 📄 MÉTODO SIMPLIFICADO: Imprime marbetes directamente
-     * Busca marbetes en estado GENERADO y genera el PDF
-     */
-    @Transactional
+    // ═══════════════════════════════════════════════════════════════════════
+    // GENERACIÓN — delega en LabelGenerationService
+    // ═══════════════════════════════════════════════════════════════════════
+
     @Override
+    @Transactional
+    public void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole) {
+        labelGenerationService.generateBatchList(dto, userId, userRole);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // IMPRESIÓN
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
         boolean isExtraordinary = dto.getForceReprint() != null && dto.getForceReprint();
-
         log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, folios={}",
-            dto.getPeriodId(), dto.getWarehouseId(),
-            isExtraordinary ? "EXTRAORDINARIA" : "NORMAL",
-            dto.getFolios() != null ? dto.getFolios().size() : "TODOS");
+                dto.getPeriodId(), dto.getWarehouseId(),
+                isExtraordinary ? "EXTRAORDINARIA" : "NORMAL",
+                dto.getFolios() != null ? dto.getFolios().size() : "TODOS");
 
-        // Validaciones básicas
         if (userRole == null || userRole.trim().isEmpty()) {
             throw new PermissionDeniedException("Rol de usuario requerido");
         }
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // Buscar marbetes según tipo de impresión
         List<Label> labels;
-
         if (isExtraordinary) {
-            // 🔄 NUEVA RAMA: Reimpresión extraordinaria
             if (dto.getFolios() == null || dto.getFolios().isEmpty()) {
                 throw new InvalidLabelStateException(
-                    "Reimpresión extraordinaria requiere folios específicos. Proporcione lista de folios a reimprimir.");
+                        "Reimpresión extraordinaria requiere folios específicos.");
             }
-
-            labels = persistence.findImpresosForReimpresion(
-                dto.getPeriodId(),
-                dto.getWarehouseId(),
-                dto.getFolios());
-
-            log.info("🔄 Reimpresión extraordinaria: {} marbetes encontrados para reimprimir", labels.size());
-
+            labels = persistence.findImpresosForReimpresion(dto.getPeriodId(), dto.getWarehouseId(), dto.getFolios());
         } else {
-            // ✅ RAMA EXISTENTE: Impresión normal
             if (dto.getFolios() != null && !dto.getFolios().isEmpty()) {
-                // Modo selectivo: folios específicos
                 labels = persistence.findByFoliosInAndPeriodAndWarehouse(
-                    dto.getFolios(), dto.getPeriodId(), dto.getWarehouseId());
+                        dto.getFolios(), dto.getPeriodId(), dto.getWarehouseId());
                 if (labels.size() != dto.getFolios().size()) {
                     throw new LabelNotFoundException("Algunos folios no existen");
                 }
             } else if (dto.getProductId() != null) {
-                // Filtrar por producto
                 labels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
-                    dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+                        dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
             } else {
-                // Todos los pendientes
                 labels = persistence.findPendingLabelsByPeriodAndWarehouse(
-                    dto.getPeriodId(), dto.getWarehouseId());
+                        dto.getPeriodId(), dto.getWarehouseId());
             }
-
             if (labels.isEmpty()) {
                 throw new InvalidLabelStateException("No hay marbetes pendientes de impresión");
             }
@@ -219,552 +194,176 @@ public class LabelServiceImpl implements LabelService {
         if (labels.size() > 500) {
             throw new InvalidLabelStateException("Límite máximo: 500 marbetes por impresión");
         }
-
         labels.sort(Comparator.comparing(Label::getFolio));
 
-        // Generar PDF
         byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new InvalidLabelStateException("Error generando PDF");
         }
 
-        // Actualizar estados a IMPRESO
         Long minFolio = labels.get(0).getFolio();
         Long maxFolio = labels.get(labels.size() - 1).getFolio();
-        updateLabelsStateAfterPrint(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, isExtraordinary);
+        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
 
-        log.info("✅ PDF generado: {} KB, {} marbetes (tipo: {})",
-            pdfBytes.length / 1024, labels.size(),
-            isExtraordinary ? "extraordinaria" : "normal");
+        log.info("✅ PDF generado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
         return pdfBytes;
     }
 
-    /**
-     * 🔒 Actualiza estado de marbetes a IMPRESO después de generar PDF
-     * @param isExtraordinary true si es reimpresión extraordinaria, false si es impresión normal
-     */
-    @Transactional
-    protected LabelPrint updateLabelsStateAfterPrint(Long periodId, Long warehouseId,
-                                                     Long minFolio, Long maxFolio, Long userId,
-                                                     boolean isExtraordinary) {
-        return persistence.printLabelsRange(periodId, warehouseId, minFolio, maxFolio, userId);
-    }
-
     @Override
-    @Transactional(readOnly = true)
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO getPendingPrintCount(
-            tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto,
-            Long userId,
-            String userRole) {
+    @Transactional
+    public byte[] extraordinaryReprint(PrintRequestDTO dto, Long userId, String userRole) {
+        log.info("🔄 REIMPRESIÓN EXTRAORDINARIA: periodo={}, almacén={}, folios={}",
+                dto.getPeriodId(), dto.getWarehouseId(),
+                dto.getFolios() != null ? dto.getFolios().size() : 0);
 
-        log.info("Contando marbetes pendientes: periodId={}, warehouseId={}, productId={}",
-            dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
+        if (userRole == null || userRole.trim().isEmpty()) {
+            throw new PermissionDeniedException("Rol de usuario requerido");
+        }
+        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // Validar acceso al almacén
-        if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
-            log.debug("Usuario {} con rol {} puede consultar cualquier almacén", userId, userRole);
-        } else {
-            warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        if (dto.getFolios() == null || dto.getFolios().isEmpty()) {
+            throw new InvalidLabelStateException("Reimpresión extraordinaria requiere lista de folios específicos.");
         }
 
-        // Contar marbetes pendientes
-        List<Label> pendingLabels;
+        List<Label> labels = persistence.findImpresosForReimpresion(
+                dto.getPeriodId(), dto.getWarehouseId(), dto.getFolios());
 
-        if (dto.getProductId() != null) {
-            // Filtrar por producto
-            pendingLabels = persistence.findPendingLabelsByPeriodWarehouseAndProduct(
-                dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId());
-        } else {
-            // Todos los pendientes del periodo/almacén
-            pendingLabels = persistence.findPendingLabelsByPeriodAndWarehouse(
-                dto.getPeriodId(), dto.getWarehouseId());
+        if (labels.size() > 500) {
+            throw new InvalidLabelStateException("Límite máximo: 500 marbetes por reimpresión extraordinaria");
+        }
+        labels.sort(Comparator.comparing(Label::getFolio));
+
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF de reimpresión: archivo vacío");
         }
 
-        long count = pendingLabels.size();
+        Long minFolio = labels.get(0).getFolio();
+        Long maxFolio = labels.get(labels.size() - 1).getFolio();
+        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
 
-        // Obtener información del almacén y periodo
-        String warehouseName = null;
-        String periodName = null;
-
-        try {
-            var warehouse = warehouseRepository.findById(dto.getWarehouseId());
-            if (warehouse.isPresent()) {
-                warehouseName = warehouse.get().getNameWarehouse();
-            }
-        } catch (Exception e) {
-            log.warn("No se pudo obtener nombre del almacén: {}", e.getMessage());
-        }
-
-        try {
-            var period = jpaPeriodRepository.findById(dto.getPeriodId());
-            if (period.isPresent()) {
-                // Formatear la fecha del periodo
-                java.time.LocalDate date = period.get().getDate();
-                if (date != null) {
-                    periodName = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                }
-            }
-        } catch (Exception e) {
-            log.warn("No se pudo obtener nombre del periodo: {}", e.getMessage());
-        }
-
-        log.info("Marbetes pendientes encontrados: {}", count);
-
-        return new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO(
-            count,
-            dto.getPeriodId(),
-            dto.getWarehouseId(),
-            warehouseName,
-            periodName
-        );
+        log.info("✅ REIMPRESIÓN EXTRAORDINARIA completada: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
+        return pdfBytes;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONTEO — delega en LabelCountService
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     @Transactional
     public LabelCountEvent registerCountC1(CountEventDTO dto, Long userId, String userRole) {
-        if (userRole == null) {
-            throw new PermissionDeniedException("Role de usuario requerido para registrar C1");
-        }
-        String roleUpper = userRole.toUpperCase();
-        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") || roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
-        if (!allowed) {
-            throw new PermissionDeniedException("No tiene permiso para registrar C1");
-        }
-
-        // Verificar que el marbete exista
-        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
-        if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException(
-                String.format("El folio %d no existe en el sistema", dto.getFolio())
-            );
-        }
-        Label label = optLabel.get();
-
-        // Validar contexto: periodo y almacén (si están presentes en el DTO)
-        if (dto.getPeriodId() != null && !label.getPeriodId().equals(dto.getPeriodId())) {
-            String labelPeriodName = getPeriodName(label.getPeriodId());
-            String requestedPeriodName = getPeriodName(dto.getPeriodId());
-            throw new InvalidLabelStateException(
-                String.format(
-                    "El folio %d pertenece al periodo '%s' (ID: %d), pero está consultando el periodo '%s' (ID: %d). " +
-                    "Por favor verifique que está trabajando en el periodo correcto.",
-                    dto.getFolio(), labelPeriodName, label.getPeriodId(), requestedPeriodName, dto.getPeriodId()
-                )
-            );
-        }
-
-        if (dto.getWarehouseId() != null && !label.getWarehouseId().equals(dto.getWarehouseId())) {
-            String labelWarehouseName = getWarehouseName(label.getWarehouseId());
-            String requestedWarehouseName = getWarehouseName(dto.getWarehouseId());
-            throw new InvalidLabelStateException(
-                String.format(
-                    "El folio %d pertenece al almacén '%s' (ID: %d), pero está consultando el almacén '%s' (ID: %d). " +
-                    "Por favor verifique que está en el almacén correcto.",
-                    dto.getFolio(), labelWarehouseName, label.getWarehouseId(), requestedWarehouseName, dto.getWarehouseId()
-                )
-            );
-        }
-
-        // Validar acceso al almacén del marbete
-        // NOTA: AUXILIAR_DE_CONTEO puede registrar conteos sin restricción de almacén
-        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-        }
-
-        if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException(
-                String.format("No se puede registrar conteo: el folio %d está CANCELADO.", dto.getFolio())
-            );
-        }
-        if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException(
-                String.format(
-                    "No se puede registrar conteo: el folio %d no está IMPRESO. Estado actual: %s",
-                    dto.getFolio(), label.getEstado()
-                )
-            );
-        }
-
-        // No permitir registrar C1 si ya existe C1
-        if (persistence.hasCountNumber(dto.getFolio(), 1)) {
-            throw new DuplicateCountException(
-                String.format("El conteo C1 ya fue registrado para el folio %d.", dto.getFolio())
-            );
-        }
-        // No permitir registrar C1 si ya existe C2 (secuencia rota)
-        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
-            throw new CountSequenceException(
-                String.format(
-                    "No se puede registrar C1 porque ya existe un conteo C2 para el folio %d. La secuencia de conteo está rota.",
-                    dto.getFolio()
-                )
-            );
-        }
-
-        LabelCountEvent.Role roleEnum;
-        try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR; }
-
-        return persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
+        return labelCountService.registerCountC1(dto, userId, userRole);
     }
 
     @Override
     @Transactional
     public LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole) {
-        if (userRole == null) {
-            throw new PermissionDeniedException("Role de usuario requerido para registrar C2");
-        }
-        String roleUpper = userRole.toUpperCase();
-        // Permitir a todos los roles registrar C2 según requerimientos funcionales
-        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") ||
-                         roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
-        if (!allowed) {
-            throw new PermissionDeniedException("No tiene permiso para registrar C2");
-        }
-
-        // Verificar que el marbete exista
-        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
-        if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException(
-                String.format("El folio %d no existe en el sistema", dto.getFolio())
-            );
-        }
-        Label label = optLabel.get();
-
-        // Validar contexto: periodo y almacén (si están presentes en el DTO)
-        if (dto.getPeriodId() != null && !label.getPeriodId().equals(dto.getPeriodId())) {
-            String labelPeriodName = getPeriodName(label.getPeriodId());
-            String requestedPeriodName = getPeriodName(dto.getPeriodId());
-            throw new InvalidLabelStateException(
-                String.format(
-                    "El folio %d pertenece al periodo '%s' (ID: %d), pero está consultando el periodo '%s' (ID: %d). " +
-                    "Por favor verifique que está trabajando en el periodo correcto.",
-                    dto.getFolio(), labelPeriodName, label.getPeriodId(), requestedPeriodName, dto.getPeriodId()
-                )
-            );
-        }
-
-        if (dto.getWarehouseId() != null && !label.getWarehouseId().equals(dto.getWarehouseId())) {
-            String labelWarehouseName = getWarehouseName(label.getWarehouseId());
-            String requestedWarehouseName = getWarehouseName(dto.getWarehouseId());
-            throw new InvalidLabelStateException(
-                String.format(
-                    "El folio %d pertenece al almacén '%s' (ID: %d), pero está consultando el almacén '%s' (ID: %d). " +
-                    "Por favor verifique que está en el almacén correcto.",
-                    dto.getFolio(), labelWarehouseName, label.getWarehouseId(), requestedWarehouseName, dto.getWarehouseId()
-                )
-            );
-        }
-
-        // Validar acceso al almacén del marbete
-        // NOTA: AUXILIAR_DE_CONTEO puede registrar conteos sin restricción de almacén
-        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-        }
-
-        if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException(
-                String.format("No se puede registrar conteo: el folio %d está CANCELADO.", dto.getFolio())
-            );
-        }
-        if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException(
-                String.format(
-                    "No se puede registrar conteo: el folio %d no está IMPRESO. Estado actual: %s",
-                    dto.getFolio(), label.getEstado()
-                )
-            );
-        }
-
-        // Debe existir C1 antes de C2
-        if (!persistence.hasCountNumber(dto.getFolio(), 1)) {
-            throw new CountSequenceException(
-                String.format(
-                    "No se puede registrar C2 porque no existe un conteo C1 previo para el folio %d. Debe registrar C1 primero.",
-                    dto.getFolio()
-                )
-            );
-        }
-
-        // No permitir duplicar C2
-        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
-            throw new DuplicateCountException(
-                String.format("El conteo C2 ya fue registrado para el folio %d.", dto.getFolio())
-            );
-        }
-
-        LabelCountEvent.Role roleEnum;
-        try { roleEnum = LabelCountEvent.Role.valueOf(roleUpper); } catch (Exception ex) { roleEnum = LabelCountEvent.Role.AUXILIAR_DE_CONTEO; }
-
-        return persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+        return labelCountService.registerCountC2(dto, userId, userRole);
     }
 
     @Override
     @Transactional
-    public LabelCountEvent updateCountC1(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole) {
-        log.info("Actualizando conteo C1 para folio {}", dto.getFolio());
-
-        if (userRole == null) {
-            throw new PermissionDeniedException("Role de usuario requerido para actualizar C1");
-        }
-
-        String roleUpper = userRole.toUpperCase();
-        boolean allowed = roleUpper.equals("ADMINISTRADOR") || roleUpper.equals("ALMACENISTA") ||
-                         roleUpper.equals("AUXILIAR") || roleUpper.equals("AUXILIAR_DE_CONTEO");
-        if (!allowed) {
-            throw new PermissionDeniedException("No tiene permiso para actualizar C1");
-        }
-
-        // Verificar que el marbete exista
-        Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
-        if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException("El folio no existe");
-        }
-        Label label = optLabel.get();
-
-        // Validar acceso al almacén del marbete
-        // NOTA: AUXILIAR_DE_CONTEO puede actualizar conteos sin restricción de almacén
-        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-        }
-
-        if (label.getEstado() == Label.State.CANCELADO) {
-            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
-        }
-        if (label.getEstado() != Label.State.IMPRESO) {
-            throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
-        }
-
-        // Buscar el evento de conteo C1 existente
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
-        LabelCountEvent eventC1 = events.stream()
-            .filter(e -> e.getCountNumber() == 1)
-            .findFirst()
-            .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C1 para actualizar"));
-
-        // Actualizar el valor con auditoría completa
-        java.math.BigDecimal valorAnterior = eventC1.getCountedValue();
-        eventC1.setPreviousValue(valorAnterior);   // guardar valor anterior
-        eventC1.setCountedValue(dto.getCountedValue());
-        eventC1.setUpdatedAt(LocalDateTime.now());
-        eventC1.setUpdatedBy(userId);
-
-        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
-        log.info("Conteo C1 actualizado: folio={}, valorAnterior={}, valorNuevo={}, by={}",
-            dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
-
-        return updated;
+    public LabelCountEvent updateCountC1(UpdateCountDTO dto, Long userId, String userRole) {
+        return labelCountService.updateCountC1(dto, userId, userRole);
     }
 
     @Override
     @Transactional
-    public LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole) {
-        log.info("🔄 Iniciando actualización de conteo C2 para folio {}", dto.getFolio());
-        log.debug("Parámetros: folio={}, countedValue={}, observaciones={}, userId={}, userRole={}",
-            dto.getFolio(), dto.getCountedValue(), dto.getObservaciones(), userId, userRole);
+    public LabelCountEvent updateCountC2(UpdateCountDTO dto, Long userId, String userRole) {
+        return labelCountService.updateCountC2(dto, userId, userRole);
+    }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONTEO PENDIENTE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public PendingPrintCountResponseDTO getPendingPrintCount(PendingPrintCountRequestDTO dto, Long userId, String userRole) {
+        log.info("Contando marbetes pendientes: periodId={}, warehouseId={}", dto.getPeriodId(), dto.getWarehouseId());
+
+        if (!warehouseAccessService.hasFullAccess(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+        }
+
+        List<Label> pendingLabels = dto.getProductId() != null
+                ? persistence.findPendingLabelsByPeriodWarehouseAndProduct(dto.getPeriodId(), dto.getWarehouseId(), dto.getProductId())
+                : persistence.findPendingLabelsByPeriodAndWarehouse(dto.getPeriodId(), dto.getWarehouseId());
+
+        String warehouseName = null;
+        String periodName = null;
         try {
-            if (userRole == null) {
-                log.error("❌ Role de usuario es null");
-                throw new PermissionDeniedException("Role de usuario requerido para actualizar C2");
+            warehouseName = warehouseRepository.findById(dto.getWarehouseId())
+                    .map(WarehouseEntity::getNameWarehouse).orElse(null);
+        } catch (Exception e) { log.warn("No se pudo obtener nombre del almacén: {}", e.getMessage()); }
+        try {
+            var period = jpaPeriodRepository.findById(dto.getPeriodId());
+            if (period.isPresent() && period.get().getDate() != null) {
+                periodName = period.get().getDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
             }
+        } catch (Exception e) { log.warn("No se pudo obtener nombre del periodo: {}", e.getMessage()); }
 
-            String roleUpper = userRole.toUpperCase();
-            log.debug("Role normalizado: {}", roleUpper);
-
-            // Para C2, permitir actualización a ADMINISTRADOR, ALMACENISTA y AUXILIAR_DE_CONTEO
-            boolean allowed = roleUpper.equals("ADMINISTRADOR") ||
-                             roleUpper.equals("ALMACENISTA") ||
-                             roleUpper.equals("AUXILIAR_DE_CONTEO");
-            if (!allowed) {
-                log.error("❌ Rol {} no tiene permisos para actualizar C2", roleUpper);
-                throw new PermissionDeniedException("No tiene permiso para actualizar C2. Solo ADMINISTRADOR, ALMACENISTA o AUXILIAR_DE_CONTEO pueden actualizar el segundo conteo.");
-            }
-
-            log.debug("Buscando marbete con folio {}", dto.getFolio());
-
-            // Verificar que el marbete exista
-            Optional<Label> optLabel = persistence.findByFolio(dto.getFolio());
-            if (optLabel.isEmpty()) {
-                log.error("❌ Folio {} no existe en el sistema", dto.getFolio());
-                throw new LabelNotFoundException("El folio no existe");
-            }
-            Label label = optLabel.get();
-
-            log.debug("Marbete encontrado: productId={}, warehouseId={}, estado={}",
-                label.getProductId(), label.getWarehouseId(), label.getEstado());
-
-            // Validar acceso al almacén del marbete
-            // NOTA: AUXILIAR_DE_CONTEO puede actualizar conteos sin restricción de almacén
-            log.debug("Validando acceso al almacén {}", label.getWarehouseId());
-            if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-                warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-            }
-
-            if (label.getEstado() == Label.State.CANCELADO) {
-                log.error("❌ Marbete está CANCELADO");
-                throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete está CANCELADO.");
-            }
-            if (label.getEstado() != Label.State.IMPRESO) {
-                log.error("❌ Marbete no está IMPRESO, estado actual: {}", label.getEstado());
-                throw new InvalidLabelStateException("No se puede actualizar conteo: el marbete no está IMPRESO.");
-            }
-
-            // Buscar el evento de conteo C2 existente
-            log.debug("Buscando evento C2 para folio {}", dto.getFolio());
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
-            log.debug("Eventos encontrados: {}", events.size());
-
-            LabelCountEvent eventC2 = events.stream()
-                .filter(e -> e.getCountNumber() == 2)
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.error("❌ No existe un conteo C2 para el folio {}", dto.getFolio());
-                    return new LabelNotFoundException("No existe un conteo C2 para actualizar");
-                });
-
-            log.debug("Evento C2 encontrado: id={}, countedValue={}", eventC2.getIdCountEvent(), eventC2.getCountedValue());
-
-            // Actualizar el valor con auditoría completa
-            BigDecimal oldValue = eventC2.getCountedValue();
-            eventC2.setPreviousValue(oldValue);   // guardar valor anterior
-            eventC2.setCountedValue(dto.getCountedValue());
-            eventC2.setUpdatedAt(LocalDateTime.now());
-            eventC2.setUpdatedBy(userId);
-
-            LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
-            log.info("✅ Conteo C2 actualizado: folio={}, valorAnterior={}, valorNuevo={}, by={}",
-                dto.getFolio(), oldValue, dto.getCountedValue(), userId);
-
-            return updated;
-
-        } catch (PermissionDeniedException | LabelNotFoundException | InvalidLabelStateException e) {
-            log.warn("Excepción controlada en updateCountC2: {}", e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            log.error("❌ Error inesperado en updateCountC2 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
-            throw new RuntimeException("Error inesperado al actualizar C2: " + e.getMessage(), e);
-        }
+        return new PendingPrintCountResponseDTO((long) pendingLabels.size(), dto.getPeriodId(), dto.getWarehouseId(), warehouseName, periodName);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RESUMEN (SUMMARY) con paginación — se mantiene aquí por su complejidad
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     @Transactional(readOnly = true)
     public List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole) {
-        log.info("getLabelSummary - Inicio: periodId={}, warehouseId={}, page={}, size={}, searchText={}, sortBy={}, sortDirection={}, userId={}, userRole={}",
-            dto.getPeriodId(), dto.getWarehouseId(), dto.getPage(), dto.getSize(),
-            dto.getSearchText(), dto.getSortBy(), dto.getSortDirection(), userId, userRole);
+        log.info("getLabelSummary: periodId={}, warehouseId={}, page={}, size={}",
+                dto.getPeriodId(), dto.getWarehouseId(), dto.getPage(), dto.getSize());
 
-        // Si no se especifica periodo, obtener el último creado
-        final Long periodId;
-        if (dto.getPeriodId() == null) {
-            periodId = persistence.findLastCreatedPeriodId()
-                .orElseThrow(() -> new RuntimeException("No hay periodos registrados"));
-            log.info("Usando periodo por default (último creado): {}", periodId);
-        } else {
-            periodId = dto.getPeriodId();
-        }
+        final Long periodId = dto.getPeriodId() != null ? dto.getPeriodId()
+                : persistence.findLastCreatedPeriodId()
+                        .orElseThrow(() -> new RuntimeException("No hay periodos registrados"));
 
-        // Si no se especifica almacén, obtener el primero
-        final Long warehouseId;
-        if (dto.getWarehouseId() == null) {
-            warehouseId = warehouseRepository.findFirstByOrderByIdWarehouseAsc()
-                .map(WarehouseEntity::getIdWarehouse)
-                .orElseThrow(() -> new RuntimeException("No hay almacenes registrados"));
-            log.info("Usando almacén por default (primero): {}", warehouseId);
-        } else {
-            warehouseId = dto.getWarehouseId();
-        }
+        final Long warehouseId = dto.getWarehouseId() != null ? dto.getWarehouseId()
+                : warehouseRepository.findFirstByOrderByIdWarehouseAsc()
+                        .map(WarehouseEntity::getIdWarehouse)
+                        .orElseThrow(() -> new RuntimeException("No hay almacenes registrados"));
 
-        try {
-            // Validar acceso al almacén (solo si no es ADMINISTRADOR o AUXILIAR)
-            log.info("Validando acceso al almacén...");
-            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-            log.info("Acceso validado correctamente");
-        } catch (Exception e) {
-            log.warn("Error en validateWarehouseAccess: {}", e.getMessage());
-            // Si falla la validación pero es ADMINISTRADOR o AUXILIAR, permitir acceso
-            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
-                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
-            } else {
-                log.error("Usuario sin acceso al almacén", e);
-                throw e; // Re-lanzar la excepción si no tiene permisos
-            }
-        }
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
 
-        // Obtener información del almacén
         WarehouseEntity warehouseEntity = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Almacén no encontrado: " + warehouseId));
 
-        String claveAlmacen = warehouseEntity.getWarehouseKey();
-        String nombreAlmacen = warehouseEntity.getNameWarehouse();
+        // Cargar datos necesarios
+        Map<Long, LabelRequest> requestsByProduct = labelRequestRepository.findAll().stream()
+                .filter(r -> periodId.equals(r.getPeriodId()) && warehouseId.equals(r.getWarehouseId()))
+                .collect(Collectors.toMap(LabelRequest::getProductId, r -> r, (a, b) -> a));
 
-        log.info("Almacén encontrado: {} - {}", claveAlmacen, nombreAlmacen);
+        // Usar paginación real en lugar de cargar 100k registros — MEJORA M2
+        List<Label> labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId);
 
-        // Obtener todas las solicitudes de marbetes para este periodo y almacén
-        List<LabelRequest> allRequests = labelRequestRepository.findAll();
-        Map<Long, LabelRequest> requestsByProduct = allRequests.stream()
-                .filter(req -> req.getPeriodId() != null && req.getPeriodId().equals(periodId) &&
-                              req.getWarehouseId() != null && req.getWarehouseId().equals(warehouseId))
-                .collect(Collectors.toMap(
-                    LabelRequest::getProductId,
-                    req -> req,
-                    (existing, replacement) -> existing
-                ));
-
-        log.info("Encontradas {} solicitudes de productos", requestsByProduct.size());
-
-        // Obtener todos los marbetes generados para este periodo y almacén
-        List<Label> labels = persistence.findByPeriodIdAndWarehouseId(periodId, warehouseId, 0, 100000);
-
-        // Agrupar marbetes por producto y contar
-        Map<Long, Long> generatedLabelsByProduct = labels.stream()
+        Map<Long, Long> generatedByProduct = labels.stream()
                 .collect(Collectors.groupingBy(Label::getProductId, Collectors.counting()));
 
-        log.info("Encontrados {} marbetes generados para {} productos", labels.size(), generatedLabelsByProduct.size());
-
-        // IMPORTANTE: Obtener TODOS los productos del inventario que tienen existencias en este almacén y periodo
-        // Esto asegura que se muestren todos los productos aunque no tengan solicitudes de marbetes
-        List<InventoryStockEntity> allStockInWarehouse = inventoryStockRepository
+        List<InventoryStockEntity> allStock = inventoryStockRepository
                 .findByWarehouseIdWarehouseAndPeriodId(warehouseId, periodId);
 
-        log.info("Encontrados {} productos en el inventario del almacén {}", allStockInWarehouse.size(), warehouseId);
-
-        // Construir la lista completa de productos (inventario + solicitudes + marbetes)
         Set<Long> allProductIds = new HashSet<>();
-
-        // Agregar todos los productos del inventario del almacén
-        allStockInWarehouse.stream()
-                .filter(stock -> stock.getProduct() != null)
-                .forEach(stock -> allProductIds.add(stock.getProduct().getIdProduct()));
-
-        // Agregar productos con solicitudes
+        allStock.stream().filter(s -> s.getProduct() != null).forEach(s -> allProductIds.add(s.getProduct().getIdProduct()));
         allProductIds.addAll(requestsByProduct.keySet());
-
-        // Agregar productos con marbetes generados
-        allProductIds.addAll(generatedLabelsByProduct.keySet());
-
-        log.info("Total de productos únicos a mostrar: {}", allProductIds.size());
+        allProductIds.addAll(generatedByProduct.keySet());
 
         List<LabelSummaryResponseDTO> allResults = new ArrayList<>();
-
         for (Long productId : allProductIds) {
             try {
-                // Obtener información del producto
                 ProductEntity product = productRepository.findById(productId).orElse(null);
-                if (product == null) {
-                    log.warn("Producto no encontrado: {}", productId);
-                    continue;
-                }
+                if (product == null) continue;
 
-                // Obtener la solicitud de marbetes para este producto
                 LabelRequest request = requestsByProduct.get(productId);
                 int foliosSolicitados = request != null ? request.getRequestedLabels() : 0;
-                int foliosExistentes = generatedLabelsByProduct.getOrDefault(productId, 0L).intValue();
+                int foliosExistentes = generatedByProduct.getOrDefault(productId, 0L).intValue();
 
-                // Obtener existencias del inventario (ahora incluyendo periodo)
                 int existencias = 0;
                 String estado = "SIN_STOCK";
                 try {
-                    InventoryStockEntity stock = inventoryStockRepository
+                    var stock = inventoryStockRepository
                             .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId)
                             .orElse(null);
                     if (stock != null) {
@@ -775,377 +374,115 @@ public class LabelServiceImpl implements LabelService {
                     log.warn("No se pudieron obtener existencias para producto {}: {}", productId, e.getMessage());
                 }
 
-                // Buscar registros de impresión para este producto, periodo y almacén
                 List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(productId, periodId, warehouseId);
                 boolean impreso = !prints.isEmpty();
-                String fechaImpresion = null;
-                if (impreso) {
-                    // Tomar la fecha más reciente
-                    fechaImpresion = prints.stream()
-                        .map(LabelPrint::getPrintedAt)
-                        .filter(java.util.Objects::nonNull)
-                        .max(java.time.LocalDateTime::compareTo)
-                        .map(java.time.LocalDateTime::toString)
-                        .orElse(null);
-                }
+                String fechaImpresion = prints.stream().map(LabelPrint::getPrintedAt).filter(Objects::nonNull)
+                        .max(LocalDateTime::compareTo).map(LocalDateTime::toString).orElse(null);
 
-                // NUEVO: Obtener rangos de folios y lista de folios individuales
-                List<Label> productLabels = labels.stream()
-                    .filter(l -> l.getProductId().equals(productId))
-                    .sorted(java.util.Comparator.comparing(Label::getFolio))
-                .toList();
+                List<Label> productLabels = labels.stream().filter(l -> l.getProductId().equals(productId))
+                        .sorted(Comparator.comparing(Label::getFolio)).toList();
+                Long primerFolio = productLabels.isEmpty() ? null : productLabels.getFirst().getFolio();
+                Long ultimoFolio = productLabels.isEmpty() ? null : productLabels.getLast().getFolio();
+                List<Long> foliosList = productLabels.stream().map(Label::getFolio).toList();
 
-        Long primerFolio = null;
-        Long ultimoFolio = null;
-                List<Long> foliosList = new ArrayList<>();
-
-                if (!productLabels.isEmpty()) {
-                    primerFolio = productLabels.getFirst().getFolio();
-                    ultimoFolio = productLabels.getLast().getFolio();
-                    foliosList = productLabels.stream()
-                        .map(Label::getFolio)
-                        .toList();
-                }
-
-                // Construir el DTO de respuesta
-                LabelSummaryResponseDTO summary = LabelSummaryResponseDTO.builder()
+                allResults.add(LabelSummaryResponseDTO.builder()
                         .productId(productId)
                         .claveProducto(product.getCveArt())
                         .nombreProducto(product.getDescr())
-                        .claveAlmacen(claveAlmacen)
-                        .nombreAlmacen(nombreAlmacen)
+                        .claveAlmacen(warehouseEntity.getWarehouseKey())
+                        .nombreAlmacen(warehouseEntity.getNameWarehouse())
                         .foliosSolicitados(foliosSolicitados)
                         .foliosExistentes(foliosExistentes)
-                        .estado(estado)
-                        .existencias(existencias)
-                        .impreso(impreso)
-                        .fechaImpresion(fechaImpresion)
-                        .primerFolio(primerFolio)
-                        .ultimoFolio(ultimoFolio)
-                        .folios(foliosList)
-                        .build();
-
-                allResults.add(summary);
-
+                        .estado(estado).existencias(existencias)
+                        .impreso(impreso).fechaImpresion(fechaImpresion)
+                        .primerFolio(primerFolio).ultimoFolio(ultimoFolio).folios(foliosList)
+                        .build());
             } catch (Exception e) {
-                log.error("Error procesando producto {}: {}", productId, e.getMessage(), e);
+                log.error("Error procesando producto {}: {}", productId, e.getMessage());
             }
         }
 
-        log.info("Construidos {} registros totales", allResults.size());
-
-        // Aplicar filtro de búsqueda (case-insensitive según requerimientos)
-        List<LabelSummaryResponseDTO> filteredResults = allResults;
-        if (dto.getSearchText() != null && !dto.getSearchText().trim().isEmpty()) {
+        // Filtro de búsqueda
+        List<LabelSummaryResponseDTO> filtered = allResults;
+        if (dto.getSearchText() != null && !dto.getSearchText().isBlank()) {
             String searchLower = dto.getSearchText().toLowerCase();
-            filteredResults = allResults.stream()
-                .filter(item -> {
-                    // Búsqueda en: Clave de producto, Producto, Clave de almacén, Almacén, Estado, Existencias
-                     return (item.getClaveProducto() != null && item.getClaveProducto().toLowerCase().contains(searchLower)) ||
-                           (item.getNombreProducto() != null && item.getNombreProducto().toLowerCase().contains(searchLower)) ||
-                           (item.getClaveAlmacen() != null && item.getClaveAlmacen().toLowerCase().contains(searchLower)) ||
-                           (item.getNombreAlmacen() != null && item.getNombreAlmacen().toLowerCase().contains(searchLower)) ||
-                           (item.getEstado() != null && item.getEstado().toLowerCase().contains(searchLower)) ||
-                           String.valueOf(item.getExistencias()).contains(searchLower);
-                })
-                .collect(Collectors.toCollection(ArrayList::new));
-            log.info("Búsqueda aplicada: '{}', resultados filtrados: {}", dto.getSearchText(), filteredResults.size());
+            filtered = allResults.stream().filter(item ->
+                    (item.getClaveProducto() != null && item.getClaveProducto().toLowerCase().contains(searchLower)) ||
+                    (item.getNombreProducto() != null && item.getNombreProducto().toLowerCase().contains(searchLower)) ||
+                    (item.getClaveAlmacen() != null && item.getClaveAlmacen().toLowerCase().contains(searchLower)) ||
+                    (item.getNombreAlmacen() != null && item.getNombreAlmacen().toLowerCase().contains(searchLower)) ||
+                    (item.getEstado() != null && item.getEstado().toLowerCase().contains(searchLower)) ||
+                    String.valueOf(item.getExistencias()).contains(searchLower)
+            ).collect(Collectors.toCollection(ArrayList::new));
         }
 
-        // Aplicar ordenamiento personalizado
-        Comparator<LabelSummaryResponseDTO> comparator = getComparator(dto.getSortBy());
-        if ("DESC".equalsIgnoreCase(dto.getSortDirection())) {
-            comparator = comparator.reversed();
-        }
-        filteredResults.sort(comparator);
-        log.info("Ordenamiento aplicado: {} {}", dto.getSortBy(), dto.getSortDirection());
+        // Ordenamiento
+        Comparator<LabelSummaryResponseDTO> comparator = getSummaryComparator(dto.getSortBy());
+        if ("DESC".equalsIgnoreCase(dto.getSortDirection())) comparator = comparator.reversed();
+        filtered.sort(comparator);
 
-        // Aplicar paginación
-        int totalFiltered = filteredResults.size();
+        // Paginación
+        int total = filtered.size();
         int start = dto.getPage() * dto.getSize();
-        int end = Math.min(start + dto.getSize(), totalFiltered);
-
-        if (start >= totalFiltered && totalFiltered > 0) {
-            log.warn("Página {} fuera de rango (total: {}), devolviendo lista vacía", dto.getPage(), totalFiltered);
-            return new ArrayList<>();
-        }
-
-        List<LabelSummaryResponseDTO> paginatedResults = start < totalFiltered ?
-            filteredResults.subList(start, end) : new ArrayList<>();
-
-        log.info("Paginación aplicada: página {}, tamaño {}, devolviendo {} registros de {} totales filtrados",
-            dto.getPage(), dto.getSize(), paginatedResults.size(), totalFiltered);
-
-        return paginatedResults;
+        if (start >= total && total > 0) return new ArrayList<>();
+        int end = Math.min(start + dto.getSize(), total);
+        return start < total ? filtered.subList(start, end) : new ArrayList<>();
     }
 
-    /**
-     * Método auxiliar para obtener el comparador según la columna seleccionada.
-     * Columnas soportadas: foliosExistentes, claveProducto, producto/nombreProducto,
-     * claveAlmacen, almacen/nombreAlmacen, estado, existencias
-     */
-    private Comparator<LabelSummaryResponseDTO> getComparator(String sortBy) {
+    private Comparator<LabelSummaryResponseDTO> getSummaryComparator(String sortBy) {
         if (sortBy == null) sortBy = "claveProducto";
-
         return switch (sortBy.toLowerCase()) {
             case "foliosexistentes" -> Comparator.comparing(LabelSummaryResponseDTO::getFoliosExistentes);
-            case "claveproducto" -> Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "producto", "nombreproducto" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreProducto,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "clavealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getClaveAlmacen,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "almacen", "nombrealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreAlmacen,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "estado" -> Comparator.comparing(LabelSummaryResponseDTO::getEstado,
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "producto", "nombreproducto" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreProducto, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "clavealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getClaveAlmacen, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "almacen", "nombrealmacen" -> Comparator.comparing(LabelSummaryResponseDTO::getNombreAlmacen, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "estado" -> Comparator.comparing(LabelSummaryResponseDTO::getEstado, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
             case "existencias" -> Comparator.comparing(LabelSummaryResponseDTO::getExistencias);
-            default ->
-                // Por defecto, ordenar por clave de producto
-                    Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto,
-                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            default -> Comparator.comparing(LabelSummaryResponseDTO::getClaveProducto, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
         };
     }
 
-    /**
-     * 🔄 REIMPRESIÓN EXTRAORDINARIA: Reimprimir marbetes ya impresos
-     *
-     * Método específico y explícito para reimpresión extraordinaria.
-     * Válido SOLO para marbetes en estado IMPRESO.
-     *
-     * @param dto DTO con folios específicos a reimprimir
-     * @param userId ID del usuario que hace la reimpresión
-     * @param userRole Rol del usuario
-     * @return byte[] PDF con los marbetes reimprimidos
-     * @throws InvalidLabelStateException si algún folio no está en estado IMPRESO
-     * @throws PermissionDeniedException si el usuario no tiene permisos
-     * @throws LabelNotFoundException si algún folio no existe
-     */
-    @Transactional
-    @Override
-    public byte[] extraordinaryReprint(PrintRequestDTO dto, Long userId, String userRole) {
-        log.info("🔄 REIMPRESIÓN EXTRAORDINARIA iniciada: periodo={}, almacén={}, folios={}",
-            dto.getPeriodId(), dto.getWarehouseId(),
-            dto.getFolios() != null ? dto.getFolios().size() : 0);
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 1: Validaciones de seguridad
-        // ═════════════════════════════════════════════════════════════════
-        if (userRole == null || userRole.trim().isEmpty()) {
-            throw new PermissionDeniedException("Rol de usuario requerido");
-        }
-        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 2: Validación de parámetros
-        // ═════════════════════════════════════════════════════════════════
-        if (dto.getFolios() == null || dto.getFolios().isEmpty()) {
-            throw new InvalidLabelStateException(
-                "Reimpresión extraordinaria requiere lista de folios específicos. " +
-                "No se puede reimprimir sin especificar qué marbetes reimprimir.");
-        }
-
-        log.debug("Folios a reimprimir: {}", dto.getFolios());
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 3: Búsqueda de marbetes YA IMPRESOS
-        // ═════════════════════════════════════════════════════════════════
-        // Este método valida que TODOS estén en estado IMPRESO
-        List<Label> labels = persistence.findImpresosForReimpresion(
-            dto.getPeriodId(),
-            dto.getWarehouseId(),
-            dto.getFolios());
-
-        log.info("🔄 Se encontraron {} marbetes en estado IMPRESO para reimprimir", labels.size());
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 4: Validaciones de límite
-        // ═════════════════════════════════════════════════════════════════
-        if (labels.size() > 500) {
-            throw new InvalidLabelStateException(
-                "Límite máximo: 500 marbetes por reimpresión extraordinaria");
-        }
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 5: Ordenamiento por folio
-        // ═════════════════════════════════════════════════════════════════
-        labels.sort(Comparator.comparing(Label::getFolio));
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 6: Generación del PDF
-        // ═════════════════════════════════════════════════════════════════
-        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
-
-        if (pdfBytes == null || pdfBytes.length == 0) {
-            throw new InvalidLabelStateException(
-                "Error generando PDF de reimpresión: el archivo generado está vacío");
-        }
-
-        log.debug("PDF generado exitosamente: {} KB", pdfBytes.length / 1024);
-
-        // ═════════════════════════════════════════════════════════════════
-        // PASO 7: Actualización de timestamps (auditoría)
-        // ═════════════════════════════════════════════════════════════════
-        Long minFolio = labels.get(0).getFolio();
-        Long maxFolio = labels.get(labels.size() - 1).getFolio();
-
-        LabelPrint result = updateLabelsStateAfterPrint(
-            dto.getPeriodId(),
-            dto.getWarehouseId(),
-            minFolio,
-            maxFolio,
-            userId,
-            true);  // true = es reimpresión extraordinaria
-
-        log.info("✅ REIMPRESIÓN EXTRAORDINARIA completada: {} KB, {} marbetes",
-            pdfBytes.length / 1024, labels.size());
-        log.info("📝 Registro de auditoría: {} folios {} al {} reimprimidos por usuario {}",
-            result.getCantidadImpresa(), result.getFolioInicial(),
-            result.getFolioFinal(), userId);
-
-        return pdfBytes;
-    }
-
-    /**
-     * 🚀 MÉTODO SIMPLIFICADO: Genera marbetes directamente sin solicitudes previas
-     * Este método reemplaza todo el flujo antiguo de request -> generate
-     */
-    @Override
-    @Transactional
-    public void generateBatchList(GenerateBatchListDTO dto, Long userId, String userRole) {
-        log.info("🚀 Generando marbetes para {} productos", dto.getProducts().size());
-
-        // Validar acceso al almacén
-        warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
-
-        LocalDateTime now = LocalDateTime.now();
-        int totalGenerados = 0;
-
-        for (ProductBatchDTO product : dto.getProducts()) {
-            int cantidad = product.getLabelsToGenerate();
-
-            // REGLA DE NEGOCIO: Crear o buscar LabelRequest para este producto/periodo/almacén
-            // Esto asegura que todos los marbetes tengan un id_label_request válido
-            Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
-                product.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-            LabelRequest labelRequest;
-            if (existing.isPresent()) {
-                labelRequest = existing.get();
-                log.info("📋 Usando LabelRequest existente (ID: {}) para producto {}",
-                    labelRequest.getIdLabelRequest(), product.getProductId());
-            } else {
-                // Crear nuevo LabelRequest
-                labelRequest = new LabelRequest();
-                labelRequest.setProductId(product.getProductId());
-                labelRequest.setWarehouseId(dto.getWarehouseId());
-                labelRequest.setPeriodId(dto.getPeriodId());
-                labelRequest.setRequestedLabels(cantidad);
-                labelRequest.setFoliosGenerados(0);
-                labelRequest.setCreatedBy(userId);
-                labelRequest.setCreatedAt(now);
-                labelRequest = persistence.save(labelRequest);
-                log.info("📋 LabelRequest creado (ID: {}) para producto {}",
-                    labelRequest.getIdLabelRequest(), product.getProductId());
-            }
-
-            // Asignar folios consecutivos
-            long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
-
-            // Crear marbetes en batch
-            List<Label> labels = new ArrayList<>(cantidad);
-            for (long folio = range[0]; folio <= range[1]; folio++) {
-                Label label = new Label();
-                label.setFolio(folio);
-                label.setLabelRequestId(labelRequest.getIdLabelRequest()); // ✅ ASIGNAR LabelRequest
-                label.setPeriodId(dto.getPeriodId());
-                label.setWarehouseId(dto.getWarehouseId());
-                label.setProductId(product.getProductId());
-                label.setEstado(Label.State.GENERADO);
-                label.setCreatedBy(userId);
-                label.setCreatedAt(now);
-                labels.add(label);
-            }
-
-            // Guardar en BD
-            persistence.saveAll(labels);
-            totalGenerados += cantidad;
-
-            log.info("✅ Producto {}: {} marbetes (folios {}-{}) asignados a LabelRequest {}",
-                product.getProductId(), cantidad, range[0], range[1], labelRequest.getIdLabelRequest());
-        }
-
-        log.info("✅ Total generado: {} marbetes", totalGenerados);
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // ESTADO Y DETALLES
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Override
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
-        var builder = tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO.builder();
-        builder.folio(folio);
-        String mensaje;
+    @Transactional(readOnly = true)
+    public LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
+        var builder = LabelStatusResponseDTO.builder().folio(folio);
         try {
-            // Buscar el marbete
             var optLabel = persistence.findByFolio(folio);
             if (optLabel.isEmpty()) {
-                builder.estado("NO_EXISTE");
-                builder.impreso(false);
-                builder.mensaje("El folio no existe");
-                return builder.build();
+                return builder.estado("NO_EXISTE").impreso(false).mensaje("El folio no existe").build();
             }
             var label = optLabel.get();
-
-            // ✅ USAR VALORES REALES DEL MARBETE si no se proporcionan
             Long actualPeriodId = periodId != null ? periodId : label.getPeriodId();
             Long actualWarehouseId = warehouseId != null ? warehouseId : label.getWarehouseId();
+            builder.periodId(actualPeriodId).warehouseId(actualWarehouseId).productId(label.getProductId())
+                    .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO");
 
-            builder.periodId(actualPeriodId);
-            builder.warehouseId(actualWarehouseId);
-            builder.productId(label.getProductId());
-            builder.estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO");
+            productRepository.findById(label.getProductId()).ifPresent(p -> {
+                builder.claveProducto(p.getCveArt()); builder.nombreProducto(p.getDescr());
+            });
+            warehouseRepository.findById(label.getWarehouseId()).ifPresent(w -> {
+                builder.claveAlmacen(w.getWarehouseKey()); builder.nombreAlmacen(w.getNameWarehouse());
+            });
 
-            // Buscar producto
-            var product = productRepository.findById(label.getProductId()).orElse(null);
-            if (product != null) {
-                builder.claveProducto(product.getCveArt());
-                builder.nombreProducto(product.getDescr());
-            }
-            // Buscar almacén
-            var warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-            if (warehouse != null) {
-                builder.claveAlmacen(warehouse.getWarehouseKey());
-                builder.nombreAlmacen(warehouse.getNameWarehouse());
-            }
-            // Buscar impresiones
             var prints = persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), actualPeriodId, actualWarehouseId);
             boolean impreso = !prints.isEmpty();
-            String fechaImpresion = null;
-            if (impreso) {
-                fechaImpresion = prints.stream()
-                    .map(LabelPrint::getPrintedAt)
-                    .filter(java.util.Objects::nonNull)
-                    .max(java.time.LocalDateTime::compareTo)
-                    .map(java.time.LocalDateTime::toString)
-                    .orElse(null);
-            }
-            builder.impreso(impreso);
-            builder.fechaImpresion(fechaImpresion);
-            // Mensaje de ayuda
-            if (label.getEstado() == null) {
-                mensaje = "El marbete no tiene estado definido.";
-            } else if (label.getEstado().name().equals("CANCELADO")) {
-                mensaje = "El marbete está CANCELADO y no puede imprimirse.";
-            } else if (label.getEstado().name().equals("IMPRESO")) {
-                mensaje = "El marbete ya fue impreso. Puedes reimprimir si lo necesitas.";
-            } else if (label.getEstado().name().equals("GENERADO")) {
-                mensaje = "El marbete está listo para imprimir.";
-            } else {
-                mensaje = "Estado actual: " + label.getEstado().name();
-            }
+            String fechaImpresion = prints.stream().map(LabelPrint::getPrintedAt).filter(Objects::nonNull)
+                    .max(LocalDateTime::compareTo).map(LocalDateTime::toString).orElse(null);
+            builder.impreso(impreso).fechaImpresion(fechaImpresion);
+
+            String mensaje = label.getEstado() == null ? "Sin estado definido."
+                    : switch (label.getEstado()) {
+                        case CANCELADO -> "El marbete está CANCELADO.";
+                        case IMPRESO -> "Ya fue impreso. Puede reimprimir si lo necesita.";
+                        case GENERADO -> "Listo para imprimir.";
+                    };
             builder.mensaje(mensaje);
         } catch (Exception e) {
-            builder.estado("ERROR");
-            builder.impreso(false);
-            builder.mensaje("Error al consultar el estado: " + e.getMessage());
+            builder.estado("ERROR").impreso(false).mensaje("Error al consultar: " + e.getMessage());
         }
         return builder.build();
     }
@@ -1153,98 +490,57 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public long countLabelsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
-        log.info("Contando marbetes para periodId={}, warehouseId={}", periodId, warehouseId);
-        long count = persistence.countByPeriodIdAndWarehouseId(periodId, warehouseId);
-        log.info("Total de marbetes encontrados: {}", count);
-        return count;
+        return persistence.countByPeriodIdAndWarehouseId(periodId, warehouseId);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CANCELADOS
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     @Transactional(readOnly = true)
-    public List< LabelCancelledDTO> getCancelledLabels(Long periodId, Long warehouseId, Long userId, String userRole) {
-        log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}", periodId, warehouseId);
-
-        // Validar acceso al almacén
-        try {
-            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-        } catch (Exception e) {
-            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
-                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
-            } else {
-                throw e;
-            }
-        }
-
-        // Obtener marbetes cancelados no reactivados
-        List<tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled> cancelledLabels =
-            persistence.findCancelledByPeriodAndWarehouse(periodId, warehouseId, false);
-
-        log.info("Encontrados {} marbetes cancelados", cancelledLabels.size());
-
-        // Obtener información de almacén
+    public List<LabelCancelledDTO> getCancelledLabels(Long periodId, Long warehouseId, Long userId, String userRole) {
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
         WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
-            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        // Convertir a DTOs
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> dtos = new ArrayList<>();
-        for (tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled cancelled : cancelledLabels) {
-            ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
-            if (product == null) continue;
-
-            tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO dto =
-                tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO.builder()
-                    .idLabelCancelled(cancelled.getIdLabelCancelled())
-                    .folio(cancelled.getFolio())
-                    .productId(cancelled.getProductId())
-                    .claveProducto(product.getCveArt())
-                    .nombreProducto(product.getDescr())
-                    .warehouseId(cancelled.getWarehouseId())
-                    .claveAlmacen(warehouse.getWarehouseKey())
-                    .nombreAlmacen(warehouse.getNameWarehouse())
-                    .periodId(cancelled.getPeriodId())
-                    .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
-                    .existenciasActuales(cancelled.getExistenciasActuales())
-                    .motivoCancelacion(cancelled.getMotivoCancelacion())
-                    .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
-                    .reactivado(cancelled.getReactivado())
-                    .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
-                    .notas(cancelled.getNotas())
-                    .build();
-            dtos.add(dto);
-        }
-
-        return dtos;
+        return persistence.findCancelledByPeriodAndWarehouse(periodId, warehouseId, false).stream()
+                .map(cancelled -> {
+                    ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
+                    if (product == null) return null;
+                    return LabelCancelledDTO.builder()
+                            .idLabelCancelled(cancelled.getIdLabelCancelled()).folio(cancelled.getFolio())
+                            .productId(cancelled.getProductId())
+                            .claveProducto(product.getCveArt()).nombreProducto(product.getDescr())
+                            .warehouseId(cancelled.getWarehouseId())
+                            .claveAlmacen(warehouse.getWarehouseKey()).nombreAlmacen(warehouse.getNameWarehouse())
+                            .periodId(cancelled.getPeriodId())
+                            .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
+                            .existenciasActuales(cancelled.getExistenciasActuales())
+                            .motivoCancelacion(cancelled.getMotivoCancelacion())
+                            .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
+                            .reactivado(cancelled.getReactivado())
+                            .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
+                            .notas(cancelled.getNotas()).build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Override
     @Transactional
-    public LabelCancelledDTO updateCancelledStock(
-            UpdateCancelledStockDTO dto, Long userId, String userRole) {
-        log.info("Actualizando existencias de marbete cancelado: folio={}, nuevasExistencias={}",
-            dto.getFolio(), dto.getExistenciasActuales());
+    public LabelCancelledDTO updateCancelledStock(UpdateCancelledStockDTO dto, Long userId, String userRole) {
+        LabelCancelled cancelled = persistence.findCancelledByFolio(dto.getFolio())
+                .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado: folio " + dto.getFolio()));
 
-        // Buscar el marbete cancelado
-        tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled cancelled =
-            persistence.findCancelledByFolio(dto.getFolio())
-                .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado con folio: " + dto.getFolio()));
-
-        // Validar acceso al almacén
         warehouseAccessService.validateWarehouseAccess(userId, cancelled.getWarehouseId(), userRole);
-
-        // Actualizar existencias
         cancelled.setExistenciasActuales(dto.getExistenciasActuales());
-        if (dto.getNotas() != null) {
-            cancelled.setNotas(dto.getNotas());
-        }
+        if (dto.getNotas() != null) cancelled.setNotas(dto.getNotas());
 
-        // Si ahora tiene existencias, reactivar el marbete
         if (dto.getExistenciasActuales() > 0 && !cancelled.getReactivado()) {
             cancelled.setReactivado(true);
             cancelled.setReactivadoAt(LocalDateTime.now());
             cancelled.setReactivadoBy(userId);
-            log.info("Marbete folio {} reactivado por tener existencias", dto.getFolio());
-
-            // Crear el marbete normal
             Label label = new Label();
             label.setFolio(cancelled.getFolio());
             label.setLabelRequestId(cancelled.getLabelRequestId());
@@ -1255,165 +551,61 @@ public class LabelServiceImpl implements LabelService {
             label.setCreatedBy(userId);
             label.setCreatedAt(LocalDateTime.now());
             persistence.save(label);
-            log.info("Marbete creado en tabla labels con estado GENERADO");
+            log.info("Marbete folio {} reactivado", dto.getFolio());
         }
-
         persistence.saveCancelled(cancelled);
 
-        // Construir respuesta
         ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
         WarehouseEntity warehouse = warehouseRepository.findById(cancelled.getWarehouseId()).orElse(null);
 
-        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO.builder()
-            .idLabelCancelled(cancelled.getIdLabelCancelled())
-            .folio(cancelled.getFolio())
-            .productId(cancelled.getProductId())
-            .claveProducto(product != null ? product.getCveArt() : null)
-            .nombreProducto(product != null ? product.getDescr() : null)
-            .warehouseId(cancelled.getWarehouseId())
-            .claveAlmacen(warehouse != null ? warehouse.getWarehouseKey() : null)
-            .nombreAlmacen(warehouse != null ? warehouse.getNameWarehouse() : null)
-            .periodId(cancelled.getPeriodId())
-            .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
-            .existenciasActuales(cancelled.getExistenciasActuales())
-            .motivoCancelacion(cancelled.getMotivoCancelacion())
-            .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
-            .reactivado(cancelled.getReactivado())
-            .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
-            .notas(cancelled.getNotas())
-            .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<LabelDetailDTO> getLabelsByProduct(
-            Long productId, Long periodId, Long warehouseId, Long userId, String userRole) {
-        log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
-            productId, periodId, warehouseId);
-
-        // Validar acceso al almacén
-        try {
-            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-        } catch (Exception e) {
-            if (userRole != null && (userRole.equalsIgnoreCase("ADMINISTRADOR") || userRole.equalsIgnoreCase("AUXILIAR"))) {
-                log.info("Usuario es ADMINISTRADOR o AUXILIAR, permitiendo acceso");
-            } else {
-                throw e;
-            }
-        }
-
-        // Obtener información del producto
-        ProductEntity product = productRepository.findById(productId)
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-
-        // Obtener información del almacén
-        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
-            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
-
-        // Obtener existencias
-        int existencias = 0;
-        try {
-            var stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId);
-            if (stockOpt.isPresent()) {
-                existencias = stockOpt.get().getExistQty() != null ?
-                    stockOpt.get().getExistQty().intValue() : 0;
-            }
-        } catch (Exception e) {
-            log.warn("No se pudieron obtener existencias: {}", e.getMessage());
-        }
-
-        // Obtener todos los marbetes de este producto
-        List<Label> labels = persistence.findByProductPeriodWarehouse(productId, periodId, warehouseId);
-        log.info("Encontrados {} marbetes para el producto", labels.size());
-
-        // Convertir a DTOs
-        final Integer existenciasFinal = existencias;
-        return labels.stream()
-            .map(label -> tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO.builder()
-                .folio(label.getFolio())
-                .productId(label.getProductId())
-                .claveProducto(product.getCveArt())
-                .nombreProducto(product.getDescr())
-                .warehouseId(label.getWarehouseId())
-                .claveAlmacen(warehouse.getWarehouseKey())
-                .nombreAlmacen(warehouse.getNameWarehouse())
-                .periodId(label.getPeriodId())
-                .estado(label.getEstado().name())
-                .createdAt(label.getCreatedAt() != null ? label.getCreatedAt().toString() : null)
-                .impresoAt(label.getImpresoAt() != null ? label.getImpresoAt().toString() : null)
-                .existencias(existenciasFinal)
-                .build())
-            .sorted(java.util.Comparator.comparing(tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO::getFolio))
-            .toList();
+        return LabelCancelledDTO.builder()
+                .idLabelCancelled(cancelled.getIdLabelCancelled()).folio(cancelled.getFolio())
+                .productId(cancelled.getProductId())
+                .claveProducto(product != null ? product.getCveArt() : null)
+                .nombreProducto(product != null ? product.getDescr() : null)
+                .warehouseId(cancelled.getWarehouseId())
+                .claveAlmacen(warehouse != null ? warehouse.getWarehouseKey() : null)
+                .nombreAlmacen(warehouse != null ? warehouse.getNameWarehouse() : null)
+                .periodId(cancelled.getPeriodId())
+                .existenciasAlCancelar(cancelled.getExistenciasAlCancelar())
+                .existenciasActuales(cancelled.getExistenciasActuales())
+                .motivoCancelacion(cancelled.getMotivoCancelacion())
+                .canceladoAt(cancelled.getCanceladoAt() != null ? cancelled.getCanceladoAt().toString() : null)
+                .reactivado(cancelled.getReactivado())
+                .reactivadoAt(cancelled.getReactivadoAt() != null ? cancelled.getReactivadoAt().toString() : null)
+                .notas(cancelled.getNotas()).build();
     }
 
     @Override
     @Transactional
     public void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole) {
         log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
-
-        // Validación explícita para dar error claro en lugar del genérico "id must not be null"
         if (dto.getFolio() == null) {
-            throw new InvalidLabelStateException("El campo 'folio' es obligatorio y no puede ser nulo");
+            throw new InvalidLabelStateException("El campo 'folio' es obligatorio");
         }
-
-        // Buscar el marbete
         Label label = jpaLabelRepository.findById(dto.getFolio())
-            .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
 
-        // Siempre usar los datos REALES del marbete (periodId/warehouseId del DTO son opcionales y se ignoran)
-        Long periodId = label.getPeriodId();
-        Long warehouseId = label.getWarehouseId();
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        if (label.getEstado() == Label.State.CANCELADO) throw new LabelAlreadyCancelledException(dto.getFolio());
 
-        log.info("📍 Usando período={}, almacén={} del marbete para cancelación", periodId, warehouseId);
-
-        // Validar acceso al almacén
-        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-
-
-        // Validar que no esté ya cancelado
-        if (label.getEstado() == Label.State.CANCELADO) {
-            throw new LabelAlreadyCancelledException(dto.getFolio());
-        }
-
-        // Validar requestedLabels solo si el marbete tiene referencia a LabelRequest
-        if (label.getLabelRequestId() == null) {
-            log.warn("⚠️ Marbete {} tiene id_label_request=NULL (dato histórico). Se permite cancelar de todas formas.", dto.getFolio());
-        } else {
-            LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId())
-                .orElse(null);
-            if (labelRequest != null &&
-                (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0)) {
-                throw new InvalidLabelStateException(
-                    "No se puede cancelar un marbete sin folios asignados. " +
-                    "Este marbete tiene 0 folios solicitados y no debe ser cancelado."
-                );
-            }
-            log.debug("Marbete {} tiene {} folios asignados - validación aprobada",
-                dto.getFolio(), labelRequest != null ? labelRequest.getRequestedLabels() : "N/A");
-        }
-
-        // REGLA DE NEGOCIO: Si el marbete tiene conteos registrados (C1 o C2),
-        // se archivan en la tabla labels_cancelled para preservar la auditoría.
-        // NO se borran del sistema — el reporte de cancelados los necesita.
-        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
-        java.math.BigDecimal conteo1Archivado = null;
-        java.math.BigDecimal conteo2Archivado = null;
-        if (!countEvents.isEmpty()) {
-            log.info("📊 El marbete {} tiene {} evento(s) de conteo. Se archivarán en labels_cancelled.",
-                dto.getFolio(), countEvents.size());
-            for (LabelCountEvent evt : countEvents) {
-                if (evt.getCountNumber() == 1) conteo1Archivado = evt.getCountedValue();
-                if (evt.getCountNumber() == 2) conteo2Archivado = evt.getCountedValue();
+        if (label.getLabelRequestId() != null) {
+            LabelRequest labelRequest = labelRequestRepository.findById(label.getLabelRequestId()).orElse(null);
+            if (labelRequest != null && (labelRequest.getRequestedLabels() == null || labelRequest.getRequestedLabels() == 0)) {
+                throw new InvalidLabelStateException("No se puede cancelar: el marbete tiene 0 folios solicitados.");
             }
         }
 
-        // Cambiar estado a CANCELADO
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        java.math.BigDecimal c1 = null, c2 = null;
+        for (LabelCountEvent evt : events) {
+            if (evt.getCountNumber() == 1) c1 = evt.getCountedValue();
+            if (evt.getCountNumber() == 2) c2 = evt.getCountedValue();
+        }
+
         label.setEstado(Label.State.CANCELADO);
         jpaLabelRepository.save(label);
 
-        // Registrar en labels_cancelled
         LabelCancelled cancelled = new LabelCancelled();
         cancelled.setFolio(dto.getFolio());
         cancelled.setLabelRequestId(label.getLabelRequestId());
@@ -1424,975 +616,190 @@ public class LabelServiceImpl implements LabelService {
         cancelled.setCanceladoAt(LocalDateTime.now());
         cancelled.setCanceladoBy(userId);
         cancelled.setReactivado(false);
-        // ✅ Archivar conteos para preservar auditoría
-        cancelled.setConteo1AlCancelar(conteo1Archivado);
-        cancelled.setConteo2AlCancelar(conteo2Archivado);
-
-        // Obtener existencias actuales
+        cancelled.setConteo1AlCancelar(c1);
+        cancelled.setConteo2AlCancelar(c2);
         try {
-            var stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
-            if (stockOpt.isPresent()) {
-                int existenciasActuales = stockOpt.get().getExistQty() != null ?
-                    stockOpt.get().getExistQty().intValue() : 0;
-                cancelled.setExistenciasAlCancelar(existenciasActuales);
-                cancelled.setExistenciasActuales(existenciasActuales);
-            }
+            inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId())
+                    .ifPresent(stock -> {
+                        int ex = stock.getExistQty() != null ? stock.getExistQty().intValue() : 0;
+                        cancelled.setExistenciasAlCancelar(ex);
+                        cancelled.setExistenciasActuales(ex);
+                    });
         } catch (Exception e) {
-            log.warn("No se pudieron obtener existencias para el marbete cancelado: {}", e.getMessage());
-            cancelled.setExistenciasAlCancelar(0);
-            cancelled.setExistenciasActuales(0);
+            cancelled.setExistenciasAlCancelar(0); cancelled.setExistenciasActuales(0);
         }
-
         jpaLabelCancelledRepository.save(cancelled);
-
         log.info("Marbete {} cancelado exitosamente", dto.getFolio());
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSULTA PARA CONTEO
+    // ═══════════════════════════════════════════════════════════════════════
+
     @Override
     @Transactional(readOnly = true)
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
-        log.info("Obteniendo información del marbete {} para conteo", folio);
+    public List<LabelDetailDTO> getLabelsByProduct(Long productId, Long periodId, Long warehouseId, Long userId, String userRole) {
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        ProductEntity product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        // Buscar el marbete primero para obtener su warehouseId real
+        int existencias = 0;
+        try {
+            var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(productId, warehouseId, periodId);
+            if (stockOpt.isPresent()) existencias = stockOpt.get().getExistQty() != null ? stockOpt.get().getExistQty().intValue() : 0;
+        } catch (Exception e) { log.warn("No se pudieron obtener existencias: {}", e.getMessage()); }
+
+        final int existenciasFinal = existencias;
+        return persistence.findByProductPeriodWarehouse(productId, periodId, warehouseId).stream()
+                .map(label -> LabelDetailDTO.builder()
+                        .folio(label.getFolio()).productId(label.getProductId())
+                        .claveProducto(product.getCveArt()).nombreProducto(product.getDescr())
+                        .warehouseId(label.getWarehouseId())
+                        .claveAlmacen(warehouse.getWarehouseKey()).nombreAlmacen(warehouse.getNameWarehouse())
+                        .periodId(label.getPeriodId()).estado(label.getEstado().name())
+                        .createdAt(label.getCreatedAt() != null ? label.getCreatedAt().toString() : null)
+                        .impresoAt(label.getImpresoAt() != null ? label.getImpresoAt().toString() : null)
+                        .existencias(existenciasFinal).build())
+                .sorted(Comparator.comparing(LabelDetailDTO::getFolio))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         Label label = jpaLabelRepository.findById(folio)
-            .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
-
-        // Validar acceso usando el warehouseId REAL del marbete
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
-        // Obtener información del producto
         ProductEntity product = productRepository.findById(label.getProductId())
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-
-        // Obtener información del almacén
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId())
-            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        // Obtener los conteos registrados
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
-
-        java.math.BigDecimal conteo1 = null;
-        java.math.BigDecimal conteo2 = null;
-
-        for (LabelCountEvent event : events) {
-            if (event.getCountNumber() == 1) {
-                conteo1 = event.getCountedValue();
-            }
-            if (event.getCountNumber() == 2) {
-                conteo2 = event.getCountedValue();
-            }
+        java.math.BigDecimal c1 = null, c2 = null;
+        for (LabelCountEvent e : events) {
+            if (e.getCountNumber() == 1) c1 = e.getCountedValue();
+            if (e.getCountNumber() == 2) c2 = e.getCountedValue();
         }
+        java.math.BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1) : null;
 
-        // Calcular diferencia si ambos conteos existen
-        java.math.BigDecimal diferencia = null;
-        if (conteo1 != null && conteo2 != null) {
-            diferencia = conteo2.subtract(conteo1);
-        }
-
-        // Verificar si el marbete está impreso
-        List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(
-            label.getProductId(), periodId, warehouseId);
-        boolean impreso = !prints.isEmpty();
-
-        // Verificar si está cancelado
-        boolean cancelado = label.getEstado() == Label.State.CANCELADO;
-
-        // Construir mensaje informativo
-        String mensaje;
-        if (cancelado) {
-            mensaje = "Este marbete está CANCELADO y no puede ser usado para conteo";
-        } else if (conteo1 != null && conteo2 != null) {
-            mensaje = "Ambos conteos ya están registrados";
-        } else if (conteo1 != null) {
-            mensaje = "Primer conteo registrado, falta el segundo conteo";
-        } else {
-            mensaje = "Listo para registrar el primer conteo";
-        }
-
-        // ✅ OBTENER EXISTENCIAS DEL INVENTARIO
         java.math.BigDecimal existQty = null;
-        String existQtyUnidad = product.getUniMed();
-
         try {
-            var stockOpt = inventoryStockRepository
-                .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+            var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
                     label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            if (stockOpt.isPresent()) existQty = stockOpt.get().getExistQty();
+        } catch (Exception e) { log.warn("Error obteniendo existencias: {}", e.getMessage()); }
 
-            if (stockOpt.isPresent()) {
-                existQty = stockOpt.get().getExistQty();
-                log.info("📦 Existencias obtenidas para producto {}: {}", label.getProductId(), existQty);
-            } else {
-                log.warn("⚠️ No se encontraron existencias para producto {} en almacén {} período {}",
-                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
-            }
-        } catch (Exception e) {
-            log.error("❌ Error obteniendo existencias para producto {}: {}", label.getProductId(), e.getMessage());
-        }
+        boolean cancelado = label.getEstado() == Label.State.CANCELADO;
+        String mensaje = cancelado ? "Este marbete está CANCELADO" :
+                (c1 != null && c2 != null) ? "Ambos conteos registrados" :
+                (c1 != null) ? "Primer conteo registrado, falta C2" : "Listo para primer conteo";
 
-        return tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
-            .folio(label.getFolio())
-            .periodId(label.getPeriodId())
-            .warehouseId(label.getWarehouseId())
-            .claveAlmacen(warehouse.getWarehouseKey())
-            .nombreAlmacen(warehouse.getNameWarehouse())
-            .claveProducto(product.getCveArt())
-            .descripcionProducto(product.getDescr())
-            .unidadMedida(product.getUniMed())
-            .cancelado(cancelado)
-            .conteo1(conteo1)
-            .conteo2(conteo2)
-            .diferencia(diferencia)
-            .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
-            .impreso(impreso)
-            .mensaje(mensaje)
-            .existQty(existQty)                    // ✅ AGREGAR EXISTENCIAS
-            .existQtyUnidad(existQtyUnidad)        // ✅ AGREGAR UNIDAD
-            .build();
+        return LabelForCountDTO.builder()
+                .folio(label.getFolio()).periodId(label.getPeriodId()).warehouseId(label.getWarehouseId())
+                .claveAlmacen(warehouse.getWarehouseKey()).nombreAlmacen(warehouse.getNameWarehouse())
+                .claveProducto(product.getCveArt()).descripcionProducto(product.getDescr())
+                .unidadMedida(product.getUniMed()).cancelado(cancelado)
+                .conteo1(c1).conteo2(c2).diferencia(diferencia)
+                .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
+                .impreso(!persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, warehouseId).isEmpty())
+                .mensaje(mensaje).existQty(existQty).existQtyUnidad(product.getUniMed())
+                .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole) {
-        log.info("Listando marbetes disponibles para conteo en periodo {} y almacén {}", periodId, warehouseId);
-
-        // Validar acceso al almacén
+    public List<LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole) {
         warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-
-        // Obtener información del almacén
         WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
-            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        // Obtener marbetes IMPRESOS directamente en BD — sin cargar todos en memoria para luego filtrar
         List<Label> labels = jpaLabelRepository.findImpresosForCountList(periodId, warehouseId);
+        if (labels.isEmpty()) return new ArrayList<>();
 
-        log.info("Encontrados {} marbetes impresos disponibles para conteo", labels.size());
-
-        if (labels.isEmpty()) {
-            log.warn("No se encontraron marbetes impresos para el periodo {} y almacén {}", periodId, warehouseId);
-            return new ArrayList<>();
-        }
-
-        // ✅ Cargar TODOS los conteos en UNA sola query — elimina N+1
         List<Long> folios = labels.stream().map(Label::getFolio).toList();
         Map<Long, List<LabelCountEvent>> countsByFolio = jpaLabelCountEventRepository
-            .findByFolioInOrderByFolioAscCountNumberAsc(folios)
-            .stream()
-            .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
+                .findByFolioInOrderByFolioAscCountNumberAsc(folios).stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
-        // Convertir cada marbete a DTO
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> result = new ArrayList<>();
+        // Batch load de stock para evitar N+1 queries — MEJORA M6
+        Set<Long> productIds = labels.stream().map(Label::getProductId).collect(Collectors.toSet());
+        Map<Long, java.math.BigDecimal> stockByProduct = new HashMap<>();
+        for (Long productId : productIds) {
+            try {
+                inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                        productId, warehouseId, periodId)
+                        .ifPresent(s -> stockByProduct.put(productId, s.getExistQty()));
+            } catch (Exception e) { log.debug("Sin stock para producto {}: {}", productId, e.getMessage()); }
+        }
 
+        List<LabelForCountDTO> result = new ArrayList<>();
         for (Label label : labels) {
             try {
-                // Obtener información del producto
                 ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-                if (product == null) {
-                    log.warn("Producto no encontrado para marbete folio {}", label.getFolio());
-                    continue;
-                }
+                if (product == null) continue;
 
-                // Obtener conteos del mapa batch — sin query adicional
                 List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
-
-                java.math.BigDecimal conteo1 = null;
-                java.math.BigDecimal conteo2 = null;
-
-                for (LabelCountEvent event : events) {
-                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
-                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
+                java.math.BigDecimal c1 = null, c2 = null;
+                for (LabelCountEvent e : events) {
+                    if (e.getCountNumber() == 1) c1 = e.getCountedValue();
+                    if (e.getCountNumber() == 2) c2 = e.getCountedValue();
                 }
+                java.math.BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1) : null;
+                String mensaje = (c1 != null && c2 != null) ? "Completo" : (c1 != null) ? "Pendiente C2" : "Pendiente C1";
 
-                // Calcular diferencia si ambos conteos existen
-                java.math.BigDecimal diferencia = null;
-                if (conteo1 != null && conteo2 != null) {
-                    diferencia = conteo2.subtract(conteo1);
-                }
-
-                // Construir mensaje informativo
-                String mensaje;
-                if (conteo1 != null && conteo2 != null) {
-                    mensaje = "Completo";
-                } else if (conteo1 != null) {
-                    mensaje = "Pendiente C2";
-                } else {
-                    mensaje = "Pendiente C1";
-                }
-
-                // Obtener existencias del inventario
-                java.math.BigDecimal existQty = null;
-                try {
-                    var stockOpt = inventoryStockRepository
-                        .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                            label.getProductId(), label.getWarehouseId(), label.getPeriodId());
-                    if (stockOpt.isPresent()) existQty = stockOpt.get().getExistQty();
-                } catch (Exception e) {
-                    log.debug("Error obteniendo existencias para folio {}: {}", label.getFolio(), e.getMessage());
-                }
-
-                result.add(tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
-                    .folio(label.getFolio())
-                    .periodId(label.getPeriodId())
-                    .warehouseId(label.getWarehouseId())
-                    .claveAlmacen(warehouse.getWarehouseKey())
-                    .nombreAlmacen(warehouse.getNameWarehouse())
-                    .claveProducto(product.getCveArt())
-                    .descripcionProducto(product.getDescr())
-                    .unidadMedida(product.getUniMed())
-                    .cancelado(false)
-                    .conteo1(conteo1)
-                    .conteo2(conteo2)
-                    .diferencia(diferencia)
-                    .estado(label.getEstado().name())
-                    .impreso(true)
-                    .mensaje(mensaje)
-                    .existQty(existQty)
-                    .existQtyUnidad(product.getUniMed())
-                    .build());
-
+                result.add(LabelForCountDTO.builder()
+                        .folio(label.getFolio()).periodId(label.getPeriodId()).warehouseId(label.getWarehouseId())
+                        .claveAlmacen(warehouse.getWarehouseKey()).nombreAlmacen(warehouse.getNameWarehouse())
+                        .claveProducto(product.getCveArt()).descripcionProducto(product.getDescr())
+                        .unidadMedida(product.getUniMed()).cancelado(false)
+                        .conteo1(c1).conteo2(c2).diferencia(diferencia)
+                        .estado(label.getEstado().name()).impreso(true).mensaje(mensaje)
+                        .existQty(stockByProduct.get(label.getProductId()))
+                        .existQtyUnidad(product.getUniMed())
+                        .build());
             } catch (Exception e) {
-                log.error("Error procesando marbete folio {}: {}", label.getFolio(), e.getMessage());
+                log.error("Error procesando folio {}: {}", label.getFolio(), e.getMessage());
             }
         }
-
-        log.info("Devolviendo {} marbetes para la interfaz de conteo", result.size());
         return result;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de distribución para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
+    // ═══════════════════════════════════════════════════════════════════════
+    // REPORTES — delega en LabelReportService
+    // ═══════════════════════════════════════════════════════════════════════
 
-        // Validar acceso si se especifica almacén
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // Obtener marbetes impresos
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findPrintedLabelsByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findPrintedLabelsByPeriod(filter.getPeriodId());
-
-        // Agrupar por almacén y usuario que creó
-        Map<String, List<Label>> groupedByWarehouse = labels.stream()
-            .collect(Collectors.groupingBy(l -> l.getWarehouseId() + "_" + l.getCreatedBy()));
-
-        List<DistributionReportDTO> result = new ArrayList<>();
-
-        for (Map.Entry<String, List<Label>> entry : groupedByWarehouse.entrySet()) {
-            List<Label> labelGroup = entry.getValue();
-            if (labelGroup.isEmpty()) continue;
-
-            Label first = labelGroup.get(0);
-
-            // Obtener información del almacén
-            WarehouseEntity warehouse = warehouseRepository.findById(first.getWarehouseId())
-                .orElse(null);
-
-            // Obtener información del usuario
-            var user = userRepository.findById(first.getCreatedBy()).orElse(null);
-            String userName = user != null ? user.getEmail() : "Usuario " + first.getCreatedBy();
-
-            // Calcular primer y último folio
-            Long minFolio = labelGroup.stream().map(Label::getFolio).min(Long::compareTo).orElse(0L);
-            Long maxFolio = labelGroup.stream().map(Label::getFolio).max(Long::compareTo).orElse(0L);
-
-            result.add(new DistributionReportDTO(
-                userName,
-                warehouse != null ? warehouse.getWarehouseKey() : String.valueOf(first.getWarehouseId()),
-                warehouse != null ? warehouse.getNameWarehouse() : "Almacén " + first.getWarehouseId(),
-                minFolio,
-                maxFolio,
-                labelGroup.size()
-            ));
-        }
-
-        log.info("Reporte de distribución generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(DistributionReportDTO::getClaveAlmacen)).toList();
+    @Override public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getDistributionReport(filter, userId, userRole);
+    }
+    @Override public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getLabelListReport(filter, userId, userRole);
+    }
+    @Override public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getPendingLabelsReport(filter, userId, userRole);
+    }
+    @Override public List<DifferencesReportDTO> getDifferencesReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getDifferencesReport(filter, userId, userRole);
+    }
+    @Override public List<CancelledLabelsReportDTO> getCancelledLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getCancelledLabelsReport(filter, userId, userRole);
+    }
+    @Override public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getComparativeReport(filter, userId, userRole);
+    }
+    @Override public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getWarehouseDetailReport(filter, userId, userRole);
+    }
+    @Override public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getProductDetailReport(filter, userId, userRole);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de listado de marbetes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // Obtener marbetes
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
-
-        // ✅ Cargar TODOS los conteos en UNA sola query batch — elimina N+1
-        List<Long> folios = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countEventsByFolio = folios.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(folios)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        List<LabelListReportDTO> result = labels.stream().map(label -> {
-            // Obtener producto
-            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-
-            // Obtener almacén
-            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-
-            // Obtener conteos del mapa batch — sin query adicional
-            List<LabelCountEvent> events = countEventsByFolio.getOrDefault(label.getFolio(), List.of());
-            java.math.BigDecimal conteo1 = null;
-            java.math.BigDecimal conteo2 = null;
-
-            if (!events.isEmpty()) {
-                for (LabelCountEvent event : events) {
-                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
-                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
-                }
-            }
-
-            return new LabelListReportDTO(
-                label.getFolio(),
-                product != null ? product.getCveArt() : "",
-                product != null ? product.getDescr() : "",
-                product != null ? product.getUniMed() : "",
-                warehouse != null ? warehouse.getWarehouseKey() : "",
-                warehouse != null ? warehouse.getNameWarehouse() : "",
-                conteo1,
-                conteo2,
-                label.getEstado().name(),
-                label.getEstado() == Label.State.CANCELADO
-            );
-        }).sorted(Comparator.comparing(LabelListReportDTO::getNumeroMarbete))
-          .toList();
-
-        log.info("Reporte de listado generado con {} registros", result.size());
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de marbetes pendientes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // ✅ Filtrar no-cancelados directamente en BD
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
-
-        // ✅ Cargar conteos en batch
-        List<Long> folios = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolio = folios.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(folios)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        List<PendingLabelsReportDTO> result = new ArrayList<>();
-
-        for (Label label : labels) {
-            List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal conteo1 = null;
-            java.math.BigDecimal conteo2 = null;
-
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
-                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
-            }
-
-            // Si falta algún conteo, es pendiente
-            if (conteo1 == null || conteo2 == null) {
-                ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-                WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-
-                result.add(new PendingLabelsReportDTO(
-                    label.getFolio(),
-                    product != null ? product.getCveArt() : "",
-                    product != null ? product.getDescr() : "",
-                    product != null ? product.getUniMed() : "",
-                    warehouse != null ? warehouse.getWarehouseKey() : "",
-                    warehouse != null ? warehouse.getNameWarehouse() : "",
-                    conteo1,
-                    conteo2,
-                    label.getEstado().name()
-                ));
-            }
-        }
-
-        log.info("Reporte de marbetes pendientes generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete)).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<DifferencesReportDTO> getDifferencesReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de marbetes con diferencias para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // ✅ Filtrar no-cancelados directamente en BD
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
-
-        // ✅ Cargar conteos en batch
-        List<Long> foliosDif = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolioDif = foliosDif.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(foliosDif)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        List<DifferencesReportDTO> result = new ArrayList<>();
-
-        for (Label label : labels) {
-            List<LabelCountEvent> events = countsByFolioDif.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal conteo1 = null;
-            java.math.BigDecimal conteo2 = null;
-
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
-                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
-            }
-
-            // Si ambos conteos existen, son mayores a cero y son diferentes
-            if (conteo1 != null && conteo2 != null
-                && conteo1.compareTo(java.math.BigDecimal.ZERO) > 0
-                && conteo2.compareTo(java.math.BigDecimal.ZERO) > 0
-                && conteo1.compareTo(conteo2) != 0) {
-                ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-                WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-
-                java.math.BigDecimal diferencia = conteo1.subtract(conteo2).abs();
-
-                result.add(new DifferencesReportDTO(
-                    label.getFolio(),
-                    product != null ? product.getCveArt() : "",
-                    product != null ? product.getDescr() : "",
-                    product != null ? product.getUniMed() : "",
-                    warehouse != null ? warehouse.getWarehouseKey() : "",
-                    warehouse != null ? warehouse.getNameWarehouse() : "",
-                    conteo1,
-                    conteo2,
-                    diferencia,
-                    label.getEstado().name()
-                ));
-            }
-        }
-
-        log.info("Reporte de marbetes con diferencias generado con {} registros", result.size());
-        return result.stream().sorted(Comparator.comparing(DifferencesReportDTO::getNumeroMarbete)).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<CancelledLabelsReportDTO> getCancelledLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de marbetes cancelados para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // Obtener marbetes cancelados
-        List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null ?
-            jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(filter.getPeriodId(), filter.getWarehouseId(), false) :
-            jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false);
-
-        List<CancelledLabelsReportDTO> result = cancelledLabels.stream().map(cancelled -> {
-            // Obtener producto
-            ProductEntity product = productRepository.findById(cancelled.getProductId()).orElse(null);
-
-            // Obtener almacén
-            WarehouseEntity warehouse = warehouseRepository.findById(cancelled.getWarehouseId()).orElse(null);
-
-            // Obtener usuario que canceló
-            var user = userRepository.findById(cancelled.getCanceladoBy()).orElse(null);
-            String userName = user != null ? user.getEmail() : "Usuario " + cancelled.getCanceladoBy();
-
-            // ✅ Usar conteos ARCHIVADOS en LabelCancelled — no buscar en label_count_events
-            // (desde V1_2_2 se guardan conteo1AlCancelar / conteo2AlCancelar al cancelar)
-            java.math.BigDecimal conteo1 = cancelled.getConteo1AlCancelar();
-            java.math.BigDecimal conteo2 = cancelled.getConteo2AlCancelar();
-
-            return new CancelledLabelsReportDTO(
-                cancelled.getFolio(),
-                product != null ? product.getCveArt() : "",
-                product != null ? product.getDescr() : "",
-                product != null ? product.getUniMed() : "",
-                warehouse != null ? warehouse.getWarehouseKey() : "",
-                warehouse != null ? warehouse.getNameWarehouse() : "",
-                conteo1,
-                conteo2,
-                cancelled.getMotivoCancelacion(),
-                cancelled.getCanceladoAt(),
-                userName
-            );
-        }).sorted(Comparator.comparing(CancelledLabelsReportDTO::getNumeroMarbete))
-          .toList();
-        log.info("Reporte de marbetes cancelados generado con {} registros", result.size());
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte comparativo para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // ✅ Filtrar no-cancelados en BD
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
-
-        // ✅ Cargar conteos en batch — una sola query
-        List<Long> foliosComp = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolioComp = foliosComp.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(foliosComp)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        // Agrupar por producto y almacén
-        Map<String, List<Label>> groupedByProductWarehouse = labels.stream()
-            .collect(Collectors.groupingBy(l -> l.getProductId() + "_" + l.getWarehouseId()));
-
-        List<ComparativeReportDTO> result = new ArrayList<>();
-
-        for (Map.Entry<String, List<Label>> entry : groupedByProductWarehouse.entrySet()) {
-            List<Label> labelGroup = entry.getValue();
-            if (labelGroup.isEmpty()) continue;
-
-            Label first = labelGroup.get(0);
-
-            // ✅ REGLA DE NEGOCIO CORREGIDA:
-            // Solo se suma como "existencia física" el C2 de marbetes con conteo COMPLETO.
-            // Un marbete con solo C1 está PENDIENTE — su valor no es definitivo.
-            // Incluirlo inflaría las existencias y produciría datos falsos en el comparativo.
-            java.math.BigDecimal existenciasFisicas = java.math.BigDecimal.ZERO;
-            int totalMarbetes = labelGroup.size();
-            int marbetesCompletos = 0;
-            int marbetesPendientes = 0;
-
-            for (Label label : labelGroup) {
-                List<LabelCountEvent> events = countsByFolioComp.getOrDefault(label.getFolio(), List.of());
-
-                java.math.BigDecimal conteo2 = null;
-                boolean tieneC1 = false;
-                for (LabelCountEvent event : events) {
-                    if (event.getCountNumber() == 1) tieneC1 = true;
-                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
-                }
-
-                if (conteo2 != null) {
-                    // Marbete completo (C1 + C2) — suma al físico
-                    existenciasFisicas = existenciasFisicas.add(conteo2);
-                    marbetesCompletos++;
-                } else {
-                    // C1 solo o sin conteos — está pendiente, NO se suma
-                    marbetesPendientes++;
-                }
-            }
-
-            // Obtener existencias teóricas de inventory_stock
-            java.math.BigDecimal existenciasTeoricas = java.math.BigDecimal.ZERO;
-            try {
-                var stockOpt = inventoryStockRepository
-                    .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                        first.getProductId(), first.getWarehouseId(), first.getPeriodId());
-                if (stockOpt.isPresent() && stockOpt.get().getExistQty() != null) {
-                    existenciasTeoricas = stockOpt.get().getExistQty();
-                }
-            } catch (Exception e) {
-                log.warn("No se pudieron obtener existencias teóricas: {}", e.getMessage());
-            }
-
-            // Calcular diferencia y porcentaje
-            java.math.BigDecimal diferencia = existenciasFisicas.subtract(existenciasTeoricas);
-            java.math.BigDecimal porcentaje = java.math.BigDecimal.ZERO;
-            if (existenciasTeoricas.compareTo(java.math.BigDecimal.ZERO) != 0) {
-                porcentaje = diferencia.divide(existenciasTeoricas, 4, java.math.RoundingMode.HALF_UP)
-                    .multiply(new java.math.BigDecimal("100"));
-            }
-
-            // Obtener información del producto y almacén
-            ProductEntity product = productRepository.findById(first.getProductId()).orElse(null);
-            WarehouseEntity warehouse = warehouseRepository.findById(first.getWarehouseId()).orElse(null);
-
-            ComparativeReportDTO dto = new ComparativeReportDTO(
-                warehouse != null ? warehouse.getWarehouseKey() : "",
-                warehouse != null ? warehouse.getNameWarehouse() : "",
-                product != null ? product.getCveArt() : "",
-                product != null ? product.getDescr() : "",
-                product != null ? product.getUniMed() : "",
-                existenciasFisicas,
-                existenciasTeoricas,
-                diferencia,
-                porcentaje
-            );
-
-            // Advertir si hay marbetes pendientes que no se contabilizaron
-            if (marbetesPendientes > 0) {
-                log.warn("Producto {} almacén {}: {} de {} marbetes están pendientes de C2 y NO se contabilizaron en existencias físicas.",
-                    product != null ? product.getCveArt() : first.getProductId(),
-                    warehouse != null ? warehouse.getWarehouseKey() : first.getWarehouseId(),
-                    marbetesPendientes, totalMarbetes);
-            }
-
-            result.add(dto);
-        }
-
-        log.info("Reporte comparativo generado con {} registros", result.size());
-        return result.stream()
-            .sorted(Comparator.comparing(ComparativeReportDTO::getClaveAlmacen)
-                .thenComparing(ComparativeReportDTO::getClaveProducto))
-            .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de almacén con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // Obtener marbetes
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
-
-        // ✅ Cargar conteos en batch
-        List<Long> foliosWD = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolioWD = foliosWD.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(foliosWD)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        List<WarehouseDetailReportDTO> result = labels.stream().map(label -> {
-            // Obtener producto
-            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-
-            // Obtener almacén
-            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-
-            // Obtener conteos del mapa batch
-            List<LabelCountEvent> events = countsByFolioWD.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
-
-            // Usar conteo2 si existe, sino conteo1
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) {
-                    cantidad = event.getCountedValue();
-                    break;
-                } else if (event.getCountNumber() == 1) {
-                    cantidad = event.getCountedValue();
-                }
-            }
-
-            return new WarehouseDetailReportDTO(
-                warehouse != null ? warehouse.getWarehouseKey() : "",
-                warehouse != null ? warehouse.getNameWarehouse() : "",
-                product != null ? product.getCveArt() : "",
-                product != null ? product.getDescr() : "",
-                product != null ? product.getUniMed() : "",
-                label.getFolio(),
-                cantidad,
-                label.getEstado().name(),
-                label.getEstado() == Label.State.CANCELADO
-            );
-        }).sorted(Comparator.comparing(WarehouseDetailReportDTO::getClaveAlmacen)
-            .thenComparing(WarehouseDetailReportDTO::getClaveProducto)
-            .thenComparing(WarehouseDetailReportDTO::getNumeroMarbete))
-          .toList();
-
-        log.info("Reporte de almacén con detalle generado con {} registros", result.size());
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Generando reporte de producto con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        // Validar acceso si se especifica almacén
-        if (filter.getWarehouseId() != null) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // ✅ Filtrar no-cancelados en BD
-        List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
-
-        // ✅ Cargar conteos en batch
-        List<Long> foliosPD = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolioPD = foliosPD.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(foliosPD)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        // Calcular totales por producto usando el mapa batch
-        Map<Long, java.math.BigDecimal> totalsByProduct = new HashMap<>();
-
-        for (Label label : labels) {
-            List<LabelCountEvent> events = countsByFolioPD.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) { cantidad = event.getCountedValue(); break; }
-                else if (event.getCountNumber() == 1) { cantidad = event.getCountedValue(); }
-            }
-            totalsByProduct.merge(label.getProductId(), cantidad, java.math.BigDecimal::add);
-        }
-
-        List<ProductDetailReportDTO> result = labels.stream().map(label -> {
-            ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-            WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-
-            // Usar conteos del mapa batch
-            List<LabelCountEvent> events = countsByFolioPD.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) { existencias = event.getCountedValue(); break; }
-                else if (event.getCountNumber() == 1) { existencias = event.getCountedValue(); }
-            }
-
-            java.math.BigDecimal total = totalsByProduct.get(label.getProductId());
-
-            return new ProductDetailReportDTO(
-                product != null ? product.getCveArt() : "",
-                product != null ? product.getDescr() : "",
-                product != null ? product.getUniMed() : "",
-                warehouse != null ? warehouse.getWarehouseKey() : "",
-                warehouse != null ? warehouse.getNameWarehouse() : "",
-                label.getFolio(),
-                existencias,
-                total
-            );
-        }).sorted(Comparator.comparing(ProductDetailReportDTO::getClaveProducto)
-            .thenComparing(ProductDetailReportDTO::getClaveAlmacen)
-            .thenComparing(ProductDetailReportDTO::getNumeroMarbete))
-          .toList();
-        log.info("Reporte de producto con detalle generado con {} registros", result.size());
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole) {
-        log.info("Generando archivo TXT de existencias para periodo {}", periodId);
-
-        // Obtener información del periodo
-        var periodEntity = jpaPeriodRepository.findById(periodId)
-            .orElseThrow(() -> new RuntimeException("Periodo no encontrado"));
-
-        // Formatear el nombre del periodo (ejemplo: "Diciembre2016")
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.of("es", "ES"));
-        String periodName = periodEntity.getDate().format(formatter);
-        periodName = periodName.substring(0, 1).toUpperCase() + periodName.substring(1).replace(" ", "");
-
-        // Obtener todos los marbetes no cancelados del periodo
-        List<Label> labels = jpaLabelRepository.findNonCancelledByPeriod(periodId);
-
-        // ✅ Cargar TODOS los conteos en UNA sola query batch
-        List<Long> foliosInv = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countsByFolioInv = foliosInv.isEmpty()
-            ? new HashMap<>()
-            : jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(foliosInv)
-                .stream()
-                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
-
-        // Agrupar por producto y sumar existencias físicas
-        Map<Long, ProductExistencias> productoExistencias = new HashMap<>();
-
-        for (Label label : labels) {
-            List<LabelCountEvent> events = countsByFolioInv.getOrDefault(label.getFolio(), List.of());
-
-            java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) { cantidad = event.getCountedValue(); break; }
-                else if (event.getCountNumber() == 1) { cantidad = event.getCountedValue(); }
-            }
-
-            // Acumular existencias por producto
-            productoExistencias.computeIfAbsent(label.getProductId(), k -> {
-                ProductEntity product = productRepository.findById(k).orElse(null);
-                return new ProductExistencias(
-                    product != null ? product.getCveArt() : "",
-                    product != null ? product.getDescr() : "",
-                    java.math.BigDecimal.ZERO
-                );
-            }).sumarExistencias(cantidad);
-        }
-
-        // Ordenar alfabéticamente por clave de producto
-        List<ProductExistencias> productosList = new ArrayList<>(productoExistencias.values());
-        productosList.sort(Comparator.comparing(ProductExistencias::getClaveProducto));
-
-        // Crear directorio si no existe — ruta configurable en application.properties
-        java.io.File directory = new java.io.File(inventoryFileDirectory);
-        if (!directory.exists()) {
-            if (directory.mkdirs()) {
-                log.info("Directorio creado: {}", inventoryFileDirectory);
-            } else {
-                log.warn("No se pudo crear el directorio: {}", inventoryFileDirectory);
-            }
-        }
-
-        // Generar nombre del archivo
-        String fileName = "Existencias_" + periodName + ".txt";
-        String filePath = inventoryFileDirectory + java.io.File.separator + fileName;
-
-        // Escribir archivo TXT
-        try (java.io.BufferedWriter writer = new java.io.BufferedWriter(
-                new java.io.OutputStreamWriter(
-                    new java.io.FileOutputStream(filePath),
-                    java.nio.charset.StandardCharsets.UTF_8))) {
-
-            // Escribir encabezado
-            writer.write("CLAVE_PRODUCTO\tDESCRIPCION\tEXISTENCIAS");
-            writer.newLine();
-            writer.write("========================================");
-            writer.newLine();
-
-            // Escribir datos de productos
-            for (ProductExistencias producto : productosList) {
-                String line = String.format("%s\t%s\t%s",
-                    producto.getClaveProducto(),
-                    producto.getDescripcion(),
-                    producto.getExistencias().stripTrailingZeros().toPlainString());
-                writer.write(line);
-                writer.newLine();
-            }
-
-            log.info("Archivo generado exitosamente: {}", filePath);
-
-            return new tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO(
-                fileName,
-                filePath,
-                productosList.size(),
-                "Archivo generado exitosamente"
-            );
-
-        } catch (java.io.IOException e) {
-            log.error("Error al generar archivo TXT: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al generar archivo: " + e.getMessage());
-        }
-    }
-
-    // Clase auxiliar para agrupar existencias por producto
-    @lombok.Data
-    @lombok.AllArgsConstructor
-    private static class ProductExistencias {
-        private String claveProducto;
-        private String descripcion;
-        private java.math.BigDecimal existencias;
-
-        public void sumarExistencias(java.math.BigDecimal cantidad) {
-            this.existencias = this.existencias.add(cantidad);
-        }
-    }
-
-    /**
-     * Obtiene el nombre descriptivo de un periodo
-     * @param periodId ID del periodo
-     * @return Nombre del periodo formateado (ej: "Enero 2026")
-     */
-    private String getPeriodName(Long periodId) {
-        try {
-            return jpaPeriodRepository.findById(periodId)
-                .map(period -> {
-                    java.time.LocalDate date = period.getDate();
-                    if (date != null) {
-                        java.time.format.DateTimeFormatter formatter =
-                            java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.of("es", "ES"));
-                        String formatted = date.format(formatter);
-                        return formatted.substring(0, 1).toUpperCase() + formatted.substring(1);
-                    }
-                    return "Periodo " + periodId;
-                })
-                .orElse("Periodo " + periodId);
-        } catch (Exception e) {
-            log.warn("Error obteniendo nombre del periodo {}: {}", periodId, e.getMessage());
-            return "Periodo " + periodId;
-        }
-    }
-
-    /**
-     * Obtiene el nombre descriptivo de un almacén
-     * @param warehouseId ID del almacén
-     * @return Nombre del almacén (ej: "Bodega Norte")
-     */
-    private String getWarehouseName(Long warehouseId) {
-        try {
-            return warehouseRepository.findById(warehouseId)
-                .map(warehouse -> {
-                    String name = warehouse.getNameWarehouse();
-                    String key = warehouse.getWarehouseKey();
-                    if (name != null && !name.trim().isEmpty()) {
-                        return name + (key != null ? " (" + key + ")" : "");
-                    }
-                    return key != null ? key : "Almacén " + warehouseId;
-                })
-                .orElse("Almacén " + warehouseId);
-        } catch (Exception e) {
-            log.warn("Error obteniendo nombre del almacén {}: {}", warehouseId, e.getMessage());
-            return "Almacén " + warehouseId;
-        }
-    }
-
-    /**
-     * Obtiene el nombre descriptivo de un producto
-     * @param productId ID del producto
-     * @return Nombre del producto (ej: "Tornillo M8")
-     */
-    private String getProductName(Long productId) {
-        try {
-            return productRepository.findById(productId)
-                .map(product -> {
-                    String descr = product.getDescr();
-                    String cveArt = product.getCveArt();
-                    if (descr != null && !descr.trim().isEmpty()) {
-                        return descr + (cveArt != null ? " (" + cveArt + ")" : "");
-                    }
-                    return cveArt != null ? cveArt : "Producto " + productId;
-                })
-                .orElse("Producto " + productId);
-        } catch (Exception e) {
-            log.warn("Error obteniendo nombre del producto {}: {}", productId, e.getMessage());
-            return "Producto " + productId;
-        }
+    public GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole) {
+        return labelReportService.generateInventoryFile(periodId, userId, userRole);
     }
 }

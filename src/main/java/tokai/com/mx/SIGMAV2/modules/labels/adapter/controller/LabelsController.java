@@ -11,19 +11,16 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.AuthenticatedUserService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 
-    import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/sigmav2/labels")
@@ -33,841 +30,335 @@ public class LabelsController {
     private static final Logger log = LoggerFactory.getLogger(LabelsController.class);
 
     private final LabelService labelService;
-    private final JpaUserRepository userRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    /**
-     * Extrae el ID del usuario autenticado desde el token JWT
-     */
+    /** Extrae el ID del usuario autenticado desde el token JWT. */
     private Long getUserIdFromToken() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = auth.getName(); // El token contiene el email
-        log.debug("Obteniendo ID de usuario para email: {}", email);
-
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con email: " + email))
-                .getId();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return authenticatedUserService.getUserIdByEmail(email);
     }
 
-    /**
-     * Extrae el rol del usuario autenticado desde el token JWT
-     */
+    /** Extrae el rol del usuario autenticado desde el token JWT. */
     private String getUserRoleFromToken() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getAuthorities().stream()
                 .findFirst()
-                .map(grantedAuthority -> grantedAuthority.getAuthority().replace("ROLE_", ""))
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .orElse(null);
     }
 
-    // Solicitar folios (crear LabelRequest)
+    // ── Solicitar folios (deprecado) ─────────────────────────────────────
     @PostMapping("/request")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> requestLabels(@Valid @RequestBody LabelRequestDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        labelService.requestLabels(dto, userId, userRole);
+        labelService.requestLabels(dto, getUserIdFromToken(), getUserRoleFromToken());
         return ResponseEntity.status(201).build();
     }
 
-    // Generar marbetes a partir de una solicitud
+    // ── Generar marbetes (deprecado) ─────────────────────────────────────
     @PostMapping("/generate")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO> generateBatch(@Valid @RequestBody GenerateBatchDTO dto) {
+    public ResponseEntity<GenerateBatchResponseDTO> generateBatch(@Valid @RequestBody GenerateBatchDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
         log.info("Generando marbetes para usuario {} con rol {}", userId, userRole);
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO response =
-                labelService.generateBatch(dto, userId, userRole);
-
-        log.info("Generación completada: {} total, {} con existencias, {} sin existencias",
-                response.getTotalGenerados(), response.getGeneradosConExistencias(), response.getGeneradosSinExistencias());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(labelService.generateBatch(dto, userId, userRole));
     }
 
-    // Imprimir / Reimprimir rango de marbetes
+    // ── Imprimir marbetes ────────────────────────────────────────────────
     @PostMapping("/print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
+    public ResponseEntity<byte[]> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
-
-        log.info("Endpoint /print llamado por usuario {} con rol {}", userId, userRole);
-
-        try {
-            // Generar el PDF
-            byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
-
-            // Validar que el PDF se generó correctamente
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.error("El servicio retornó un PDF vacío o null");
-                return ResponseEntity.badRequest()
-                        .body(java.util.Map.of(
-                                "error", "No se pudo generar el PDF",
-                                "message", "El PDF generado está vacío. Verifique que existan marbetes pendientes de impresión."
-                        ));
-            }
-
-            // Construir nombre del archivo más descriptivo
-            String timestamp = java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            // Sanitizar los valores para prevenir inyección en headers
-            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
-            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
-            String filename = String.format("marbetes_P%s_A%s_%s.pdf",
-                    safePeriodId, safeWarehouseId, timestamp);
-
-            // Configurar headers para descarga del PDF usando ContentDisposition builder (más seguro)
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(
-                    org.springframework.http.ContentDisposition.attachment()
-                            .filename(filename)
-                            .build()
-            );
-            headers.setContentLength(pdfBytes.length);
-
-            log.info("Retornando PDF de {} KB", pdfBytes.length / 1024);
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfBytes);
-
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            log.warn("Error de estado al intentar imprimir: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Estado inválido",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
-            log.warn("Folios no encontrados: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Folios no encontrados",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException e) {
-            log.warn("Catálogos no cargados: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Catálogos no cargados",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
-            log.warn("Permiso denegado: {}", e.getMessage());
-            return ResponseEntity.status(403)
-                    .body(java.util.Map.of(
-                            "error", "Permiso denegado",
-                            "message", e.getMessage()
-                    ));
-        } catch (Exception e) {
-            log.error("Error inesperado al generar PDF de marbetes", e);
-            return ResponseEntity.status(500)
-                    .body(java.util.Map.of(
-                            "error", "Error interno del servidor",
-                            "message", "Error al generar el PDF de marbetes: " + e.getMessage()
-                    ));
-        }
+        log.info("Imprimiendo marbetes: usuario={}, periodo={}, almacén={}", userId, dto.getPeriodId(), dto.getWarehouseId());
+        byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
+        return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes");
     }
 
-    // Contar marbetes pendientes de impresión
+    // ── Contar marbetes pendientes ───────────────────────────────────────
     @PostMapping("/pending-print-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO> getPendingPrintCount(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO dto) {
-
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Endpoint /pending-print-count llamado por usuario {} con rol {}", userId, userRole);
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountResponseDTO response =
-                labelService.getPendingPrintCount(dto, userId, userRole);
-
-        log.info("Marbetes pendientes: {} para periodo {} y almacén {}",
-                response.getCount(), dto.getPeriodId(), dto.getWarehouseId());
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<PendingPrintCountResponseDTO> getPendingPrintCount(
+            @Valid @RequestBody PendingPrintCountRequestDTO dto) {
+        return ResponseEntity.ok(labelService.getPendingPrintCount(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Registrar Conteo C1
+    // ── Registrar Conteo C1 ──────────────────────────────────────────────
     @PostMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC1(@Valid @RequestBody CountEventDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        LabelCountEvent ev = labelService.registerCountC1(dto, userId, userRole);
-        return ResponseEntity.ok(ev);
+        return ResponseEntity.ok(labelService.registerCountC1(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Registrar Conteo C2
+    // ── Registrar Conteo C2 ──────────────────────────────────────────────
     @PostMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC2(@Valid @RequestBody CountEventDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        LabelCountEvent ev = labelService.registerCountC2(dto, userId, userRole);
-        return ResponseEntity.ok(ev);
+        return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Actualizar Conteo C1
+    // ── Actualizar Conteo C1 ─────────────────────────────────────────────
     @PutMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> updateCountC1(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Actualizando conteo C1 para folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
-        log.info("Request body: folio={}, countedValue={}, observaciones={}", dto.getFolio(), dto.getCountedValue(), dto.getObservaciones());
-
-        try {
-            LabelCountEvent ev = labelService.updateCountC1(dto, userId, userRole);
-            log.info("��� Conteo C1 actualizado exitosamente para folio {}", dto.getFolio());
-            return ResponseEntity.ok(ev);
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
-            log.warn("❌ Folio no encontrado o sin C1: {}", e.getMessage());
-            return ResponseEntity.status(404)
-                    .body(java.util.Map.of(
-                            "error", "Conteo no encontrado",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            log.warn("❌ Estado inválido: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Estado inválido",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
-            log.warn("❌ Permiso denegado: {}", e.getMessage());
-            return ResponseEntity.status(403)
-                    .body(java.util.Map.of(
-                            "error", "Permiso denegado",
-                            "message", e.getMessage()
-                    ));
-        } catch (Exception e) {
-            log.error("❌ Error inesperado al actualizar C1 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
-            return ResponseEntity.status(500)
-                    .body(java.util.Map.of(
-                            "error", "Error interno del servidor",
-                            "message", "Error al actualizar el conteo C1: " + e.getMessage(),
-                            "details", e.getClass().getSimpleName()
-                    ));
-        }
+        log.info("Actualizando C1: folio={}, usuario={}", dto.getFolio(), userId);
+        return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
-    // Actualizar Conteo C2
+    // ── Actualizar Conteo C2 ─────────────────────────────────────────────
     @PutMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> updateCountC2(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Actualizando conteo C2 para folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
-        log.info("Request body: folio={}, countedValue={}, observaciones={}", dto.getFolio(), dto.getCountedValue(), dto.getObservaciones());
-
-        try {
-            LabelCountEvent ev = labelService.updateCountC2(dto, userId, userRole);
-            log.info("✅ Conteo C2 actualizado exitosamente para folio {}", dto.getFolio());
-            return ResponseEntity.ok(ev);
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
-            log.warn("❌ Folio no encontrado o sin C2: {}", e.getMessage());
-            return ResponseEntity.status(404)
-                    .body(java.util.Map.of(
-                            "error", "Conteo no encontrado",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            log.warn("❌ Estado inválido: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Estado inválido",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
-            log.warn("❌ Permiso denegado: {}", e.getMessage());
-            return ResponseEntity.status(403)
-                    .body(java.util.Map.of(
-                            "error", "Permiso denegado",
-                            "message", e.getMessage()
-                    ));
-        } catch (Exception e) {
-            log.error("❌ Error inesperado al actualizar C2 para folio {}: {}", dto.getFolio(), e.getMessage(), e);
-            return ResponseEntity.status(500)
-                    .body(java.util.Map.of(
-                            "error", "Error interno del servidor",
-                            "message", "Error al actualizar el conteo C2: " + e.getMessage(),
-                            "details", e.getClass().getSimpleName()
-                    ));
-        }
+        log.info("Actualizando C2: folio={}, usuario={}", dto.getFolio(), userId);
+        return ResponseEntity.ok(labelService.updateCountC2(dto, userId, getUserRoleFromToken()));
     }
 
-    // Resumen de marbetes por periodo y almacén - ENDPOINT DE PRUEBA
-    @PostMapping(value = "/summary-test", consumes = "*/*")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<String> getLabelSummaryTest(@RequestBody(required = false) String rawBody) {
-        log.info("POST /summary-test - Raw body received: {}", rawBody);
-        log.info("Headers: {}", org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes());
-        return ResponseEntity.ok("Petición recibida correctamente. Body: " + rawBody);
-    }
-
-    // Resumen de marbetes por periodo y almacén
+    // ── Resumen de marbetes ──────────────────────────────────────────────
     @PostMapping("/summary")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<LabelSummaryResponseDTO>> getLabelSummary(@RequestBody LabelSummaryRequestDTO dto) {
-        log.info("POST /summary - Request received: periodId={}, warehouseId={}", dto.getPeriodId(), dto.getWarehouseId());
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        log.info("User authenticated: userId={}, userRole={}", userId, userRole);
-        List<LabelSummaryResponseDTO> summary = labelService.getLabelSummary(dto, userId, userRole);
-        log.info("Returning {} items", summary.size());
-        return ResponseEntity.ok(summary);
+        log.info("POST /summary: periodId={}, warehouseId={}", dto.getPeriodId(), dto.getWarehouseId());
+        return ResponseEntity.ok(labelService.getLabelSummary(dto, userId, getUserRoleFromToken()));
     }
 
-    // Generar marbetes para múltiples productos
+    // ── Generar marbetes para lista de productos ─────────────────────────
     @PostMapping("/generate/batch")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> generateBatchList(@Valid @RequestBody GenerateBatchListDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        labelService.generateBatchList(dto, userId, userRole);
+    public ResponseEntity<Void> generateBatchList(@Valid @RequestBody GenerateBatchListDTO dto) {
+        labelService.generateBatchList(dto, getUserIdFromToken(), getUserRoleFromToken());
         return ResponseEntity.ok().build();
     }
 
-    // 🆕 NUEVA API SIMPLIFICADA: Generar e Imprimir en un solo paso
+    // ── Generar e Imprimir en un solo paso ───────────────────────────────
     @PostMapping("/generate-and-print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
+    public ResponseEntity<byte[]> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
+        log.info("🚀 /generate-and-print: usuario={}", userId);
 
-        log.info("🚀 API simplificada /generate-and-print llamada por usuario {} con rol {}", userId, userRole);
+        labelService.generateBatchList(dto, userId, userRole);
 
-        try {
-            log.info("Generando marbetes...");
-            labelService.generateBatchList(dto, userId, userRole);
+        PendingPrintCountRequestDTO countDto = new PendingPrintCountRequestDTO();
+        countDto.setPeriodId(dto.getPeriodId());
+        countDto.setWarehouseId(dto.getWarehouseId());
+        var countResponse = labelService.getPendingPrintCount(countDto, userId, userRole);
 
-            log.info("Verificando marbetes pendientes...");
-            tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO countDto =
-                    new tokai.com.mx.SIGMAV2.modules.labels.application.dto.PendingPrintCountRequestDTO();
-            countDto.setPeriodId(dto.getPeriodId());
-            countDto.setWarehouseId(dto.getWarehouseId());
-
-            var countResponse = labelService.getPendingPrintCount(countDto, userId, userRole);
-
-            if (countResponse.getCount() == 0) {
-                log.error("No se generaron marbetes o no hay pendientes");
-                return ResponseEntity.badRequest()
-                        .body(java.util.Map.of(
-                                "error", "No hay marbetes pendientes",
-                                "message", "No se pudieron generar los marbetes o ya fueron impresos"
-                        ));
-            }
-
-            log.info("Marbetes pendientes: {}", countResponse.getCount());
-
-            log.info("Imprimiendo marbetes...");
-            PrintRequestDTO printDto = new PrintRequestDTO();
-            printDto.setPeriodId(dto.getPeriodId());
-            printDto.setWarehouseId(dto.getWarehouseId());
-
-            byte[] pdfBytes = labelService.printLabels(printDto, userId, userRole);
-
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.error("El PDF generado está vacío");
-                return ResponseEntity.badRequest()
-                        .body(java.util.Map.of(
-                                "error", "Error generando PDF",
-                                "message", "El PDF está vacío"
-                        ));
-            }
-
-            String timestamp = java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            // Sanitizar los valores para prevenir inyección en headers
-            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
-            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
-            String filename = String.format("marbetes_P%s_A%s_%s.pdf",
-                    safePeriodId, safeWarehouseId, timestamp);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(
-                    org.springframework.http.ContentDisposition.attachment()
-                            .filename(filename)
-                            .build()
-            );
-            headers.setContentLength(pdfBytes.length);
-
-            log.info("✅ Generación e impresión completada exitosamente: {} KB", pdfBytes.length / 1024);
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfBytes);
-
-        } catch (Exception e) {
-            log.error("❌ Error en generate-and-print: {}", e.getMessage(), e);
-            return ResponseEntity.status(500)
-                    .body(java.util.Map.of(
-                            "error", "Error en generación e impresión",
-                            "message", e.getMessage()
-                    ));
+        if (countResponse.getCount() == 0) {
+            return ResponseEntity.badRequest().build();
         }
+
+        PrintRequestDTO printDto = new PrintRequestDTO();
+        printDto.setPeriodId(dto.getPeriodId());
+        printDto.setWarehouseId(dto.getWarehouseId());
+        byte[] pdfBytes = labelService.printLabels(printDto, userId, userRole);
+
+        return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes");
     }
 
-    // Consultar estado de marbete
+    // ── Estado de marbete ────────────────────────────────────────────────
     @GetMapping("/status")
-    public ResponseEntity<?> getLabelStatus(@RequestParam Long folio,
-                                            @RequestParam Long periodId,
-                                            @RequestParam Long warehouseId) {
-        Long userId = getUserIdFromToken();
-        String userRole = null;
+    public ResponseEntity<LabelStatusResponseDTO> getLabelStatus(
+            @RequestParam Long folio, @RequestParam Long periodId, @RequestParam Long warehouseId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getAuthorities() != null && !auth.getAuthorities().isEmpty()) {
-            userRole = auth.getAuthorities().iterator().next().getAuthority();
-        }
-        var status = labelService.getLabelStatus(folio, periodId, warehouseId, userId, userRole);
-        return ResponseEntity.ok(status);
+        String userRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority() : null;
+        return ResponseEntity.ok(labelService.getLabelStatus(folio, periodId, warehouseId, getUserIdFromToken(), userRole));
     }
 
     @GetMapping("/debug/count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> getLabelsCount(@RequestParam Long periodId,
-                                            @RequestParam Long warehouseId) {
-        log.info("Endpoint /debug/count llamado para periodId={}, warehouseId={}", periodId, warehouseId);
+    public ResponseEntity<Map<String, Object>> getLabelsCount(
+            @RequestParam Long periodId, @RequestParam Long warehouseId) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
         long count = labelService.countLabelsByPeriodAndWarehouse(periodId, warehouseId);
-
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("periodId", periodId);
-        response.put("warehouseId", warehouseId);
-        response.put("totalLabels", count);
-        response.put("userId", userId);
-        response.put("userRole", userRole);
-
-        log.info("Total de marbetes encontrados: {}", count);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of(
+                "periodId", periodId, "warehouseId", warehouseId,
+                "totalLabels", count, "userId", userId));
     }
 
+    // ── Marbetes cancelados ──────────────────────────────────────────────
     @GetMapping("/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO>> getCancelledLabels(
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Consultando marbetes cancelados para periodId={}, warehouseId={}, userId={}",
-                periodId, warehouseId, userId);
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> cancelledLabels =
-                labelService.getCancelledLabels(periodId, warehouseId, userId, userRole);
-
-        return ResponseEntity.ok(cancelledLabels);
+    public ResponseEntity<List<LabelCancelledDTO>> getCancelledLabels(
+            @RequestParam Long periodId, @RequestParam Long warehouseId) {
+        return ResponseEntity.ok(labelService.getCancelledLabels(periodId, warehouseId, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PutMapping("/cancelled/update-stock")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO> updateCancelledStock(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCancelledStockDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Actualizando existencias de marbete cancelado folio={}, userId={}",
-                dto.getFolio(), userId);
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCancelledDTO updated =
-                labelService.updateCancelledStock(dto, userId, userRole);
-
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<LabelCancelledDTO> updateCancelledStock(@Valid @RequestBody UpdateCancelledStockDTO dto) {
+        return ResponseEntity.ok(labelService.updateCancelledStock(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
+    // ── Detalle por producto ─────────────────────────────────────────────
     @GetMapping("/product/{productId}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO>> getLabelsByProduct(
-            @PathVariable Long productId,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Consultando marbetes del producto {} en periodo {} y almacén {}",
-                productId, periodId, warehouseId);
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelDetailDTO> labels =
-                labelService.getLabelsByProduct(productId, periodId, warehouseId, userId, userRole);
-
-        return ResponseEntity.ok(labels);
+    public ResponseEntity<List<LabelDetailDTO>> getLabelsByProduct(
+            @PathVariable Long productId, @RequestParam Long periodId, @RequestParam Long warehouseId) {
+        return ResponseEntity.ok(labelService.getLabelsByProduct(productId, periodId, warehouseId, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @GetMapping("/by-folio/{folio}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO> getLabelByFolio(
-            @PathVariable Long folio) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Consultando datos del marbete {} para cancelación", folio);
-
-        // Obtener el marbete primero para saber su período y almacén real
-        var labelService = this.labelService;
-        // Llamar a getLabelStatus SIN período/almacén específico
-        // El servicio obtendrá los valores reales del marbete
-        var response = labelService.getLabelStatus(folio, null, null, userId, userRole);
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<LabelStatusResponseDTO> getLabelByFolio(@PathVariable Long folio) {
+        return ResponseEntity.ok(labelService.getLabelStatus(folio, null, null, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
+    // ── Cancelar marbete ─────────────────────────────────────────────────
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<Void> cancelLabel(@Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.CancelLabelRequestDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
-        log.info("📝 Request: folio={}, periodId={}, warehouseId={}, motivo={}",
-            dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), dto.getMotivoCancelacion());
-
-        labelService.cancelLabel(dto, userId, userRole);
-
+    public ResponseEntity<Void> cancelLabel(@Valid @RequestBody CancelLabelRequestDTO dto) {
+        log.info("Cancelando folio={}", dto.getFolio());
+        labelService.cancelLabel(dto, getUserIdFromToken(), getUserRoleFromToken());
         return ResponseEntity.ok().build();
     }
 
+    // ── Consulta para conteo ─────────────────────────────────────────────
     @GetMapping("/for-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCount(
-            @RequestParam Long folio,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Consultando marbete {} para conteo en periodo {} y almacén {}", folio, periodId, warehouseId);
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
-                labelService.getLabelForCount(folio, periodId, warehouseId, userId, userRole);
-
-        return ResponseEntity.ok(label);
+    public ResponseEntity<LabelForCountDTO> getLabelForCount(
+            @RequestParam Long folio, @RequestParam Long periodId, @RequestParam Long warehouseId) {
+        return ResponseEntity.ok(labelService.getLabelForCount(folio, periodId, warehouseId, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/for-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> getLabelForCountByBody(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountRequestDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Consultando marbete {} para conteo en periodo {} y almacén {} (POST)", dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId());
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label =
-                labelService.getLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
-
-        return ResponseEntity.ok(label);
+    public ResponseEntity<LabelForCountDTO> getLabelForCountByBody(@Valid @RequestBody LabelForCountRequestDTO dto) {
+        return ResponseEntity.ok(labelService.getLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/for-count/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO>> getLabelsForCountList(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCountListRequestDTO dto) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Listando marbetes disponibles para conteo en periodo {} y almacén {}", dto.getPeriodId(), dto.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> labels =
-                labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
-
-        log.info("Devolviendo {} marbetes disponibles para conteo", labels.size());
+    public ResponseEntity<List<LabelForCountDTO>> getLabelsForCountList(@Valid @RequestBody LabelCountListRequestDTO dto) {
+        List<LabelForCountDTO> labels = labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), getUserIdFromToken(), getUserRoleFromToken());
         return ResponseEntity.ok(labels);
     }
 
-
+    // ── Reportes ─────────────────────────────────────────────────────────
     @PostMapping("/reports/distribution")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO>> getDistributionReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de distribución para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO> report =
-                labelService.getDistributionReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getDistributionReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO>> getLabelListReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de listado para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO> report =
-                labelService.getLabelListReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getLabelListReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/pending")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO>> getPendingLabelsReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de marbetes pendientes para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO> report =
-                labelService.getPendingLabelsReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getPendingLabelsReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/with-differences")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO>> getDifferencesReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de marbetes con diferencias para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO> report =
-                labelService.getDifferencesReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getDifferencesReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO>> getCancelledLabelsReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de marbetes cancelados para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO> report =
-                labelService.getCancelledLabelsReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getCancelledLabelsReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Reporte Comparativo
     @PostMapping("/reports/comparative")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO>> getComparativeReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte comparativo para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO> report =
-                labelService.getComparativeReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getComparativeReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Reporte de Almacén con Detalle
     @PostMapping("/reports/warehouse-detail")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO>> getWarehouseDetailReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de almacén con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO> report =
-                labelService.getWarehouseDetailReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getWarehouseDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // Reporte de Producto con Detalle
     @PostMapping("/reports/product-detail")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO>> getProductDetailReport(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("Generando reporte de producto con detalle para periodo {} y almacén {}", filter.getPeriodId(), filter.getWarehouseId());
-
-        List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO> report =
-                labelService.getProductDetailReport(filter, userId, userRole);
-
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(labelService.getProductDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ==================== GENERAR ARCHIVO TXT ====================
-
-    // Generar archivo TXT de existencias
+    // ── Generar archivo TXT (descarga directa) ───────────────────────────
     @PostMapping("/generate-file")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO> generateInventoryFile(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileRequestDTO dto) {
+    public ResponseEntity<byte[]> generateInventoryFile(@Valid @RequestBody GenerateFileRequestDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
+        log.info("Generando archivo TXT para periodo={}, usuario={}", dto.getPeriodId(), userId);
+        GenerateFileResponseDTO response = labelService.generateInventoryFile(dto.getPeriodId(), userId, getUserRoleFromToken());
 
-        log.info("Generando archivo TXT de existencias para periodo {} por usuario {}", dto.getPeriodId(), userId);
-
-        tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO response =
-                labelService.generateInventoryFile(dto.getPeriodId(), userId, userRole);
-
-        log.info("Archivo generado: {}", response.getFileName());
-        return ResponseEntity.ok(response);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename(response.getFileName()).build());
+        if (response.getFileBytes() != null) {
+            headers.setContentLength(response.getFileBytes().length);
+        }
+        return ResponseEntity.ok().headers(headers).body(response.getFileBytes());
     }
 
-    // ==================== REIMPRESIÓN EXTRAORDINARIA ====================
-
-    /**
-     * 🔍 CONSULTA: Listar marbetes IMPRESOS disponibles para reimpresión extraordinaria
-     * El usuario consulta esta API para VER qué marbetes puede reimprimir
-     */
+    // ── Reimpresión Extraordinaria ───────────────────────────────────────
     @PostMapping("/for-extraordinary-reprint/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<List<java.util.Map<String, Object>>> getImpresosForExtraordinaryReprint(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelCountListRequestDTO dto) {
+    public ResponseEntity<List<Map<String, Object>>> getImpresosForExtraordinaryReprint(
+            @Valid @RequestBody LabelCountListRequestDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("🔍 Consultando marbetes IMPRESOS para reimpresión: periodo={}, almacén={}",
-            dto.getPeriodId(), dto.getWarehouseId());
-
-        try {
-            // Obtener lista de marbetes impresos disponibles para reimpresión
-            List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> labelsForCount =
-                labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, userRole);
-
-            // Convertir a formato más simple para selección en interfaz
-            List<java.util.Map<String, Object>> result = new ArrayList<>();
-
-            for (tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO label : labelsForCount) {
-                java.util.Map<String, Object> item = new java.util.HashMap<>();
-                item.put("folio", label.getFolio());
-                item.put("producto", label.getClaveProducto() + " - " + label.getDescripcionProducto());
-                item.put("claveProducto", label.getClaveProducto());
-                item.put("descripcionProducto", label.getDescripcionProducto());
-                item.put("almacen", label.getClaveAlmacen() + " - " + label.getNombreAlmacen());
-                item.put("claveAlmacen", label.getClaveAlmacen());
-                item.put("nombreAlmacen", label.getNombreAlmacen());
-                item.put("conteo1", label.getConteo1());
-                item.put("conteo2", label.getConteo2());
-                item.put("diferencia", label.getDiferencia());
-                item.put("estado", label.getEstado());
-                item.put("mensaje", label.getMensaje());
-                result.add(item);
-            }
-
-            log.info("✅ Se encontraron {} marbetes IMPRESOS disponibles para reimpresión", result.size());
-            return ResponseEntity.ok(result);
-
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
-            log.warn("❌ Permiso denegado: {}", e.getMessage());
-            return ResponseEntity.status(403)
-                .body(java.util.Collections.emptyList());
-        } catch (Exception e) {
-            log.error("❌ Error consultando marbetes impresos: {}", e.getMessage(), e);
-            return ResponseEntity.status(500)
-                .body(java.util.Collections.emptyList());
+        List<LabelForCountDTO> labelsForCount = labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, getUserRoleFromToken());
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (LabelForCountDTO label : labelsForCount) {
+            result.add(Map.of(
+                    "folio", label.getFolio(),
+                    "producto", label.getClaveProducto() + " - " + label.getDescripcionProducto(),
+                    "claveProducto", label.getClaveProducto(),
+                    "descripcionProducto", label.getDescripcionProducto(),
+                    "almacen", label.getClaveAlmacen() + " - " + label.getNombreAlmacen(),
+                    "estado", label.getEstado(),
+                    "mensaje", label.getMensaje()
+            ));
         }
+        return ResponseEntity.ok(result);
     }
 
-    // 🔄 REIMPRESIÓN EXTRAORDINARIA: Endpoint separado y específico
     @PostMapping("/extraordinary-reprint")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> extraordinaryReprint(@Valid @RequestBody PrintRequestDTO dto) {
+    public ResponseEntity<byte[]> extraordinaryReprint(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("🔄 Endpoint /extraordinary-reprint llamado por usuario {} con rol {}", userId, userRole);
-        log.info("Parámetros: periodo={}, almacén={}, folios a reimprimir={}",
-                dto.getPeriodId(), dto.getWarehouseId(),
+        log.info("🔄 /extraordinary-reprint: usuario={}, folios={}", userId,
                 dto.getFolios() != null ? dto.getFolios().size() : 0);
+        byte[] pdfBytes = labelService.extraordinaryReprint(dto, userId, getUserRoleFromToken());
+        return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes_REIMPRESION");
+    }
 
-        try {
-            // Generar el PDF de reimpresión
-            byte[] pdfBytes = labelService.extraordinaryReprint(dto, userId, userRole);
+    // ── Helper: construir ResponseEntity PDF ────────────────────────────
+    private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, Long periodId, Long warehouseId, String prefix) {
+        String safePeriodId = String.valueOf(periodId).replaceAll("[^0-9]", "");
+        String safeWarehouseId = String.valueOf(warehouseId).replaceAll("[^0-9]", "");
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String filename = String.format("%s_P%s_A%s_%s.pdf", prefix, safePeriodId, safeWarehouseId, timestamp);
 
-            // Validar que el PDF se generó correctamente
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.error("El servicio retornó un PDF vacío o null en extraordinaryReprint");
-                return ResponseEntity.badRequest()
-                        .body(java.util.Map.of(
-                                "error", "No se pudo generar el PDF",
-                                "message", "El PDF de reimpresión generado está vacío"
-                        ));
-            }
-
-            // Sanitizar los valores para prevenir inyección en headers
-            String safePeriodId = String.valueOf(dto.getPeriodId()).replaceAll("[^0-9]", "");
-            String safeWarehouseId = String.valueOf(dto.getWarehouseId()).replaceAll("[^0-9]", "");
-            String timestamp = java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String filename = String.format("marbetes_REIMPRESION_P%s_A%s_%s.pdf",
-                    safePeriodId, safeWarehouseId, timestamp);
-
-            // Configurar headers para descarga del PDF
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(
-                    org.springframework.http.ContentDisposition.attachment()
-                            .filename(filename)
-                            .build()
-            );
-            headers.setContentLength(pdfBytes.length);
-
-            log.info("✅ Reimpresión extraordinaria completada: {} KB", pdfBytes.length / 1024);
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfBytes);
-
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            log.warn("🔄 Error de estado en reimpresión extraordinaria: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Estado inválido para reimpresión",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException e) {
-            log.warn("🔄 Folios no encontrados en reimpresión extraordinaria: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Folios no encontrados",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CatalogNotLoadedException e) {
-            log.warn("🔄 Catálogos no cargados en reimpresión extraordinaria: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(java.util.Map.of(
-                            "error", "Catálogos no cargados",
-                            "message", e.getMessage()
-                    ));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.PermissionDeniedException e) {
-            log.warn("🔄 Permiso denegado en reimpresión extraordinaria: {}", e.getMessage());
-            return ResponseEntity.status(403)
-                    .body(java.util.Map.of(
-                            "error", "Permiso denegado",
-                            "message", e.getMessage()
-                    ));
-        } catch (Exception e) {
-            log.error("❌ Error inesperado en reimpresión extraordinaria", e);
-            return ResponseEntity.status(500)
-                    .body(java.util.Map.of(
-                            "error", "Error interno del servidor",
-                            "message", "Error en reimpresión extraordinaria: " + e.getMessage()
-                    ));
-        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment().filename(filename).build());
+        headers.setContentLength(pdfBytes.length);
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 }
