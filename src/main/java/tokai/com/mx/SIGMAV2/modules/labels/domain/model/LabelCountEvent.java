@@ -37,5 +37,20 @@ public class LabelCountEvent {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Valor previo antes de la última edición (updateCountC1 / updateCountC2).
+     * Null si el conteo nunca fue modificado después de registrarse.
+     */
+    @Column(name = "previous_value", precision = 14, scale = 4)
+    private java.math.BigDecimal previousValue;
+
+    /** Timestamp de la última modificación por updateCountC1/C2. */
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    /** ID del usuario que realizó la última modificación. */
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
     public enum Role {ADMINISTRADOR, ALMACENISTA, AUXILIAR, AUXILIAR_DE_CONTEO}
 }

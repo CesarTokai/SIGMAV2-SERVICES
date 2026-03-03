@@ -61,5 +61,20 @@ public class LabelCancelled {
     @Column(name = "notas")
     @Lob
     private String notas;
+
+    /**
+     * Valor del conteo C1 al momento de la cancelación.
+     * Se archiva aquí para no perder el dato al eliminar el LabelCountEvent.
+     * Null si el marbete fue cancelado antes de registrar C1.
+     */
+    @Column(name = "conteo1_al_cancelar", precision = 14, scale = 4)
+    private java.math.BigDecimal conteo1AlCancelar;
+
+    /**
+     * Valor del conteo C2 al momento de la cancelación.
+     * Null si el marbete fue cancelado antes de registrar C2.
+     */
+    @Column(name = "conteo2_al_cancelar", precision = 14, scale = 4)
+    private java.math.BigDecimal conteo2AlCancelar;
 }
 

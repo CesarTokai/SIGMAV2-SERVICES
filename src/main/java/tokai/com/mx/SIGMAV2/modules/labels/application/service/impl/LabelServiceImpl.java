@@ -2,6 +2,7 @@ package tokai.com.mx.SIGMAV2.modules.labels.application.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
@@ -40,6 +41,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class LabelServiceImpl implements LabelService {
+
+    /** Directorio donde se genera el archivo TXT de existencias. Configurable en application.properties. */
+    @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
+    private String inventoryFileDirectory;
 
     private final LabelsPersistenceAdapter persistence;
     private final WarehouseAccessService warehouseAccessService;
@@ -536,11 +541,16 @@ public class LabelServiceImpl implements LabelService {
             .findFirst()
             .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C1 para actualizar"));
 
-        // Actualizar el valor
+        // Actualizar el valor con auditoría completa
+        java.math.BigDecimal valorAnterior = eventC1.getCountedValue();
+        eventC1.setPreviousValue(valorAnterior);   // guardar valor anterior
         eventC1.setCountedValue(dto.getCountedValue());
+        eventC1.setUpdatedAt(LocalDateTime.now());
+        eventC1.setUpdatedBy(userId);
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
-        log.info("Conteo C1 actualizado exitosamente para folio {}", dto.getFolio());
+        log.info("Conteo C1 actualizado: folio={}, valorAnterior={}, valorNuevo={}, by={}",
+            dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
 
         return updated;
     }
@@ -614,15 +624,16 @@ public class LabelServiceImpl implements LabelService {
 
             log.debug("Evento C2 encontrado: id={}, countedValue={}", eventC2.getIdCountEvent(), eventC2.getCountedValue());
 
-            // Actualizar el valor
+            // Actualizar el valor con auditoría completa
             BigDecimal oldValue = eventC2.getCountedValue();
+            eventC2.setPreviousValue(oldValue);   // guardar valor anterior
             eventC2.setCountedValue(dto.getCountedValue());
-
-            log.debug("Actualizando valor de {} a {}", oldValue, dto.getCountedValue());
+            eventC2.setUpdatedAt(LocalDateTime.now());
+            eventC2.setUpdatedBy(userId);
 
             LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
-            log.info("✅ Conteo C2 actualizado exitosamente para folio {} - Valor anterior: {}, Valor nuevo: {}",
-                dto.getFolio(), oldValue, dto.getCountedValue());
+            log.info("✅ Conteo C2 actualizado: folio={}, valorAnterior={}, valorNuevo={}, by={}",
+                dto.getFolio(), oldValue, dto.getCountedValue(), userId);
 
             return updated;
 
@@ -1384,15 +1395,18 @@ public class LabelServiceImpl implements LabelService {
         }
 
         // REGLA DE NEGOCIO: Si el marbete tiene conteos registrados (C1 o C2),
-        // se deben eliminar para evitar incongruencias en reportes de exportación
+        // se archivan en la tabla labels_cancelled para preservar la auditoría.
+        // NO se borran del sistema — el reporte de cancelados los necesita.
         List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        java.math.BigDecimal conteo1Archivado = null;
+        java.math.BigDecimal conteo2Archivado = null;
         if (!countEvents.isEmpty()) {
-            log.info("📊 El marbete {} tiene {} evento(s) de conteo. Eliminando conteos para evitar incongruencias en reportes.",
+            log.info("📊 El marbete {} tiene {} evento(s) de conteo. Se archivarán en labels_cancelled.",
                 dto.getFolio(), countEvents.size());
-
-            // Eliminar todos los eventos de conteo asociados al marbete
-            jpaLabelCountEventRepository.deleteAll(countEvents);
-            log.info("✅ Conteos eliminados exitosamente para el marbete {}", dto.getFolio());
+            for (LabelCountEvent evt : countEvents) {
+                if (evt.getCountNumber() == 1) conteo1Archivado = evt.getCountedValue();
+                if (evt.getCountNumber() == 2) conteo2Archivado = evt.getCountedValue();
+            }
         }
 
         // Cambiar estado a CANCELADO
@@ -1410,6 +1424,9 @@ public class LabelServiceImpl implements LabelService {
         cancelled.setCanceladoAt(LocalDateTime.now());
         cancelled.setCanceladoBy(userId);
         cancelled.setReactivado(false);
+        // ✅ Archivar conteos para preservar auditoría
+        cancelled.setConteo1AlCancelar(conteo1Archivado);
+        cancelled.setConteo2AlCancelar(conteo2Archivado);
 
         // Obtener existencias actuales
         try {
@@ -1547,12 +1564,8 @@ public class LabelServiceImpl implements LabelService {
         WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
             .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        // Obtener todos los marbetes IMPRESOS (no cancelados) del periodo y almacén
-        List<Label> labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId)
-            .stream()
-            .filter(l -> l.getEstado() == Label.State.IMPRESO)
-            .sorted(java.util.Comparator.comparing(Label::getFolio))
-            .toList();
+        // Obtener marbetes IMPRESOS directamente en BD — sin cargar todos en memoria para luego filtrar
+        List<Label> labels = jpaLabelRepository.findImpresosForCountList(periodId, warehouseId);
 
         log.info("Encontrados {} marbetes impresos disponibles para conteo", labels.size());
 
@@ -1560,6 +1573,13 @@ public class LabelServiceImpl implements LabelService {
             log.warn("No se encontraron marbetes impresos para el periodo {} y almacén {}", periodId, warehouseId);
             return new ArrayList<>();
         }
+
+        // ✅ Cargar TODOS los conteos en UNA sola query — elimina N+1
+        List<Long> folios = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolio = jpaLabelCountEventRepository
+            .findByFolioInOrderByFolioAscCountNumberAsc(folios)
+            .stream()
+            .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         // Convertir cada marbete a DTO
         List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO> result = new ArrayList<>();
@@ -1573,19 +1593,15 @@ public class LabelServiceImpl implements LabelService {
                     continue;
                 }
 
-                // Obtener los conteos registrados
-                List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+                // Obtener conteos del mapa batch — sin query adicional
+                List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
 
                 java.math.BigDecimal conteo1 = null;
                 java.math.BigDecimal conteo2 = null;
 
                 for (LabelCountEvent event : events) {
-                    if (event.getCountNumber() == 1) {
-                        conteo1 = event.getCountedValue();
-                    }
-                    if (event.getCountNumber() == 2) {
-                        conteo2 = event.getCountedValue();
-                    }
+                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                    if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
                 }
 
                 // Calcular diferencia si ambos conteos existen
@@ -1604,41 +1620,36 @@ public class LabelServiceImpl implements LabelService {
                     mensaje = "Pendiente C1";
                 }
 
-                // ✅ OBTENER EXISTENCIAS DEL INVENTARIO
+                // Obtener existencias del inventario
                 java.math.BigDecimal existQty = null;
                 try {
                     var stockOpt = inventoryStockRepository
                         .findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
                             label.getProductId(), label.getWarehouseId(), label.getPeriodId());
-                    if (stockOpt.isPresent()) {
-                        existQty = stockOpt.get().getExistQty();
-                    }
+                    if (stockOpt.isPresent()) existQty = stockOpt.get().getExistQty();
                 } catch (Exception e) {
                     log.debug("Error obteniendo existencias para folio {}: {}", label.getFolio(), e.getMessage());
                 }
 
-                tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO dto =
-                    tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
-                        .folio(label.getFolio())
-                        .periodId(label.getPeriodId())
-                        .warehouseId(label.getWarehouseId())
-                        .claveAlmacen(warehouse.getWarehouseKey())
-                        .nombreAlmacen(warehouse.getNameWarehouse())
-                        .claveProducto(product.getCveArt())
-                        .descripcionProducto(product.getDescr())
-                        .unidadMedida(product.getUniMed())
-                        .cancelado(false)
-                        .conteo1(conteo1)
-                        .conteo2(conteo2)
-                        .diferencia(diferencia)
-                        .estado(label.getEstado().name())
-                        .impreso(true)
-                        .mensaje(mensaje)
-                        .existQty(existQty)                    // ✅ AGREGAR EXISTENCIAS
-                        .existQtyUnidad(product.getUniMed())   // ✅ AGREGAR UNIDAD
-                        .build();
-
-                result.add(dto);
+                result.add(tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelForCountDTO.builder()
+                    .folio(label.getFolio())
+                    .periodId(label.getPeriodId())
+                    .warehouseId(label.getWarehouseId())
+                    .claveAlmacen(warehouse.getWarehouseKey())
+                    .nombreAlmacen(warehouse.getNameWarehouse())
+                    .claveProducto(product.getCveArt())
+                    .descripcionProducto(product.getDescr())
+                    .unidadMedida(product.getUniMed())
+                    .cancelado(false)
+                    .conteo1(conteo1)
+                    .conteo2(conteo2)
+                    .diferencia(diferencia)
+                    .estado(label.getEstado().name())
+                    .impreso(true)
+                    .mensaje(mensaje)
+                    .existQty(existQty)
+                    .existQtyUnidad(product.getUniMed())
+                    .build());
 
             } catch (Exception e) {
                 log.error("Error procesando marbete folio {}: {}", label.getFolio(), e.getMessage());
@@ -1717,14 +1728,14 @@ public class LabelServiceImpl implements LabelService {
             jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
             jpaLabelRepository.findByPeriodId(filter.getPeriodId());
 
-        // Obtener eventos de conteo para todos los folios
+        // ✅ Cargar TODOS los conteos en UNA sola query batch — elimina N+1
         List<Long> folios = labels.stream().map(Label::getFolio).toList();
-        Map<Long, List<LabelCountEvent>> countEventsByFolio = new HashMap<>();
-
-        for (Long folio : folios) {
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
-            countEventsByFolio.put(folio, events);
-        }
+        Map<Long, List<LabelCountEvent>> countEventsByFolio = folios.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(folios)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         List<LabelListReportDTO> result = labels.stream().map(label -> {
             // Obtener producto
@@ -1733,12 +1744,12 @@ public class LabelServiceImpl implements LabelService {
             // Obtener almacén
             WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
 
-            // Obtener conteos
-            List<LabelCountEvent> events = countEventsByFolio.get(label.getFolio());
+            // Obtener conteos del mapa batch — sin query adicional
+            List<LabelCountEvent> events = countEventsByFolio.getOrDefault(label.getFolio(), List.of());
             java.math.BigDecimal conteo1 = null;
             java.math.BigDecimal conteo2 = null;
 
-            if (events != null && !events.isEmpty()) {
+            if (!events.isEmpty()) {
                 for (LabelCountEvent event : events) {
                     if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
                     if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
@@ -1774,21 +1785,24 @@ public class LabelServiceImpl implements LabelService {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
         }
 
-        // Obtener marbetes no cancelados
+        // ✅ Filtrar no-cancelados directamente en BD
         List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
 
-        // Filtrar solo los que no están cancelados
-        labels = labels.stream()
-            .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .toList();
+        // ✅ Cargar conteos en batch
+        List<Long> folios = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolio = folios.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(folios)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         List<PendingLabelsReportDTO> result = new ArrayList<>();
 
         for (Label label : labels) {
-            // Obtener conteos
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal conteo1 = null;
             java.math.BigDecimal conteo2 = null;
@@ -1831,19 +1845,24 @@ public class LabelServiceImpl implements LabelService {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
         }
 
-        // Obtener marbetes no cancelados
+        // ✅ Filtrar no-cancelados directamente en BD
         List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
 
-        labels = labels.stream()
-            .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .toList();
+        // ✅ Cargar conteos en batch
+        List<Long> foliosDif = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolioDif = foliosDif.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(foliosDif)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         List<DifferencesReportDTO> result = new ArrayList<>();
 
         for (Label label : labels) {
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            List<LabelCountEvent> events = countsByFolioDif.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal conteo1 = null;
             java.math.BigDecimal conteo2 = null;
@@ -1908,15 +1927,10 @@ public class LabelServiceImpl implements LabelService {
             var user = userRepository.findById(cancelled.getCanceladoBy()).orElse(null);
             String userName = user != null ? user.getEmail() : "Usuario " + cancelled.getCanceladoBy();
 
-            // Obtener conteos si existen
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(cancelled.getFolio());
-            java.math.BigDecimal conteo1 = null;
-            java.math.BigDecimal conteo2 = null;
-
-            for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
-                if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
-            }
+            // ✅ Usar conteos ARCHIVADOS en LabelCancelled — no buscar en label_count_events
+            // (desde V1_2_2 se guardan conteo1AlCancelar / conteo2AlCancelar al cancelar)
+            java.math.BigDecimal conteo1 = cancelled.getConteo1AlCancelar();
+            java.math.BigDecimal conteo2 = cancelled.getConteo2AlCancelar();
 
             return new CancelledLabelsReportDTO(
                 cancelled.getFolio(),
@@ -1947,14 +1961,19 @@ public class LabelServiceImpl implements LabelService {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
         }
 
-        // Obtener marbetes no cancelados
+        // ✅ Filtrar no-cancelados en BD
         List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
 
-        labels = labels.stream()
-            .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .toList();
+        // ✅ Cargar conteos en batch — una sola query
+        List<Long> foliosComp = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolioComp = foliosComp.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(foliosComp)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         // Agrupar por producto y almacén
         Map<String, List<Label>> groupedByProductWarehouse = labels.stream()
@@ -1968,25 +1987,32 @@ public class LabelServiceImpl implements LabelService {
 
             Label first = labelGroup.get(0);
 
-            // Calcular existencias físicas (suma de conteo2, o conteo1 si no hay conteo2)
+            // ✅ REGLA DE NEGOCIO CORREGIDA:
+            // Solo se suma como "existencia física" el C2 de marbetes con conteo COMPLETO.
+            // Un marbete con solo C1 está PENDIENTE — su valor no es definitivo.
+            // Incluirlo inflaría las existencias y produciría datos falsos en el comparativo.
             java.math.BigDecimal existenciasFisicas = java.math.BigDecimal.ZERO;
+            int totalMarbetes = labelGroup.size();
+            int marbetesCompletos = 0;
+            int marbetesPendientes = 0;
 
             for (Label label : labelGroup) {
-                List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+                List<LabelCountEvent> events = countsByFolioComp.getOrDefault(label.getFolio(), List.of());
 
-                java.math.BigDecimal conteo1 = null;
                 java.math.BigDecimal conteo2 = null;
-
+                boolean tieneC1 = false;
                 for (LabelCountEvent event : events) {
-                    if (event.getCountNumber() == 1) conteo1 = event.getCountedValue();
+                    if (event.getCountNumber() == 1) tieneC1 = true;
                     if (event.getCountNumber() == 2) conteo2 = event.getCountedValue();
                 }
 
-                // Preferir conteo2, si no existe usar conteo1
                 if (conteo2 != null) {
+                    // Marbete completo (C1 + C2) — suma al físico
                     existenciasFisicas = existenciasFisicas.add(conteo2);
-                } else if (conteo1 != null) {
-                    existenciasFisicas = existenciasFisicas.add(conteo1);
+                    marbetesCompletos++;
+                } else {
+                    // C1 solo o sin conteos — está pendiente, NO se suma
+                    marbetesPendientes++;
                 }
             }
 
@@ -2003,10 +2029,8 @@ public class LabelServiceImpl implements LabelService {
                 log.warn("No se pudieron obtener existencias teóricas: {}", e.getMessage());
             }
 
-            // Calcular diferencia
+            // Calcular diferencia y porcentaje
             java.math.BigDecimal diferencia = existenciasFisicas.subtract(existenciasTeoricas);
-
-            // Calcular porcentaje de diferencia
             java.math.BigDecimal porcentaje = java.math.BigDecimal.ZERO;
             if (existenciasTeoricas.compareTo(java.math.BigDecimal.ZERO) != 0) {
                 porcentaje = diferencia.divide(existenciasTeoricas, 4, java.math.RoundingMode.HALF_UP)
@@ -2017,7 +2041,7 @@ public class LabelServiceImpl implements LabelService {
             ProductEntity product = productRepository.findById(first.getProductId()).orElse(null);
             WarehouseEntity warehouse = warehouseRepository.findById(first.getWarehouseId()).orElse(null);
 
-            result.add(new ComparativeReportDTO(
+            ComparativeReportDTO dto = new ComparativeReportDTO(
                 warehouse != null ? warehouse.getWarehouseKey() : "",
                 warehouse != null ? warehouse.getNameWarehouse() : "",
                 product != null ? product.getCveArt() : "",
@@ -2027,7 +2051,17 @@ public class LabelServiceImpl implements LabelService {
                 existenciasTeoricas,
                 diferencia,
                 porcentaje
-            ));
+            );
+
+            // Advertir si hay marbetes pendientes que no se contabilizaron
+            if (marbetesPendientes > 0) {
+                log.warn("Producto {} almacén {}: {} de {} marbetes están pendientes de C2 y NO se contabilizaron en existencias físicas.",
+                    product != null ? product.getCveArt() : first.getProductId(),
+                    warehouse != null ? warehouse.getWarehouseKey() : first.getWarehouseId(),
+                    marbetesPendientes, totalMarbetes);
+            }
+
+            result.add(dto);
         }
 
         log.info("Reporte comparativo generado con {} registros", result.size());
@@ -2052,6 +2086,15 @@ public class LabelServiceImpl implements LabelService {
             jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
             jpaLabelRepository.findByPeriodId(filter.getPeriodId());
 
+        // ✅ Cargar conteos en batch
+        List<Long> foliosWD = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolioWD = foliosWD.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(foliosWD)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
+
         List<WarehouseDetailReportDTO> result = labels.stream().map(label -> {
             // Obtener producto
             ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
@@ -2059,8 +2102,8 @@ public class LabelServiceImpl implements LabelService {
             // Obtener almacén
             WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
 
-            // Obtener conteos
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            // Obtener conteos del mapa batch
+            List<LabelCountEvent> events = countsByFolioWD.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
 
@@ -2104,54 +2147,45 @@ public class LabelServiceImpl implements LabelService {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
         }
 
-        // Obtener marbetes no cancelados
+        // ✅ Filtrar no-cancelados en BD
         List<Label> labels = filter.getWarehouseId() != null ?
-            jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId()) :
-            jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId()) :
+            jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
 
-        labels = labels.stream()
-            .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .toList();
+        // ✅ Cargar conteos en batch
+        List<Long> foliosPD = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolioPD = foliosPD.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(foliosPD)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
-        // Calcular totales por producto
+        // Calcular totales por producto usando el mapa batch
         Map<Long, java.math.BigDecimal> totalsByProduct = new HashMap<>();
 
         for (Label label : labels) {
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            List<LabelCountEvent> events = countsByFolioPD.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
-
             for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) {
-                    cantidad = event.getCountedValue();
-                    break;
-                } else if (event.getCountNumber() == 1) {
-                    cantidad = event.getCountedValue();
-                }
+                if (event.getCountNumber() == 2) { cantidad = event.getCountedValue(); break; }
+                else if (event.getCountNumber() == 1) { cantidad = event.getCountedValue(); }
             }
-
             totalsByProduct.merge(label.getProductId(), cantidad, java.math.BigDecimal::add);
         }
 
         List<ProductDetailReportDTO> result = labels.stream().map(label -> {
-            // Obtener producto
             ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-
-            // Obtener almacén
             WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
 
-            // Obtener conteos
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            // Usar conteos del mapa batch
+            List<LabelCountEvent> events = countsByFolioPD.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal existencias = java.math.BigDecimal.ZERO;
-
             for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) {
-                    existencias = event.getCountedValue();
-                    break;
-                } else if (event.getCountNumber() == 1) {
-                    existencias = event.getCountedValue();
-                }
+                if (event.getCountNumber() == 2) { existencias = event.getCountedValue(); break; }
+                else if (event.getCountNumber() == 1) { existencias = event.getCountedValue(); }
             }
 
             java.math.BigDecimal total = totalsByProduct.get(label.getProductId());
@@ -2189,27 +2223,27 @@ public class LabelServiceImpl implements LabelService {
         periodName = periodName.substring(0, 1).toUpperCase() + periodName.substring(1).replace(" ", "");
 
         // Obtener todos los marbetes no cancelados del periodo
-        List<Label> labels = jpaLabelRepository.findByPeriodId(periodId).stream()
-            .filter(l -> l.getEstado() != Label.State.CANCELADO)
-            .toList();
+        List<Label> labels = jpaLabelRepository.findNonCancelledByPeriod(periodId);
+
+        // ✅ Cargar TODOS los conteos en UNA sola query batch
+        List<Long> foliosInv = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolioInv = foliosInv.isEmpty()
+            ? new HashMap<>()
+            : jpaLabelCountEventRepository
+                .findByFolioInOrderByFolioAscCountNumberAsc(foliosInv)
+                .stream()
+                .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
         // Agrupar por producto y sumar existencias físicas
         Map<Long, ProductExistencias> productoExistencias = new HashMap<>();
 
         for (Label label : labels) {
-            // Obtener conteos
-            List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+            List<LabelCountEvent> events = countsByFolioInv.getOrDefault(label.getFolio(), List.of());
 
             java.math.BigDecimal cantidad = java.math.BigDecimal.ZERO;
-
-            // Usar conteo2 si existe, sino conteo1
             for (LabelCountEvent event : events) {
-                if (event.getCountNumber() == 2) {
-                    cantidad = event.getCountedValue();
-                    break;
-                } else if (event.getCountNumber() == 1) {
-                    cantidad = event.getCountedValue();
-                }
+                if (event.getCountNumber() == 2) { cantidad = event.getCountedValue(); break; }
+                else if (event.getCountNumber() == 1) { cantidad = event.getCountedValue(); }
             }
 
             // Acumular existencias por producto
@@ -2227,20 +2261,19 @@ public class LabelServiceImpl implements LabelService {
         List<ProductExistencias> productosList = new ArrayList<>(productoExistencias.values());
         productosList.sort(Comparator.comparing(ProductExistencias::getClaveProducto));
 
-        // Crear directorio si no existe
-        String directoryPath = "C:\\Sistemas\\SIGMA\\Documentos";
-        java.io.File directory = new java.io.File(directoryPath);
+        // Crear directorio si no existe — ruta configurable en application.properties
+        java.io.File directory = new java.io.File(inventoryFileDirectory);
         if (!directory.exists()) {
             if (directory.mkdirs()) {
-                log.info("Directorio creado: {}", directoryPath);
+                log.info("Directorio creado: {}", inventoryFileDirectory);
             } else {
-                log.warn("No se pudo crear el directorio: {}", directoryPath);
+                log.warn("No se pudo crear el directorio: {}", inventoryFileDirectory);
             }
         }
 
         // Generar nombre del archivo
         String fileName = "Existencias_" + periodName + ".txt";
-        String filePath = directoryPath + "\\" + fileName;
+        String filePath = inventoryFileDirectory + java.io.File.separator + fileName;
 
         // Escribir archivo TXT
         try (java.io.BufferedWriter writer = new java.io.BufferedWriter(

@@ -47,4 +47,28 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
            "AND l.estado IN ('IMPRESO', 'GENERADO') ORDER BY l.folio")
     List<Label> findPrintedLabelsByPeriodAndWarehouse(@Param("periodId") Long periodId,
                                                        @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes en estado IMPRESO de un periodo y almacén — filtrado en BD.
+     * Reemplaza el patrón: findAll().stream().filter(estado == IMPRESO) en memoria.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId " +
+           "AND l.estado = 'IMPRESO' ORDER BY l.folio ASC")
+    List<Label> findImpresosForCountList(@Param("periodId") Long periodId,
+                                         @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes no cancelados de un periodo y almacén — filtrado en BD.
+     * Reemplaza: findAll().stream().filter(estado != CANCELADO) en memoria.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId " +
+           "AND l.estado <> 'CANCELADO' ORDER BY l.folio ASC")
+    List<Label> findNonCancelledByPeriodAndWarehouse(@Param("periodId") Long periodId,
+                                                      @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes no cancelados de un periodo completo (todos los almacenes).
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.estado <> 'CANCELADO' ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findNonCancelledByPeriod(@Param("periodId") Long periodId);
 }
