@@ -57,12 +57,12 @@ public class MainWarehouseController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<Map<String, Object>> getAllWarehouses(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size,
-            @RequestParam(defaultValue = "warehouseKey") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(required = false) String search) {
-        
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "25") int size,
+            @RequestParam(value = "sortBy", defaultValue = "warehouseKey") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir,
+            @RequestParam(value = "search", required = false) String search) {
+
         log.info("Listando almacenes - page: {}, size: {}, search: '{}'", page, size, search);
         
         try {
@@ -385,10 +385,10 @@ public class MainWarehouseController {
     @GetMapping("/users-with-assignments")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<Map<String, Object>> getUsersWithAssignments(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "userId") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir) {
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "userId") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir) {
 
         log.info("Obteniendo usuarios con almacenes asignados - page: {}, size: {}", page, size);
 

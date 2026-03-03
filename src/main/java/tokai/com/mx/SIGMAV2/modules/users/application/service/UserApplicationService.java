@@ -17,6 +17,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,10 +30,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserApplicationService implements UserService {
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
-    private final VerificationCodeService verificationCodeService;
     private final PersonalInformationRepository personalInformationRepository;
 
     // ── registro ──────────────────────────────────────────────────────────
@@ -103,8 +105,7 @@ public class UserApplicationService implements UserService {
 
         String verificationCode = null;
         if (!preVerified) {
-            verificationCode = verificationCodeService.generateVerificationCode(
-                    normalizedEmail, "Registro inicial");
+            verificationCode = generateCode();
         }
 
         return new User(null, normalizedEmail, encryptedPassword,
@@ -217,12 +218,15 @@ public class UserApplicationService implements UserService {
         ValidationUtils.validateVerificationCode(code);
         String normalizedEmail = email.toLowerCase().trim();
 
-        // Verificar el código usando el nuevo servicio
-        if (!verificationCodeService.validateVerificationCode(normalizedEmail, code))
+        // Verificar el código directamente contra el campo del usuario
+        User userToVerify = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
+
+        if (userToVerify.getVerificationCode() == null
+                || !userToVerify.getVerificationCode().equals(code))
             throw new InvalidVerificationCodeException("Código de verificación inválido para: " + email);
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
+        User user = userToVerify;
 
         // Verificar si el usuario ya está verificado
         if (user.isVerified())
@@ -250,7 +254,7 @@ public class UserApplicationService implements UserService {
         if (user.isVerified())
             throw new UserAlreadyExistsException("El usuario ya está verificado");
 
-        String newCode = verificationCodeService.generateVerificationCode(normalizedEmail, "Reenvío solicitado");
+        String newCode = generateCode();
         user.setVerificationCode(newCode);
         user.setUpdatedAt(LocalDateTime.now());
         User updatedUser = userRepository.save(user);
@@ -439,6 +443,13 @@ public class UserApplicationService implements UserService {
         
         log.info("Limpieza completada: {} usuarios no verificados eliminados", deletedCount);
         return deletedCount;
+    }
+
+    // ── utilidades ────────────────────────────────────────────────────────
+
+    /** Genera un código de verificación numérico de 6 dígitos usando SecureRandom. */
+    private static String generateCode() {
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
     }
 
 }

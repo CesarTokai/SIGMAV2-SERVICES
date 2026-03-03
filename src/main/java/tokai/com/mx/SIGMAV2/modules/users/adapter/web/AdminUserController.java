@@ -14,7 +14,6 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.RegisterUserCommand;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.*;
-import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeService;
 import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
 
 import jakarta.validation.Valid;
@@ -35,7 +34,6 @@ import java.util.stream.Collectors;
 public class AdminUserController {
 
     private final UserService userService;
-    private final VerificationCodeService verificationCodeService;
     private final UserWarehouseAssignmentRepository userWarehouseAssignmentRepository;
 
     /**
@@ -86,15 +84,15 @@ public class AdminUserController {
      */
     @GetMapping
     public ResponseEntity<AdminUserPageResponse> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(required = false) String email,
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) Boolean verified,
-            @RequestParam(required = false) Boolean status) {
-        
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "desc") String sortDir,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam(value = "verified", required = false) Boolean verified,
+            @RequestParam(value = "status", required = false) Boolean status) {
+
         log.info("Obteniendo usuarios - page: {}, size: {}, sortBy: {}, email: {}, role: {}, verified: {}, status: {}", 
                 page, size, sortBy, email, role, verified, status);
 
@@ -387,19 +385,13 @@ public class AdminUserController {
                         }
                         break;
                     case RESEND_VERIFICATION:
-                        User userForResend = userService.findById(userId).orElseThrow(() -> 
+                        User userForResend = userService.findById(userId).orElseThrow(() ->
                                 new RuntimeException("Usuario no encontrado"));
-                        
-                        // Verificar si el usuario ya está verificado
+
                         if (userForResend.isVerified()) {
                             throw new RuntimeException("El usuario ya está verificado");
                         }
-                        
-                        // Usar el servicio de verificación para control de rate limiting
-                        verificationCodeService.generateVerificationCode(
-                                userForResend.getEmail(), 
-                                "Reenvío solicitado por administrador"
-                        );
+
                         userService.resendVerificationCode(userForResend.getEmail());
                         break;
                 }
@@ -427,8 +419,8 @@ public class AdminUserController {
      */
     @DeleteMapping("/cleanup-unverified")
     public ResponseEntity<Map<String, Object>> cleanupUnverifiedUsers(
-            @RequestParam(defaultValue = "30") int daysOld) {
-        
+            @RequestParam(value = "daysOld", defaultValue = "30") int daysOld) {
+
         log.info("Iniciando limpieza de usuarios no verificados hace más de {} días", daysOld);
 
         int deletedCount = userService.cleanupUnverifiedUsers(daysOld);
@@ -446,10 +438,10 @@ public class AdminUserController {
      */
     @GetMapping("/with-warehouses")
     public ResponseEntity<Map<String, Object>> getUsersWithWarehouses(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "email") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir) {
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "email") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir) {
 
         // Validar que sortBy sea un campo válido en UserWarehouseAssignment
         // Solo permite: userId, warehousesCount

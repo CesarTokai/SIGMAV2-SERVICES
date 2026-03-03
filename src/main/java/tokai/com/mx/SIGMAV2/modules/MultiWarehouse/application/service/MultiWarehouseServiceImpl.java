@@ -49,12 +49,10 @@ import java.io.InputStream;
  *   <li>El controlador ({@code MultiWarehouseController}) traduce los result objects a HTTP.</li>
  * </ul>
  *
- * <p><b>Compatibilidad:</b> sigue implementando {@link MultiWarehouseService} para no romper
- * el controlador existente hasta que sea migrado completamente a {@link MultiWarehouseUseCase}.
  */
 @Service
 @RequiredArgsConstructor
-public class MultiWarehouseServiceImpl implements MultiWarehouseUseCase, MultiWarehouseService {
+public class MultiWarehouseServiceImpl implements MultiWarehouseUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(MultiWarehouseServiceImpl.class);
 
@@ -691,40 +689,4 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseUseCase, MultiWa
         } catch (Exception e) { throw new RuntimeException("No se pudo calcular SHA-256",e); }
     }
 
-    // =========================================================================
-    // COMPATIBILIDAD RETROACTIVA — delegar a los nuevos métodos tipados
-    // Los métodos siguientes implementan MultiWarehouseService (interfaz legacy)
-    // y simplemente delegan a los métodos de MultiWarehouseUseCase.
-    // Serán eliminados cuando el controlador migre completamente al nuevo port.
-    // =========================================================================
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> importFile_legacy(MultipartFile file, String period) {
-        throw new UnsupportedOperationException("Usar importFile(MultipartFile, String) del port MultiWarehouseUseCase");
-    }
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> processWizardStep_legacy(MultiWarehouseWizardStepDTO stepDTO) {
-        throw new UnsupportedOperationException("Usar processWizardStep(MultiWarehouseWizardStepDTO) del port MultiWarehouseUseCase");
-    }
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> exportExistences_legacy(MultiWarehouseSearchDTO search) {
-        throw new UnsupportedOperationException("Usar exportExistences(MultiWarehouseSearchDTO) del port MultiWarehouseUseCase");
-    }
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> getImportLog_legacy(Long id) {
-        throw new UnsupportedOperationException("Usar getImportLog(Long) del port MultiWarehouseUseCase");
-    }
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> getStock_legacy(String productCode, String warehouseKey, Long periodId) {
-        throw new UnsupportedOperationException("Usar getStock(String, String, Long) del port MultiWarehouseUseCase");
-    }
-
-    @Override
-    public org.springframework.http.ResponseEntity<?> getProductosDadosDeBaja_legacy(Long periodId) {
-        throw new UnsupportedOperationException("Usar getProductosDadosDeBaja(Long) del port MultiWarehouseUseCase");
-    }
 }

@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
 import tokai.com.mx.SIGMAV2.modules.users.application.service.UserApplicationService;
-import tokai.com.mx.SIGMAV2.modules.users.application.service.VerificationCodeService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
@@ -22,9 +21,7 @@ public class UserModuleConfig {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             MailSender mailSender,
-            VerificationCodeService verificationCodeService,
             PersonalInformationRepository personalInformationRepository) {
-        return new UserApplicationService(userRepository, passwordEncoder, mailSender, verificationCodeService, personalInformationRepository);
-
+        return new UserApplicationService(userRepository, passwordEncoder, mailSender, personalInformationRepository);
     }
 }

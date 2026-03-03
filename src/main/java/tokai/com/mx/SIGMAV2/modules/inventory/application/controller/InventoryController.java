@@ -63,9 +63,9 @@ public class InventoryController {
 
     @GetMapping("/stock")
     public ResponseEntity<InventoryStockDTO> getCurrentStock(
-            @RequestParam Long productId,
-            @RequestParam Long warehouseId,
-            @RequestParam Long periodId) {
+            @RequestParam("productId") Long productId,
+            @RequestParam("warehouseId") Long warehouseId,
+            @RequestParam("periodId") Long periodId) {
         InventoryStock stock = inventoryQueryUseCase.getCurrentStock(productId, warehouseId, periodId);
         if (stock == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(mapToStockDTO(stock));
@@ -76,8 +76,8 @@ public class InventoryController {
     @PostMapping("/import")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA')")
     public ResponseEntity<InventoryImportResultDTO> importInventory(
-            @RequestParam Long periodId,
-            @RequestParam(required = false) Long warehouseId,
+            @RequestParam("periodId") Long periodId,
+            @RequestParam(value = "warehouseId", required = false) Long warehouseId,
             @RequestParam("file") MultipartFile file,
             Principal principal) {
         InventoryImportRequestDTO request = new InventoryImportRequestDTO();
@@ -122,12 +122,12 @@ public class InventoryController {
 
     @GetMapping("/period-report")
     public ResponseEntity<Page<InventoryPeriodReportDTO>> periodReport(
-            @RequestParam Long periodId,
-            @RequestParam(required = false) Long warehouseId,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "existQty,asc") String[] sort) {
+            @RequestParam("periodId") Long periodId,
+            @RequestParam(value = "warehouseId", required = false) Long warehouseId,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "sort", defaultValue = "existQty,asc") String[] sort) {
 
         List<Sort.Order> orders = buildSortOrders(sort);
         Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
