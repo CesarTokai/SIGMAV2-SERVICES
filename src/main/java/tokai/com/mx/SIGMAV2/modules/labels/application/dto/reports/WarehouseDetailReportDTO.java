@@ -23,5 +23,12 @@ public class WarehouseDetailReportDTO {
     private BigDecimal cantidad;
     private String estado;
     private Boolean cancelado;
+    /**
+     * Indica de qué conteo proviene la cantidad: "C2", "C1" o "SIN_CONTEO".
+     * Permite al frontend mostrar advertencias cuando no hay C2.
+     */
+    private String fuenteConteo;
 }
+
+
 

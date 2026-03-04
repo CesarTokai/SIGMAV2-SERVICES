@@ -21,6 +21,10 @@ public class ProductDetailReportDTO {
     private String nombreAlmacen;
     private Long numeroMarbete;
     private BigDecimal existencias;
-    private BigDecimal total; // Suma de existencias en todos los almacenes
+    private BigDecimal total;
+    /** "C2", "C1" o "SIN_CONTEO" — de qué conteo proviene el valor de existencias. */
+    private String fuenteConteo;
 }
+
+
 
