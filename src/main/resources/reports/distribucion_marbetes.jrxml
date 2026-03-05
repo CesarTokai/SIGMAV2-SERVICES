@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+              http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="distribucion_marbetes"
+              pageWidth="595" pageHeight="842"
+              columnWidth="555" leftMargin="20" rightMargin="20"
+              topMargin="20" bottomMargin="20"
+              uuid="15ef138b-b12c-43b2-84ea-68c7e1fed7b5">
+
+    <!-- ═══════════════ ESTILOS ═══════════════ -->
+    <style name="Table_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box><pen lineWidth="0.5" lineColor="#000000"/></box>
+    </style>
+    <style name="Table_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box><pen lineWidth="0.5" lineColor="#000000"/></box>
+    </style>
+    <style name="Table_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box><pen lineWidth="0.5" lineColor="#000000"/></box>
+    </style>
+
+    <!-- ═══════════════ PARÁMETROS ═══════════════ -->
+    <parameter name="fecha" class="java.lang.String">
+        <defaultValueExpression><![CDATA["Sin fecha"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="REPORT_DIR" class="java.lang.String">
+        <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+    </parameter>
+
+    <!-- ═══════════════ FIELDS (deben coincidir con DistributionReportDTO) ═══════════════ -->
+    <field name="usuario"        class="java.lang.String"/>
+    <field name="claveAlmacen"   class="java.lang.String"/>
+    <field name="nombreAlmacen"  class="java.lang.String"/>
+    <field name="primerFolio"    class="java.lang.Long"/>
+    <field name="ultimoFolio"    class="java.lang.Long"/>
+    <field name="totalMarbetes"  class="java.lang.Integer"/>
+
+    <!-- ═══════════════ TITULO ═══════════════ -->
+    <title>
+        <band height="80" splitType="Stretch">
+            <!-- Logo izquierdo (SIGMA) -->
+            <image scaleImage="RetainShape" hAlign="Left">
+                <reportElement x="0" y="0" width="130" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567801"/>
+                <imageExpression><![CDATA[$P{REPORT_DIR} + "Logo.png"]]></imageExpression>
+            </image>
+            <!-- Título empresa -->
+            <staticText>
+                <reportElement x="155" y="2" width="240" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567802"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TOKAI de México S.A. DE C.V.]]></text>
+            </staticText>
+            <!-- Título reporte -->
+            <staticText>
+                <reportElement x="155" y="24" width="240" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567803"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="13" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Distribución de Marbetes]]></text>
+            </staticText>
+            <!-- Etiqueta Fecha -->
+            <staticText>
+                <reportElement x="155" y="44" width="50" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567804"/>
+                <textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+                <text><![CDATA[Fecha:]]></text>
+            </staticText>
+            <!-- Valor Fecha -->
+            <textField>
+                <reportElement x="207" y="44" width="130" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567805"/>
+                <textElement><font fontName="Arial" size="10"/></textElement>
+                <textFieldExpression><![CDATA[$P{fecha}]]></textFieldExpression>
+            </textField>
+            <!-- Logo derecho (Tokai) -->
+            <image scaleImage="RetainShape" hAlign="Right">
+                <reportElement x="425" y="0" width="130" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567806"/>
+                <imageExpression><![CDATA[$P{REPORT_DIR} + "logo_tokai.png"]]></imageExpression>
+            </image>
+            <!-- Línea separadora -->
+            <line>
+                <reportElement x="0" y="70" width="555" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567807"/>
+            </line>
+        </band>
+    </title>
+
+    <!-- ═══════════════ ENCABEZADO DE COLUMNAS ═══════════════ -->
+    <columnHeader>
+        <band height="20" splitType="Stretch">
+            <staticText>
+                <reportElement style="Table_CH" x="0"   y="0" width="110" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567811"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Usuario]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="110" y="0" width="85"  height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567812"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Clave Almacén]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="195" y="0" width="165" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567813"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Nombre del Almacén]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="360" y="0" width="70"  height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567814"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Primer Folio]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="430" y="0" width="65"  height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567815"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Último Folio]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="495" y="0" width="60"  height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567816"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Total]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <!-- ═══════════════ DETALLE (una fila por registro) ═══════════════ -->
+    <detail>
+        <band height="18" splitType="Stretch">
+            <textField isStretchWithOverflow="true">
+                <reportElement style="Table_TD" x="0"   y="0" width="110" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567821"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{usuario}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Table_TD" x="110" y="0" width="85"  height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567822"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{claveAlmacen}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement style="Table_TD" x="195" y="0" width="165" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567823"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nombreAlmacen}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Table_TD" x="360" y="0" width="70"  height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567824"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{primerFolio}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Table_TD" x="430" y="0" width="65"  height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567825"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{ultimoFolio}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Table_TD" x="495" y="0" width="60"  height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567826"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{totalMarbetes}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <!-- ═══════════════ PIE DE PÁGINA ═══════════════ -->
+    <pageFooter>
+        <band height="25" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="0" width="555" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567831"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="5" width="200" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567832"/>
+                <textElement><font fontName="Arial" size="8" isItalic="true"/></textElement>
+                <text><![CDATA[SIGMAV2 - Sistema de Inventarios]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="450" y="5" width="105" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567833"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+</jasperReport>

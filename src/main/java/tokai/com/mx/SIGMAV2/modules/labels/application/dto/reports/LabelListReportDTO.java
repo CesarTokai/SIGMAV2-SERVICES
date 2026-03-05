@@ -24,5 +24,7 @@ public class LabelListReportDTO {
     private BigDecimal conteo2;
     private String estado; // "GENERADO", "IMPRESO", "CANCELADO"
     private Boolean cancelado;
+    private Long periodId;
+    private String periodName;
 }
 

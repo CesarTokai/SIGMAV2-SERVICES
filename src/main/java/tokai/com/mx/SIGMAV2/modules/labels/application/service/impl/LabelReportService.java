@@ -111,6 +111,10 @@ public class LabelReportService {
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
         Map<Long, WarehouseEntity>       whMap     = batchLoadWarehouses(labels);
 
+        // Cargar período
+        var period = jpaPeriodRepository.findById(filter.getPeriodId()).orElse(null);
+        String periodName = period != null ? period.getDate().toString() : filter.getPeriodId().toString();
+
         return labels.stream().map(label -> {
             ProductEntity   p  = prodMap.get(label.getProductId());
             WarehouseEntity w  = whMap.get(label.getWarehouseId());
@@ -121,9 +125,16 @@ public class LabelReportService {
             }
             return new LabelListReportDTO(
                     label.getFolio(),
-                    p != null ? p.getCveArt()  : "", p != null ? p.getDescr()  : "", p != null ? p.getUniMed() : "",
-                    w != null ? w.getWarehouseKey() : "", w != null ? w.getNameWarehouse() : "",
-                    c1, c2, label.getEstado().name(), label.getEstado() == Label.State.CANCELADO);
+                    p != null ? p.getCveArt()  : "",
+                    p != null ? p.getDescr()  : "",
+                    p != null ? p.getUniMed() : "",
+                    w != null ? w.getWarehouseKey() : "",
+                    w != null ? w.getNameWarehouse() : "",
+                    c1, c2,
+                    label.getEstado().name(),
+                    label.getEstado() == Label.State.CANCELADO,
+                    filter.getPeriodId(),
+                    periodName);
         }).sorted(Comparator.comparing(LabelListReportDTO::getNumeroMarbete)).toList();
     }
 

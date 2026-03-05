@@ -12,7 +12,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.AuthenticatedUserService;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperReportPdfService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
 
@@ -31,8 +33,7 @@ public class LabelsController {
 
     private final LabelService labelService;
     private final AuthenticatedUserService authenticatedUserService;
-
-    /** Extrae el ID del usuario autenticado desde el token JWT. */
+    private final JasperReportPdfService jasperReportPdfService;
     private Long getUserIdFromToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return authenticatedUserService.getUserIdByEmail(email);
@@ -347,7 +348,85 @@ public class LabelsController {
         return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes_REIMPRESION");
     }
 
+    // ── PDFs de reportes ─────────────────────────────────────────────────
+
+    @PostMapping("/reports/distribution/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getDistributionReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<DistributionReportDTO> data = labelService.getDistributionReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateDistributionPdf(data), "distribucion_marbetes");
+    }
+
+    @PostMapping("/reports/list/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getLabelListReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<LabelListReportDTO> data = labelService.getLabelListReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateListPdf(data), "listado_marbetes");
+    }
+
+    @PostMapping("/reports/pending/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getPendingLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generatePendingPdf(data), "pendientes_marbetes");
+    }
+
+    @PostMapping("/reports/with-differences/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getDifferencesReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<DifferencesReportDTO> data = labelService.getDifferencesReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateDifferencesPdf(data), "diferencias_marbetes");
+    }
+
+    @PostMapping("/reports/cancelled/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getCancelledLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<CancelledLabelsReportDTO> data = labelService.getCancelledLabelsReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateCancelledPdf(data), "cancelados_marbetes");
+    }
+
+    @PostMapping("/reports/comparative/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getComparativeReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<ComparativeReportDTO> data = labelService.getComparativeReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateComparativePdf(data), "comparativo_marbetes");
+    }
+
+    @PostMapping("/reports/warehouse-detail/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getWarehouseDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_almacen_marbetes");
+    }
+
+    @PostMapping("/reports/product-detail/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getProductDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<ProductDetailReportDTO> data = labelService.getProductDetailReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateProductDetailPdf(data), "detalle_producto_marbetes");
+    }
+
     // ── Helper: construir ResponseEntity PDF ────────────────────────────
+    private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, String prefix) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String filename  = String.format("%s_%s.pdf", prefix, timestamp);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment().filename(filename).build());
+        headers.setContentLength(pdfBytes.length);
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
+    // ── Helper original (para impresión de marbetes con periodId y warehouseId) ─
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, Long periodId, Long warehouseId, String prefix) {
         String safePeriodId = String.valueOf(periodId).replaceAll("[^0-9]", "");
         String safeWarehouseId = String.valueOf(warehouseId).replaceAll("[^0-9]", "");
