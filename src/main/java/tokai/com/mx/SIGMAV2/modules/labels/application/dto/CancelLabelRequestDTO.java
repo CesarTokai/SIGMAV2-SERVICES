@@ -1,8 +1,6 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.deser.std.NumberDeserializers;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -20,7 +18,6 @@ import lombok.Data;
 public class CancelLabelRequestDTO {
 
     @NotNull(message = "El folio es obligatorio")
-    @JsonDeserialize(using = NumberDeserializers.LongDeserializer.class)
     private Long folio;
 
     // Opcionales: se obtienen del marbete si no se proporcionan
