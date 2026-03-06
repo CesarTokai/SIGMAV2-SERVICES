@@ -143,9 +143,10 @@ public class LabelReportService {
         log.info("Reporte pendientes: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
         validateAccess(userId, filter.getWarehouseId(), userRole);
 
+        // Traer TODOS los marbetes (cancelados y no cancelados)
         List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+                ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
+                : jpaLabelRepository.findByPeriodId(filter.getPeriodId());
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -158,15 +159,21 @@ public class LabelReportService {
                 if (e.getCountNumber() == 1) c1 = e.getCountedValue();
                 if (e.getCountNumber() == 2) c2 = e.getCountedValue();
             }
-            // Pendiente = falta C1 o falta C2
-            if (c1 == null || c2 == null) {
+
+            // Incluir:
+            // 1. Todos los marbetes CANCELADOS
+            // 2. Marbetes NO CANCELADOS que falten conteos (C1 o C2)
+            boolean estaCancelado = label.getEstado() == Label.State.CANCELADO;
+            boolean faltanConteos = c1 == null || c2 == null;
+
+            if (estaCancelado || faltanConteos) {
                 ProductEntity   p = prodMap.get(label.getProductId());
                 WarehouseEntity w = whMap.get(label.getWarehouseId());
                 result.add(new PendingLabelsReportDTO(
                         label.getFolio(),
                         p != null ? p.getCveArt()  : "", p != null ? p.getDescr()  : "", p != null ? p.getUniMed() : "",
                         w != null ? w.getWarehouseKey() : "", w != null ? w.getNameWarehouse() : "",
-                        c1, c2, label.getEstado().name()));
+                        c1, c2, label.getEstado().name(), estaCancelado));
             }
         }
         result.sort(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete));

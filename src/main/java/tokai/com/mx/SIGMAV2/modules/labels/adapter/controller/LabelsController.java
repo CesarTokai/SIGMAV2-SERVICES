@@ -368,10 +368,36 @@ public class LabelsController {
 
     @PostMapping("/reports/pending/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getPendingLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
-        List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
-        return buildPdfResponse(jasperReportPdfService.generatePendingPdf(data), "pendientes_marbetes");
+    public ResponseEntity<?> getPendingLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        try {
+            Long userId = getUserIdFromToken();
+            String userRole = getUserRoleFromToken();
+            log.info("📋 Generando PDF pendientes — periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
+
+            List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
+            log.info("✅ Se consultaron {} registros pendientes", data.size());
+
+            byte[] pdfBytes = jasperReportPdfService.generatePendingPdf(data);
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.error("❌ El PDF generado está vacío");
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Error: El PDF generado está vacío. Verifique que existan marbetes pendientes."
+                ));
+            }
+
+            log.info("✅ PDF generado exitosamente: {} bytes", pdfBytes.length);
+            return buildPdfResponse(pdfBytes, "pendientes_marbetes");
+
+        } catch (Exception e) {
+            log.error("❌ Error generando PDF de pendientes: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "error", "Error interno del servidor",
+                "message", "Error al generar PDF: " + e.getMessage()
+            ));
+        }
     }
 
     @PostMapping("/reports/with-differences/pdf")

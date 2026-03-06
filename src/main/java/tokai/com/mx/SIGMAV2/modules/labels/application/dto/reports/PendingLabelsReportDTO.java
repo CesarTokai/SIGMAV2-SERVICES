@@ -22,6 +22,7 @@ public class PendingLabelsReportDTO {
     private String nombreAlmacen;
     private BigDecimal conteo1;
     private BigDecimal conteo2;
-    private String estado;
+    private String estado;           // "GENERADO", "IMPRESO", "CANCELADO"
+    private Boolean cancelado;       // true si está cancelado
 }
 
