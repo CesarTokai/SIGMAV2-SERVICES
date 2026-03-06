@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * DTO para el reporte de Marbetes Cancelados.
@@ -24,7 +23,7 @@ public class CancelledLabelsReportDTO {
     private BigDecimal conteo1;
     private BigDecimal conteo2;
     private String motivoCancelacion;
-    private LocalDateTime canceladoAt;
+    private String canceladoAt;
     private String canceladoPor;
 }
 

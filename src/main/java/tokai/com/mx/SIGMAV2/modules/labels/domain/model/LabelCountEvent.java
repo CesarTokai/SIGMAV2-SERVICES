@@ -24,7 +24,7 @@ public class LabelCountEvent {
     @Column(name = "count_number", nullable = false)
     private Integer countNumber;
 
-    @Column(name = "counted_value", nullable = false)
+    @Column(name = "counted_value", nullable = false, precision = 18, scale = 4)
     private java.math.BigDecimal countedValue;
 
     @Enumerated(EnumType.STRING)
@@ -41,7 +41,7 @@ public class LabelCountEvent {
      * Valor previo antes de la última edición (updateCountC1 / updateCountC2).
      * Null si el conteo nunca fue modificado después de registrarse.
      */
-    @Column(name = "previous_value", precision = 14, scale = 4)
+    @Column(name = "previous_value", precision = 18, scale = 4)
     private java.math.BigDecimal previousValue;
 
     /** Timestamp de la última modificación por updateCountC1/C2. */

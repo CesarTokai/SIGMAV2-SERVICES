@@ -190,6 +190,7 @@ public class LabelReportService {
         log.info("Reporte diferencias: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
         validateAccess(userId, filter.getWarehouseId(), userRole);
 
+        // ── 1. Marbetes activos (no cancelados) con diferencia ──────────
         List<Label> labels = filter.getWarehouseId() != null
                 ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
                 : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
@@ -217,6 +218,40 @@ public class LabelReportService {
                         c1, c2, c1.subtract(c2).abs(), label.getEstado().name()));
             }
         }
+
+        // ── 2. Marbetes CANCELADOS que tenían diferencia entre C1 y C2 ──
+        List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null
+                ? jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(
+                        filter.getPeriodId(), filter.getWarehouseId(), false)
+                : jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false);
+
+        if (!cancelledLabels.isEmpty()) {
+            Set<Long> cancelledProdIds = cancelledLabels.stream()
+                    .map(LabelCancelled::getProductId).collect(Collectors.toSet());
+            Set<Long> cancelledWhIds = cancelledLabels.stream()
+                    .map(LabelCancelled::getWarehouseId).collect(Collectors.toSet());
+
+            Map<Long, ProductEntity> cancelledProdMap = productRepository.findAllByIdIn(cancelledProdIds).stream()
+                    .collect(Collectors.toMap(ProductEntity::getIdProduct, Function.identity()));
+            Map<Long, WarehouseEntity> cancelledWhMap = warehouseRepository.findAllByIdIn(cancelledWhIds).stream()
+                    .collect(Collectors.toMap(WarehouseEntity::getIdWarehouse, Function.identity()));
+
+            for (LabelCancelled lc : cancelledLabels) {
+                BigDecimal c1 = lc.getConteo1AlCancelar();
+                BigDecimal c2 = lc.getConteo2AlCancelar();
+                // Solo incluir si ambos conteos existen y son distintos
+                if (c1 != null && c2 != null && c1.compareTo(c2) != 0) {
+                    ProductEntity   p = cancelledProdMap.get(lc.getProductId());
+                    WarehouseEntity w = cancelledWhMap.get(lc.getWarehouseId());
+                    result.add(new DifferencesReportDTO(
+                            lc.getFolio(),
+                            p != null ? p.getCveArt()  : "", p != null ? p.getDescr()  : "", p != null ? p.getUniMed() : "",
+                            w != null ? w.getWarehouseKey() : "", w != null ? w.getNameWarehouse() : "",
+                            c1, c2, c1.subtract(c2).abs(), "CANCELADO"));
+                }
+            }
+        }
+
         result.sort(Comparator.comparing(DifferencesReportDTO::getNumeroMarbete));
         return result;
     }
@@ -250,7 +285,8 @@ public class LabelReportService {
                     p != null ? p.getCveArt()  : "", p != null ? p.getDescr()  : "", p != null ? p.getUniMed() : "",
                     w != null ? w.getWarehouseKey() : "", w != null ? w.getNameWarehouse() : "",
                     c.getConteo1AlCancelar(), c.getConteo2AlCancelar(),
-                    c.getMotivoCancelacion(), c.getCanceladoAt(),
+                    c.getMotivoCancelacion(),
+                    c.getCanceladoAt() != null ? c.getCanceladoAt().toString() : "",
                     userEmailMap.getOrDefault(c.getCanceladoBy(), "Usuario " + c.getCanceladoBy()));
         }).sorted(Comparator.comparing(CancelledLabelsReportDTO::getNumeroMarbete)).toList();
     }
