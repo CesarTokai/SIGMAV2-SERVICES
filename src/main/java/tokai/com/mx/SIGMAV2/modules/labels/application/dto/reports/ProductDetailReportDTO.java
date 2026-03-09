@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 /**
  * DTO para el reporte de Producto con Detalle.
- * Desglose de inventario físico por producto con totales.
+ * Desglose de inventario físico por producto, agrupado por producto → almacén → marbete.
  */
 @Data
 @NoArgsConstructor
@@ -22,8 +22,12 @@ public class ProductDetailReportDTO {
     private Long numeroMarbete;
     private BigDecimal existencias;
     private BigDecimal total;
-    /** "C2", "C1" o "SIN_CONTEO" — de qué conteo proviene el valor de existencias. */
+    /** "C2", "C1", "SIN_CONTEO" o "CANCELADO" — de qué conteo proviene el valor de existencias. */
     private String fuenteConteo;
+    /** Estado del marbete: "GENERADO", "IMPRESO" o "CANCELADO". */
+    private String estado;
+    /** true si el marbete está cancelado. */
+    private Boolean cancelado;
 }
 
 

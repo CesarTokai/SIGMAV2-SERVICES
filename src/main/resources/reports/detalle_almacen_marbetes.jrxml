@@ -1,0 +1,309 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+              http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="detalle_almacen_marbetes"
+              pageWidth="842" pageHeight="595" orientation="Landscape"
+              columnWidth="802" leftMargin="20" rightMargin="20"
+              topMargin="20" bottomMargin="20"
+              whenNoDataType="NoPages"
+              uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567801">
+
+    <style name="Table_CH" mode="Opaque" backcolor="#BFE1FF"/>
+    <style name="Table_TD" mode="Opaque" backcolor="#FFFFFF"/>
+
+    <parameter name="periodId"    class="java.lang.Integer"/>
+    <parameter name="warehouseId" class="java.lang.Integer"/>
+    <parameter name="fecha"       class="java.lang.String">
+        <defaultValueExpression><![CDATA["Sin fecha"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="REPORT_DIR"  class="java.lang.String">
+        <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+    </parameter>
+    <parameter name="usuario"     class="java.lang.String">
+        <defaultValueExpression><![CDATA["Sistema"]]></defaultValueExpression>
+    </parameter>
+
+    <field name="claveAlmacen"        class="java.lang.String"/>
+    <field name="nombreAlmacen"       class="java.lang.String"/>
+    <field name="claveProducto"       class="java.lang.String"/>
+    <field name="descripcionProducto" class="java.lang.String"/>
+    <field name="unidad"              class="java.lang.String"/>
+    <field name="numeroMarbete"       class="java.lang.Long"/>
+    <field name="cantidad"            class="java.math.BigDecimal"/>
+    <field name="cancelado"           class="java.lang.Boolean"/>
+    <field name="estado"              class="java.lang.String"/>
+    <field name="fuenteConteo"        class="java.lang.String"/>
+
+    <variable name="totalCancelados" class="java.lang.Integer" calculation="Sum">
+        <variableExpression><![CDATA[$F{cancelado} != null && $F{cancelado} ? 1 : 0]]></variableExpression>
+    </variable>
+
+    <group name="grupoProducto">
+        <groupExpression><![CDATA[$F{claveAlmacen} + "|" + $F{claveProducto}]]></groupExpression>
+    </group>
+
+    <title>
+        <band height="90" splitType="Stretch">
+            <image scaleImage="RetainShape" hAlign="Left" onErrorType="Blank">
+                <reportElement x="0" y="0" width="120" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567810"/>
+                <imageExpression><![CDATA[$P{REPORT_DIR} + "Logo.png"]]></imageExpression>
+            </image>
+            <staticText>
+                <reportElement x="241" y="2" width="320" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567811"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TOKAI de Mexico S.A. de C.V.]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="241" y="22" width="320" height="16" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567812"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="11"/>
+                </textElement>
+                <text><![CDATA[Inventario fisico por almacen con detalle]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="241" y="40" width="320" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567813"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{fecha}]]></textFieldExpression>
+            </textField>
+            <image scaleImage="RetainShape" hAlign="Right" onErrorType="Blank">
+                <reportElement x="682" y="0" width="120" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567814"/>
+                <imageExpression><![CDATA[$P{REPORT_DIR} + "logo_tokai.png"]]></imageExpression>
+            </image>
+            <line>
+                <reportElement x="0" y="88" width="802" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567815"/>
+            </line>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="20" splitType="Stretch">
+            <staticText>
+                <reportElement style="Table_CH" x="0" y="0" width="45" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567816"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Almacen]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="45" y="0" width="85" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567817"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Producto]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="130" y="0" width="220" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567818"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Descripcion]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="350" y="0" width="50" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567819"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Unidad]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="400" y="0" width="80" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567820"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[No.Marbete]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="480" y="0" width="130" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567821"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Cantidad]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="610" y="0" width="192" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567822"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Estado]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="14" splitType="Stretch">
+
+            <!-- ALMACEN: solo primera fila del grupo producto-almacen -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="0" y="0" width="45" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567830">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{claveAlmacen} != null ? $F{claveAlmacen} : ""]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Table_TD" x="0" y="0" width="45" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567831">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} != 1]]></printWhenExpression>
+                </reportElement>
+                <text><![CDATA[]]></text>
+            </staticText>
+
+            <!-- PRODUCTO: solo primera fila del grupo -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="45" y="0" width="85" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567832">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{claveProducto} != null ? $F{claveProducto} : ""]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Table_TD" x="45" y="0" width="85" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567833">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} != 1]]></printWhenExpression>
+                </reportElement>
+                <text><![CDATA[]]></text>
+            </staticText>
+
+            <!-- DESCRIPCION: solo primera fila del grupo -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="130" y="0" width="220" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567834">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="Arial" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descripcionProducto} != null ? $F{descripcionProducto} : ""]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Table_TD" x="130" y="0" width="220" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567835">
+                    <printWhenExpression><![CDATA[$V{grupoProducto_COUNT} != 1]]></printWhenExpression>
+                </reportElement>
+                <text><![CDATA[]]></text>
+            </staticText>
+
+            <!-- UNIDAD: siempre -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="350" y="0" width="50" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567836"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{unidad} != null ? $F{unidad} : ""]]></textFieldExpression>
+            </textField>
+
+            <!-- NO. MARBETE: siempre -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="400" y="0" width="80" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567837"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{numeroMarbete} != null ? $F{numeroMarbete}.toString() : ""]]></textFieldExpression>
+            </textField>
+
+            <!-- CANTIDAD: siempre. BigDecimal comparado con compareTo -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="480" y="0" width="130" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567838"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{cantidad} == null
+                    ? "0.00"
+                    : new java.text.DecimalFormat("#,##0.00").format($F{cantidad})]]></textFieldExpression>
+            </textField>
+
+            <!-- ESTADO CANCELADO -->
+            <textField isBlankWhenNull="true">
+                <reportElement style="Table_TD" x="610" y="0" width="192" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567839">
+                    <printWhenExpression><![CDATA[$F{cancelado} != null && $F{cancelado}]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["CANCELADO"]]></textFieldExpression>
+            </textField>
+
+            <!-- ESTADO vacio cuando NO es cancelado -->
+            <staticText>
+                <reportElement style="Table_TD" x="610" y="0" width="192" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef123456783a">
+                    <printWhenExpression><![CDATA[$F{cancelado} == null || !$F{cancelado}]]></printWhenExpression>
+                </reportElement>
+                <text><![CDATA[]]></text>
+            </staticText>
+
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="0" width="802" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567840"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="4" width="200" height="13" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567841"/>
+                <textElement>
+                    <font fontName="Arial" size="7" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[SIGMAV2 - Sistema de Inventarios]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="570" y="4" width="130" height="13" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567842"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Usuario: " + $P{usuario}]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement x="700" y="4" width="102" height="13" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567843"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Pag. " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="30" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="0" width="802" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567850"/>
+            </line>
+            <staticText>
+                <reportElement x="400" y="5" width="170" height="12" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567851"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Total de marbetes:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="570" y="5" width="80" height="12" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567852"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="400" y="17" width="170" height="12" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567853"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Total cancelados:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="570" y="17" width="80" height="12" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567854"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{totalCancelados}]]></textFieldExpression>
+            </textField>
+        </band>
+    </summary>
+
+</jasperReport>
+

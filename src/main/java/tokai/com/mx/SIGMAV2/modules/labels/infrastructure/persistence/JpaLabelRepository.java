@@ -35,6 +35,10 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     List<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
 
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId IN :warehouseIds ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findByPeriodIdAndWarehouseIdIn(@Param("periodId") Long periodId,
+                                                @Param("warehouseIds") Collection<Long> warehouseIds);
+
     List<Label> findByPeriodIdAndEstado(Long periodId, Label.State estado);
 
     List<Label> findByPeriodIdAndWarehouseIdAndEstado(Long periodId, Long warehouseId, Label.State estado);

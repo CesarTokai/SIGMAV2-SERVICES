@@ -432,6 +432,22 @@ public class LabelsController {
         return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_almacen_marbetes");
     }
 
+    /**
+     * Reporte de inventario físico por almacén con detalle — TODOS los almacenes.
+     * Solo requiere el periodo; se consultan todos los almacenes accesibles por el usuario.
+     */
+    @PostMapping("/reports/warehouse-detail/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> getAllWarehousesDetailReportPdf(
+            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null); // null = todos los almacenes
+        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_todos_almacenes_marbetes");
+    }
+
     @PostMapping("/reports/product-detail/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<byte[]> getProductDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {

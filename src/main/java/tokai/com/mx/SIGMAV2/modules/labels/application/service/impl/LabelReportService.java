@@ -371,17 +371,31 @@ public class LabelReportService {
 
     /**
      * Reporte almacén-detalle.
+     * Incluye TODOS los marbetes: generados, impresos y cancelados.
+     * Los cancelados aparecen con estado "CANCELADO" y cantidad 0.
      * CORRECCIÓN: fuenteConteo explícito — "C2", "C1" o "SIN_CONTEO".
-     * El frontend puede mostrar advertencia cuando no hay C2.
      */
     @Transactional(readOnly = true)
     public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte almacén-detalle: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
         validateAccess(userId, filter.getWarehouseId(), userRole);
 
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+        // Se traen TODOS los marbetes (incluidos cancelados) para mostrar el inventario completo
+        // Si no se especifica almacén, se filtran por los almacenes accesibles al usuario
+        List<Label> labels;
+        if (filter.getWarehouseId() != null) {
+            labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId());
+        } else {
+            List<Long> accessibleWarehouses = warehouseAccessService.getAccessibleWarehouses(userId, userRole);
+            if (accessibleWarehouses == null) {
+                // Acceso total (ADMINISTRADOR / AUXILIAR)
+                labels = jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            } else {
+                labels = accessibleWarehouses.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findByPeriodIdAndWarehouseIdIn(filter.getPeriodId(), accessibleWarehouses);
+            }
+        }
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -391,17 +405,24 @@ public class LabelReportService {
             ProductEntity   p       = prodMap.get(label.getProductId());
             WarehouseEntity w       = whMap.get(label.getWarehouseId());
             BigDecimal      cantidad = BigDecimal.ZERO;
-            String          fuente  = "SIN_CONTEO";
+           String          fuente;
+            boolean         esCancelado = label.getEstado() == Label.State.CANCELADO;
 
-            for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
-                if (e.getCountNumber() == 2) {
-                    cantidad = e.getCountedValue();
-                    fuente   = "C2";
-                    break;
-                } else if (e.getCountNumber() == 1) {
-                    // fallback C1 — se marca explícitamente
-                    cantidad = e.getCountedValue();
-                    fuente   = "C1";
+            if (esCancelado) {
+                // Marbetes cancelados: cantidad 0, fuente indica cancelación
+                fuente = "CANCELADO";
+            } else {
+                fuente = "SIN_CONTEO";
+                for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
+                    if (e.getCountNumber() == 2) {
+                        cantidad = e.getCountedValue();
+                        fuente   = "C2";
+                        break;
+                    } else if (e.getCountNumber() == 1) {
+                        // fallback C1 — se marca explícitamente
+                        cantidad = e.getCountedValue();
+                        fuente   = "C1";
+                    }
                 }
             }
             return new WarehouseDetailReportDTO(
@@ -411,7 +432,7 @@ public class LabelReportService {
                     p != null ? p.getDescr()         : "",
                     p != null ? p.getUniMed()        : "",
                     label.getFolio(), cantidad, label.getEstado().name(),
-                    label.getEstado() == Label.State.CANCELADO, fuente);
+                    esCancelado, fuente);
         }).sorted(Comparator.comparing(WarehouseDetailReportDTO::getClaveAlmacen)
                 .thenComparing(WarehouseDetailReportDTO::getClaveProducto)
                 .thenComparing(WarehouseDetailReportDTO::getNumeroMarbete))
@@ -420,27 +441,40 @@ public class LabelReportService {
 
     /**
      * Reporte producto-detalle.
-     * CORRECCIÓN:
-     *  - N+1 eliminado con batchLoadProducts / batchLoadWarehouses.
-     *  - fuenteConteo explícito por marbete.
-     *  - Total solo suma C2 (consistencia con reporte comparativo).
+     * Incluye TODOS los marbetes: generados, impresos y cancelados.
+     * Los cancelados aparecen con estado "CANCELADO" y cantidad 0.
+     * Ordenado por: producto → almacén → número de marbete.
      */
     @Transactional(readOnly = true)
     public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte producto-detalle: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
         validateAccess(userId, filter.getWarehouseId(), userRole);
 
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+        // Se traen TODOS los marbetes (incluidos cancelados) para mostrar inventario completo
+        // Si no se especifica almacén, se filtran por los almacenes accesibles al usuario
+        List<Label> labels;
+        if (filter.getWarehouseId() != null) {
+            labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId());
+        } else {
+            List<Long> accessibleWarehouses = warehouseAccessService.getAccessibleWarehouses(userId, userRole);
+            if (accessibleWarehouses == null) {
+                // Acceso total (ADMINISTRADOR / AUXILIAR)
+                labels = jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+            } else {
+                labels = accessibleWarehouses.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findByPeriodIdAndWarehouseIdIn(filter.getPeriodId(), accessibleWarehouses);
+            }
+        }
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
         Map<Long, WarehouseEntity>       whMap     = batchLoadWarehouses(labels);
 
-        // Calcular totales por producto sumando SOLO C2 (mismo criterio que comparativo)
+        // Calcular totales por producto sumando SOLO C2 de marbetes NO cancelados
         Map<Long, BigDecimal> totalsByProduct = new HashMap<>();
         for (Label label : labels) {
+            if (label.getEstado() == Label.State.CANCELADO) continue;
             for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
                 if (e.getCountNumber() == 2) {
                     totalsByProduct.merge(label.getProductId(), e.getCountedValue(), BigDecimal::add);
@@ -450,16 +484,21 @@ public class LabelReportService {
         }
 
         return labels.stream().map(label -> {
-            ProductEntity   p        = prodMap.get(label.getProductId());
-            WarehouseEntity w        = whMap.get(label.getWarehouseId());
-            BigDecimal      cantidad = BigDecimal.ZERO;
-            String          fuente   = "SIN_CONTEO";
+            ProductEntity   p           = prodMap.get(label.getProductId());
+            WarehouseEntity w           = whMap.get(label.getWarehouseId());
+            BigDecimal      cantidad    = BigDecimal.ZERO;
+            String          fuente      = "SIN_CONTEO";
+            boolean         esCancelado = label.getEstado() == Label.State.CANCELADO;
 
-            for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
-                if (e.getCountNumber() == 2) {
-                    cantidad = e.getCountedValue(); fuente = "C2"; break;
-                } else if (e.getCountNumber() == 1) {
-                    cantidad = e.getCountedValue(); fuente = "C1";
+            if (esCancelado) {
+                fuente = "CANCELADO";
+            } else {
+                for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
+                    if (e.getCountNumber() == 2) {
+                        cantidad = e.getCountedValue(); fuente = "C2"; break;
+                    } else if (e.getCountNumber() == 1) {
+                        cantidad = e.getCountedValue(); fuente = "C1";
+                    }
                 }
             }
             return new ProductDetailReportDTO(
@@ -470,7 +509,7 @@ public class LabelReportService {
                     w != null ? w.getNameWarehouse() : "Almacén " + label.getWarehouseId(),
                     label.getFolio(), cantidad,
                     totalsByProduct.getOrDefault(label.getProductId(), BigDecimal.ZERO),
-                    fuente);
+                    fuente, label.getEstado().name(), esCancelado);
         }).sorted(Comparator.comparing(ProductDetailReportDTO::getClaveProducto)
                 .thenComparing(ProductDetailReportDTO::getClaveAlmacen)
                 .thenComparing(ProductDetailReportDTO::getNumeroMarbete))

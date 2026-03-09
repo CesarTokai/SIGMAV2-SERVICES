@@ -41,7 +41,7 @@
                 <textElement textAlignment="Center">
                     <font fontName="Arial" size="13" isBold="false"/>
                 </textElement>
-                <text><![CDATA[Comparativo de Existencias]]></text>
+                <text><![CDATA[Diferencia fisica contra Teorica]]></text>
             </staticText>
             <staticText>
                 <reportElement x="147" y="44" width="50" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567805"/>
@@ -218,7 +218,7 @@
                     <font fontName="Arial" size="10" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Total productos:]]></text>
-            </staticText>d
+            </staticText>
             <textField>
                 <reportElement x="450" y="6" width="85" height="18" uuid="d6e7f8a9-b0c1-2345-9012-456789012345"/>
                 <textElement textAlignment="Center">
