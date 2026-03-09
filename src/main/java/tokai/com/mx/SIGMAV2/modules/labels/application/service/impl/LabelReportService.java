@@ -560,14 +560,27 @@ public class LabelReportService {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            writer.write("CLAVE_PRODUCTO\tDESCRIPCION\tEXISTENCIAS");
-            writer.newLine();
-            writer.write("========================================");
+            // Calcular anchos máximos dinámicamente
+            int anchoClave = lista.stream()
+                    .mapToInt(p -> p.getClaveProducto() != null ? p.getClaveProducto().length() : 0)
+                    .max().orElse(15);
+            anchoClave = Math.max(anchoClave, "CLAVE_PRODUCTO".length()) + 2;
+
+            int anchoDesc = lista.stream()
+                    .mapToInt(p -> p.getDescripcion() != null ? p.getDescripcion().length() : 0)
+                    .max().orElse(30);
+            anchoDesc = Math.max(anchoDesc, "DESCRIPCION".length()) + 2;
+
+
+            String formatoHeader = "%-" + anchoClave + "s%-" + anchoDesc + "s%s";
+            String formatoDato   = "%-" + anchoClave + "s%-" + anchoDesc + "s%s";
+
+            writer.write(String.format(formatoHeader, "CLAVE_PRODUCTO", "DESCRIPCION", "EXISTENCIAS"));
             writer.newLine();
             for (ProductExistencias prod : lista) {
-                writer.write(String.format("%s\t%s\t%s",
-                        prod.getClaveProducto(),
-                        prod.getDescripcion(),
+                writer.write(String.format(formatoDato,
+                        prod.getClaveProducto() != null ? prod.getClaveProducto() : "",
+                        prod.getDescripcion()   != null ? prod.getDescripcion()   : "",
                         prod.getExistencias().stripTrailingZeros().toPlainString()));
                 writer.newLine();
             }
