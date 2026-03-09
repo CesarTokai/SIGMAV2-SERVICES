@@ -32,48 +32,31 @@
 
     <!-- ═══════════════ TITULO ═══════════════ -->
     <title>
-        <band height="80" splitType="Stretch">
-            <!-- Logo izquierdo (SIGMA) -->
-            <image scaleImage="RetainShape" hAlign="Left">
-                <reportElement x="0" y="0" width="130" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567801"/>
+        <band height="90" splitType="Stretch">
+            <image scaleImage="RetainShape" hAlign="Left" onErrorType="Blank">
+                <reportElement x="0" y="0" width="110" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567801"/>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "Logo.png"]]></imageExpression>
             </image>
-            <!-- Título empresa -->
             <staticText>
-                <reportElement x="155" y="2" width="240" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567802"/>
+                <reportElement x="110" y="2" width="335" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567803"/>
                 <textElement textAlignment="Center">
-                    <font fontName="Arial" size="14" isBold="true"/>
-                </textElement>
-                <text><![CDATA[TOKAI de México S.A. DE C.V.]]></text>
-            </staticText>
-            <!-- Título reporte -->
-            <staticText>
-                <reportElement x="155" y="24" width="240" height="18" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567803"/>
-                <textElement textAlignment="Center">
-                    <font fontName="Arial" size="13" isBold="false"/>
+                    <font fontName="Arial" size="11"/>
                 </textElement>
                 <text><![CDATA[Distribución de Marbetes]]></text>
             </staticText>
-            <!-- Etiqueta Fecha -->
-            <staticText>
-                <reportElement x="155" y="44" width="50" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567804"/>
-                <textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
-                <text><![CDATA[Fecha:]]></text>
-            </staticText>
-            <!-- Valor Fecha -->
             <textField>
-                <reportElement x="207" y="44" width="130" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567805"/>
-                <textElement><font fontName="Arial" size="10"/></textElement>
+                <reportElement x="110" y="22" width="335" height="14" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567805"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="9"/>
+                </textElement>
                 <textFieldExpression><![CDATA[$P{fecha}]]></textFieldExpression>
             </textField>
-            <!-- Logo derecho (Tokai) -->
-            <image scaleImage="RetainShape" hAlign="Right">
-                <reportElement x="425" y="0" width="130" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567806"/>
+            <image scaleImage="RetainShape" hAlign="Right" onErrorType="Blank">
+                <reportElement x="445" y="0" width="110" height="40" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567806"/>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "logo_tokai.png"]]></imageExpression>
             </image>
-            <!-- Línea separadora -->
             <line>
-                <reportElement x="0" y="70" width="555" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567807"/>
+                <reportElement x="0" y="88" width="555" height="1" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567807"/>
             </line>
         </band>
     </title>

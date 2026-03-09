@@ -352,83 +352,64 @@ public class LabelsController {
 
     @PostMapping("/reports/distribution/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getDistributionReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getDistributionReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<DistributionReportDTO> data = labelService.getDistributionReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("distribución", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateDistributionPdf(data), "distribucion_marbetes");
     }
 
     @PostMapping("/reports/list/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getLabelListReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getLabelListReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<LabelListReportDTO> data = labelService.getLabelListReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("listado de marbetes", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateListPdf(data), "listado_marbetes");
     }
 
     @PostMapping("/reports/pending/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<?> getPendingLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
-        try {
-            Long userId = getUserIdFromToken();
-            String userRole = getUserRoleFromToken();
-            log.info("📋 Generando PDF pendientes — periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-
-            List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
-            log.info("✅ Se consultaron {} registros pendientes", data.size());
-
-            byte[] pdfBytes = jasperReportPdfService.generatePendingPdf(data);
-
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.error("❌ El PDF generado está vacío");
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Error: El PDF generado está vacío. Verifique que existan marbetes pendientes."
-                ));
-            }
-
-            log.info("✅ PDF generado exitosamente: {} bytes", pdfBytes.length);
-            return buildPdfResponse(pdfBytes, "pendientes_marbetes");
-
-        } catch (Exception e) {
-            log.error("❌ Error generando PDF de pendientes: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "error", "Error interno del servidor",
-                "message", "Error al generar PDF: " + e.getMessage()
-            ));
-        }
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("marbetes pendientes", filter.getPeriodId(), filter.getWarehouseId());
+        return buildPdfResponse(jasperReportPdfService.generatePendingPdf(data), "pendientes_marbetes");
     }
 
     @PostMapping("/reports/with-differences/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getDifferencesReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getDifferencesReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<DifferencesReportDTO> data = labelService.getDifferencesReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("marbetes con diferencias", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateDifferencesPdf(data), "diferencias_marbetes");
     }
 
     @PostMapping("/reports/cancelled/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getCancelledLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getCancelledLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<CancelledLabelsReportDTO> data = labelService.getCancelledLabelsReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("marbetes cancelados", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateCancelledPdf(data), "cancelados_marbetes");
     }
 
     @PostMapping("/reports/comparative/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getComparativeReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getComparativeReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<ComparativeReportDTO> data = labelService.getComparativeReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("comparativo de inventario", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateComparativePdf(data), "comparativo_marbetes");
     }
 
     @PostMapping("/reports/warehouse-detail/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getWarehouseDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getWarehouseDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle por almacén", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_almacen_marbetes");
     }
 
@@ -438,22 +419,36 @@ public class LabelsController {
      */
     @PostMapping("/reports/warehouse-detail/all/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getAllWarehousesDetailReportPdf(
+    public ResponseEntity<?> getAllWarehousesDetailReportPdf(
             @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.AllWarehousesReportRequestDTO request) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         ReportFilterDTO filter = new ReportFilterDTO();
         filter.setPeriodId(request.getPeriodId());
-        filter.setWarehouseId(null); // null = todos los almacenes
+        filter.setWarehouseId(null);
         List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle de todos los almacenes", request.getPeriodId(), null);
         return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_todos_almacenes_marbetes");
     }
 
     @PostMapping("/reports/product-detail/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> getProductDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+    public ResponseEntity<?> getProductDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         List<ProductDetailReportDTO> data = labelService.getProductDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle por producto", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateProductDetailPdf(data), "detalle_producto_marbetes");
+    }
+
+    // ── Helper: sin datos ────────────────────────────────────────────────
+    private ResponseEntity<Map<String, Object>> noDataResponse(String reporte, Long periodId, Long warehouseId) {
+        String almacen = warehouseId != null ? "almacén " + warehouseId : "todos los almacenes";
+        log.warn("⚠️ Sin registros para reporte '{}' — periodo={}, almacén={}", reporte, periodId, warehouseId);
+        return ResponseEntity.status(404).body(Map.of(
+                "success", false,
+                "message", "No se encontraron registros de " + reporte + " para el periodo " + periodId + " en " + almacen + ".",
+                "periodId", periodId,
+                "warehouseId", warehouseId != null ? warehouseId : "todos"
+        ));
     }
 
     // ── Helper: construir ResponseEntity PDF ────────────────────────────

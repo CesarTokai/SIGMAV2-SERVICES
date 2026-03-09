@@ -28,77 +28,26 @@
 
     <title>
         <band height="90" splitType="Stretch">
-            <image scaleImage="RetainShape" hAlign="Left">
-                <reportElement x="0" y="0" width="130" height="40" uuid="c1000001-0000-0000-0000-000000000001"/>
+            <image scaleImage="RetainShape" hAlign="Left" onErrorType="Blank">
+                <reportElement x="0" y="0" width="110" height="40" uuid="c1000001-0000-0000-0000-000000000001"/>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "Logo.png"]]></imageExpression>
             </image>
-
             <staticText>
-                <reportElement x="155" y="2" width="240" height="20" uuid="c1000001-0000-0000-0000-000000000002"/>
+                <reportElement x="110" y="2" width="335" height="18" uuid="c1000001-0000-0000-0000-000000000003"/>
                 <textElement textAlignment="Center">
-                    <font fontName="Arial" size="14" isBold="true"/>
-                </textElement>
-                <text><![CDATA[TOKAI de México S.A. DE C.V.]]></text>
-            </staticText>
-
-            <staticText>
-                <reportElement x="155" y="24" width="240" height="18" uuid="c1000001-0000-0000-0000-000000000003"/>
-                <textElement textAlignment="Center">
-                    <font fontName="Arial" size="13" isBold="false"/>
+                    <font fontName="Arial" size="11"/>
                 </textElement>
                 <text><![CDATA[Marbetes Pendientes de Conteo]]></text>
             </staticText>
-
-            <staticText>
-                <reportElement x="155" y="44" width="50" height="14" uuid="c1000001-0000-0000-0000-000000000004"/>
-                <textElement>
-                    <font fontName="Arial" size="10" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Fecha:]]></text>
-            </staticText>
-
             <textField>
-                <reportElement x="205" y="44" width="130" height="14" uuid="c1000001-0000-0000-0000-000000000005"/>
-                <textElement>
-                    <font fontName="Arial" size="10"/>
+                <reportElement x="110" y="22" width="335" height="14" uuid="c1000001-0000-0000-0000-000000000005"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Arial" size="9"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$P{fecha}]]></textFieldExpression>
             </textField>
-
-            <staticText>
-                <reportElement x="155" y="60" width="60" height="14" uuid="c1000001-0000-0000-0000-000000000006"/>
-                <textElement>
-                    <font fontName="Arial" size="9" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Periodo:]]></text>
-            </staticText>
-
-            <textField>
-                <reportElement x="215" y="60" width="60" height="14" uuid="c1000001-0000-0000-0000-000000000007"/>
-                <textElement>
-                    <font fontName="Arial" size="9"/>
-                </textElement>
-                <textFieldExpression><![CDATA[$P{periodId} != null ? $P{periodId}.toString() : ""]]></textFieldExpression>
-            </textField>
-
-            <staticText>
-                <reportElement x="285" y="60" width="55" height="14" uuid="c1000001-0000-0000-0000-000000000008"/>
-                <textElement>
-                    <font fontName="Arial" size="9" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Almacén:]]></text>
-            </staticText>
-
-            <textField>
-                <reportElement x="340" y="60" width="100" height="14" uuid="c1000001-0000-0000-0000-000000000009"/>
-                <textElement>
-                    <font fontName="Arial" size="9"/>
-                </textElement>
-                <textFieldExpression><![CDATA[$P{warehouseId} == null ? "TODOS" : $P{warehouseId}.toString()]]></textFieldExpression>
-            </textField>
-
-            <image scaleImage="RetainShape" hAlign="Right">
-                <reportElement x="425" y="0" width="130" height="40" uuid="c1000001-0000-0000-0000-000000000010"/>
+            <image scaleImage="RetainShape" hAlign="Right" onErrorType="Blank">
+                <reportElement x="445" y="0" width="110" height="40" uuid="c1000001-0000-0000-0000-000000000010"/>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "logo_tokai.png"]]></imageExpression>
             </image>
 
