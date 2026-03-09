@@ -4,8 +4,8 @@
               xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
               http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
               name="listado_marbetes_diferencias"
-              pageWidth="842" pageHeight="595" orientation="Landscape"
-              columnWidth="802" leftMargin="20" rightMargin="20"
+              pageWidth="595" pageHeight="842"
+              columnWidth="555" leftMargin="20" rightMargin="20"
               topMargin="20" bottomMargin="20"
               whenNoDataType="NoPages"
               uuid="15ef138b-b12c-43b2-84ea-68c7e1fed7c6">
