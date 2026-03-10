@@ -243,13 +243,6 @@ SIGMAV2-SERVICES/
 | `multiwarehouse_existences` | Existencias importadas |
 | `inventory_stock` | Existencias optimizadas para consulta |
 | `request_recovery_password` | Solicitudes de recuperación de contraseña |
-
----
-
-## Versión
-
-Consulta el archivo [docs/RELEASE-NOTES-v1.0.0.md](docs/RELEASE-NOTES-v1.0.0.md) para el historial completo de cambios de la versión 1.0.0.
-
 ---
 
 *SIGMAV2 — Tokai de México — 2026*
