@@ -1,372 +1,175 @@
-# 📚 SIGMAV2 - Documentación Principal del Sistema
-
-**Sistema:** SIGMAV2 - Sistema de Inventarios y Gestión de Marbetes  
-**Última actualización:** 29 de Diciembre de 2025  
-**Estado:** ✅ 100% IMPLEMENTADO Y FUNCIONAL
-
----
-
-## 🚀 INICIO RÁPIDO
-
-### 🆕 NUEVO: Proceso Completo de Verificación Física y Teórica ⭐
-
-**¿Quieres entender TODO el flujo de trabajo?**
-
-👉 **Lee primero:** [FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md](./FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md)
-
-Este documento explica el proceso completo desde la importación de archivos Excel hasta la validación final del inventario, incluyendo:
-- ✅ Importación de inventario.xlsx y multialmacen.xlsx
-- ✅ Generación e impresión de marbetes
-- ✅ Registro de conteos físicos (C1 y C2)
-- ✅ Generación de reportes de diferencias
-- ✅ Correcciones físicas y actualización de conteos
-- ✅ Re-importación y validación iterativa
-- ✅ Cierre con cero diferencias
-
----
-
-## 📖 GUÍAS POR TIPO DE USUARIO
-
-### 👤 Para Nuevos Usuarios
-1. 📊 **[RESUMEN-VISUAL-PROCESO-COMPLETO.md](./RESUMEN-VISUAL-PROCESO-COMPLETO.md)** - Diagramas visuales del proceso
-2. 📋 **[FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md](./FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md)** - Proceso detallado paso a paso
-3. 📚 **[INDICE-DOCUMENTACION-COMPLETA.md](./INDICE-DOCUMENTACION-COMPLETA.md)** - Índice de todos los documentos
-
-### 👨‍💼 Para Gerentes y Administradores
-1. 🎯 **[RESUMEN-FINAL-TODAS-IMPLEMENTACIONES.md](./RESUMEN-FINAL-TODAS-IMPLEMENTACIONES.md)** - Resumen ejecutivo
-2. 📈 **[RESUMEN-COMPLETO-MODULO-MARBETES.md](./RESUMEN-COMPLETO-MODULO-MARBETES.md)** - Estado del módulo
-3. ✅ **[VERIFICACION-REGLAS-NEGOCIO-REPORTES.md](./VERIFICACION-REGLAS-NEGOCIO-REPORTES.md)** - Cumplimiento de reglas
-
-### 👨‍💻 Para Desarrolladores
-1. 🔧 **[GUIA-APIS-CONTEO-Y-REPORTES.md](./GUIA-APIS-CONTEO-Y-REPORTES.md)** - APIs principales
-2. 📦 **[IMPLEMENTACION-COMPLETA.md](./IMPLEMENTACION-COMPLETA.md)** - Implementación técnica
-3. 🧪 **[GUIA-PRUEBAS-APIS.md](./GUIA-PRUEBAS-APIS.md)** - Testing de APIs
-
-### 🏭 Para Personal de Almacén
-1. 📝 **[GUIA-USO-CATALOGO-INVENTARIO.md](./GUIA-USO-CATALOGO-INVENTARIO.md)** - Uso del catálogo
-2. 🏷️ **[EJEMPLOS-USO-API-IMPRESION.md](./EJEMPLOS-USO-API-IMPRESION.md)** - Cómo imprimir marbetes
-3. 📊 **[GUIA-PRUEBAS-REPORTES-MARBETES.md](./GUIA-PRUEBAS-REPORTES-MARBETES.md)** - Cómo generar reportes
-
----
-
-## 📂 DOCUMENTACIÓN POR MÓDULO
-
-### 🔄 Módulo: Importación de Archivos Excel
-- **[FORMATO-EXCEL-MULTIALMACEN.md](./FORMATO-EXCEL-MULTIALMACEN.md)** - Estructura de multialmacen.xlsx
-- **[RESUMEN-IMPLEMENTACION-INVENTARIO.md](./RESUMEN-IMPLEMENTACION-INVENTARIO.md)** - Importación de inventario.xlsx
-- **[ACTUALIZACION-INVENTORY-STOCK.md](./ACTUALIZACION-INVENTORY-STOCK.md)** - Sincronización automática
-- **[CORRECCION-MULTIALMACEN-REGLAS-NEGOCIO.md](./CORRECCION-MULTIALMACEN-REGLAS-NEGOCIO.md)** - Reglas de importación
-
-**Archivos requeridos:**
-```
-C:\Sistemas\SIGMA\Documentos\inventario.xlsx
-C:\Sistemas\SIGMA\Documentos\multialmacen.xlsx
-```
-
----
-
-### 🏷️ Módulo: Gestión de Marbetes
-- **[README-IMPRESION-AUTOMATICA.md](./README-IMPRESION-AUTOMATICA.md)** - Impresión automática (sin rangos)
-- **[API-SOLICITAR-FOLIOS.md](./API-SOLICITAR-FOLIOS.md)** - Solicitud de folios
-- **[IMPLEMENTACION-IMPRESION-MARBETES.md](./IMPLEMENTACION-IMPRESION-MARBETES.md)** - Impresión con JasperReports
-- **[MEJORA-IMPRESION-AUTOMATICA-MARBETES.md](./MEJORA-IMPRESION-AUTOMATICA-MARBETES.md)** - Mejoras implementadas
-
-**APIs principales:**
-```
-POST /api/sigmav2/labels/request      (Solicitar folios)
-POST /api/sigmav2/labels/generate     (Generar marbetes)
-POST /api/sigmav2/labels/print        (Imprimir - AUTOMÁTICO)
-```
-
----
-
-### 📝 Módulo: Conteos Físicos
-- **[GUIA-APIS-CONTEO-Y-REPORTES.md](./GUIA-APIS-CONTEO-Y-REPORTES.md)** - APIs de conteos
-- **[APIS-ACTUALIZAR-CONTEOS.md](./APIS-ACTUALIZAR-CONTEOS.md)** - Actualización de conteos
-- **[CAMBIO-ENDPOINT-FOR-COUNT-LIST.md](./CAMBIO-ENDPOINT-FOR-COUNT-LIST.md)** - Listado de marbetes
-
-**APIs principales:**
-```
-POST /api/sigmav2/labels/for-count/list    (Listar marbetes para conteo)
-POST /api/sigmav2/labels/counts/c1         (Registrar C1)
-POST /api/sigmav2/labels/counts/c2         (Registrar C2)
-PUT  /api/sigmav2/labels/counts/c1         (Actualizar C1)
-PUT  /api/sigmav2/labels/counts/c2         (Actualizar C2)
-```
-
----
-
-### 📊 Módulo: Reportes y Análisis
-- **[README-APIS-CANCELACION-REPORTES.md](./README-APIS-CANCELACION-REPORTES.md)** - APIs de reportes
-- **[VERIFICACION-REGLAS-NEGOCIO-REPORTES.md](./VERIFICACION-REGLAS-NEGOCIO-REPORTES.md)** - Reglas implementadas
-- **[GUIA-PRUEBAS-REPORTES-MARBETES.md](./GUIA-PRUEBAS-REPORTES-MARBETES.md)** - Guía de pruebas
-
-**8 Reportes disponibles:**
-```
-1. Distribución de Marbetes
-2. Listado Completo
-3. Marbetes Pendientes        ← Detecta conteos faltantes
-4. Marbetes con Diferencias   ← Detecta C1 ≠ C2
-5. Marbetes Cancelados
-6. Comparativo                ← Detecta Físico ≠ Teórico
-7. Almacén con Detalle
-8. Producto con Detalle
-```
-
----
-
-### ❌ Módulo: Cancelación de Marbetes
-- **[EXPLICACION-CANCELACION-MARBETES.md](./EXPLICACION-CANCELACION-MARBETES.md)** - ¿Qué pasa al cancelar?
-- **[ACLARACION-VALIDACION-CANCELACION.md](./ACLARACION-VALIDACION-CANCELACION.md)** - Validaciones
-- **[VALIDACION-CANCELACION-SIN-FOLIOS.md](./VALIDACION-CANCELACION-SIN-FOLIOS.md)** - Prevención de errores
-
-**API principal:**
-```
-POST /api/sigmav2/labels/cancel    (Cancelar marbete)
-```
-
-**Importante:** Los marbetes NO se eliminan, se mueven a `labels_cancelled` con auditoría completa.
-
----
-
-### 📦 Módulo: Catálogo de Inventario
-- **[IMPLEMENTACION-COMPLETA.md](./IMPLEMENTACION-COMPLETA.md)** - Implementación del catálogo
-- **[inventory-catalog-implementation.md](./inventory-catalog-implementation.md)** - Detalles técnicos
-- **[GUIA-USO-CATALOGO-INVENTARIO.md](./GUIA-USO-CATALOGO-INVENTARIO.md)** - Guía de usuario
-
-**URL de acceso:**
-```
-http://localhost:8080/inventory-catalog.html
-```
-
----
-
-## 🔧 SOLUCIÓN DE PROBLEMAS
-
-### 🚨 Problemas Comunes
-
-| Problema | Documento de Solución |
-|----------|----------------------|
-| Marbetes no se visualizan | [DIAGNOSTICO-MARBETES-NO-VISUALIZAN.md](./DIAGNOSTICO-MARBETES-NO-VISUALIZAN.md) |
-| Folios saltados | [SOLUCION-FOLIOS-SALTADOS-IMPLEMENTADA.md](./SOLUCION-FOLIOS-SALTADOS-IMPLEMENTADA.md) |
-| Error 403 en conteo C2 | [SOLUCION-ERROR-403-CONTEO-C2.md](./SOLUCION-ERROR-403-CONTEO-C2.md) |
-| C2 duplicado | [SOLUCION-ERROR-C2-DUPLICADO.md](./SOLUCION-ERROR-C2-DUPLICADO.md) |
-| Error JasperReports | [SOLUCION-ERROR-JASPERREPORTS.md](./SOLUCION-ERROR-JASPERREPORTS.md) |
-| Lista vacía en reportes | [SOLUCION-LISTA-VACIA.md](./SOLUCION-LISTA-VACIA.md) |
-
-**Diagnóstico general:**
-👉 **[GUIA-RAPIDA-DIAGNOSTICO-MARBETES.md](./GUIA-RAPIDA-DIAGNOSTICO-MARBETES.md)**
-
----
-
-## 📋 CHECKLISTS RÁPIDOS
-
-### ✅ Checklist: Proceso Completo de Inventario
-
-**Fase 1: Preparación**
-- [ ] Preparar inventario.xlsx
-- [ ] Preparar multialmacen.xlsx
-- [ ] Colocar archivos en C:\Sistemas\SIGMA\Documentos\
-- [ ] Crear periodo de inventario
-
-**Fase 2: Importación**
-- [ ] Importar inventario.xlsx
-- [ ] Importar multialmacen.xlsx
-- [ ] Verificar sincronización inventory_stock
-
-**Fase 3: Marbetes**
-- [ ] Solicitar folios
-- [ ] Generar marbetes
-- [ ] Imprimir marbetes (automático)
-- [ ] Distribuir marbetes impresos
-
-**Fase 4: Conteos**
-- [ ] Registrar todos los C1
-- [ ] Registrar todos los C2
-- [ ] Verificar marbetes pendientes (debe ser 0)
-
-**Fase 5: Reportes**
-- [ ] Generar reporte de diferencias C1≠C2
-- [ ] Generar reporte comparativo físico≠teórico
-- [ ] Revisar marbetes cancelados
-
-**Fase 6: Correcciones**
-- [ ] Verificar físicamente productos con diferencias
-- [ ] Actualizar conteos incorrectos
-- [ ] Cancelar marbetes con errores
-- [ ] Actualizar multialmacen.xlsx si es necesario
-- [ ] Re-importar archivos Excel
-
-**Fase 7: Validación Final**
-- [ ] Marbetes pendientes = 0
-- [ ] Diferencias C1≠C2 = 0
-- [ ] Diferencias físico≠teórico = 0
-- [ ] Generar archivo Existencias_{fecha}.txt
-- [ ] Cerrar periodo
-
-📖 **Detalles:** [FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md](./FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md)
-
----
-
-## 🎯 FUNCIONALIDADES PRINCIPALES
-
-### ✅ Sistema de Marbetes (100% Implementado)
-- ✅ Solicitud de folios
-- ✅ Generación automática de marbetes
-- ✅ Impresión automática (sin rangos manuales)
-- ✅ Registro de conteos C1 y C2
-- ✅ Actualización de conteos
-- ✅ Cancelación de marbetes (sin eliminación)
-- ✅ 8 tipos de reportes
-- ✅ Generación de archivo de existencias
-
-### ✅ Gestión de Inventario (100% Implementado)
-- ✅ Importación de catálogo (inventario.xlsx)
-- ✅ Importación de existencias (multialmacen.xlsx)
-- ✅ Sincronización automática inventory_stock
-- ✅ Catálogo de inventario con búsqueda
-- ✅ Paginación y ordenación
-- ✅ Filtros por periodo y almacén
-
-### ✅ Seguridad (100% Implementado)
-- ✅ Autenticación JWT
-- ✅ Control de acceso por roles
-- ✅ Validación de acceso a almacenes
-- ✅ Auditoría completa de operaciones
-- ✅ Revocación de tokens
-
----
-
-## 📊 ESTADÍSTICAS DEL PROYECTO
-
-```
-┌─────────────────────────────────────────────────────┐
-│           ESTADO DE IMPLEMENTACIÓN                  │
-├─────────────────────────────────────────────────────┤
-│ APIs REST implementadas: 26                         │
-│ DTOs creados: 32+                                   │
-│ Reportes disponibles: 8                             │
-│ Reglas de negocio: 55+                              │
-│ Documentos de ayuda: 90+                            │
-│ Scripts de prueba: 15+                              │
-│                                                     │
-│ Estado: ✅ 100% COMPLETADO                          │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔐 SEGURIDAD Y ROLES
-
-### Roles Implementados
-- **ADMINISTRADOR** - Acceso completo a todas las funcionalidades
-- **AUXILIAR** - Acceso completo excepto actualizar C2
-- **ALMACENISTA** - Solo sus almacenes asignados
-- **AUXILIAR_DE_CONTEO** - Solo conteos y reportes
-
-### Autenticación
-```http
-POST /api/sigmav2/auth/login
-Content-Type: application/json
-
-{
-  "email": "usuario@empresa.com",
-  "password": "password"
-}
-
-Response:
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": { ... }
-}
-```
-
-Usar token en todas las peticiones:
-```
-Authorization: Bearer {token}
-```
-
----
-
-## 🛠️ COMANDOS ÚTILES
-
-### Compilación
-```bash
-# Windows
-.\mvnw.cmd clean compile
-
-# Linux/Mac
-./mvnw clean compile
-```
-
-### Ejecución
-```bash
-# Windows
-.\mvnw.cmd spring-boot:run
-
-# Linux/Mac
-./mvnw spring-boot:run
-```
-
-### Testing
-```bash
-# Ejecutar tests
-.\mvnw.cmd test
-
-# Skip tests
-.\mvnw.cmd clean install -DskipTests
-```
-
-### Base de Datos
-```sql
--- Ver periodos disponibles
-SELECT * FROM period ORDER BY period DESC;
-
--- Ver marbetes de un periodo
-SELECT * FROM labels WHERE id_period = 16;
-
--- Ver conteos registrados
-SELECT * FROM count_events WHERE folio IN (SELECT folio FROM labels WHERE id_period = 16);
-
--- Verificar sincronización
-SELECT COUNT(*) FROM inventory_stock WHERE id_period = 16;
-```
-
----
-
-## 📞 SOPORTE Y CONTACTO
-
-**Sistema:** SIGMAV2  
-**Empresa:** Tokai  
-**Email:** soporte@tokai.com.mx
-
-### Documentación Adicional
-- 📚 [Índice Completo](./INDICE-DOCUMENTACION-COMPLETA.md)
-- 📊 [Resumen Visual](./RESUMEN-VISUAL-PROCESO-COMPLETO.md)
-- 🔄 [Flujo Completo](./FLUJO-COMPLETO-VERIFICACION-FISICA-TEORICA.md)
-
----
-
-## 🎉 ESTADO FINAL
-
-```
-╔═══════════════════════════════════════════════════════════╗
-║              SIGMAV2 - SISTEMA COMPLETO                   ║
-╚═══════════════════════════════════════════════════════════╝
-
-✅ Módulo de Marbetes: 100% Funcional
-✅ Módulo de Inventario: 100% Funcional
-✅ Módulo de Reportes: 100% Funcional
-✅ Sistema de Seguridad: 100% Funcional
-✅ Documentación: 100% Completa
-✅ Testing: 100% Cubierto
-
-🟢 LISTO PARA PRODUCCIÓN
-```
-
----
-
-**Última actualización:** 29 de Diciembre de 2025  
-**Versión:** 2.0  
-**Estado:** ✅ PRODUCCIÓN
-
+SIGMAV2 — Sistema de Inventarios y Gestión de Marbetes V2
+Versión: 1.0.0
+Empresa: Tokai de México
+Desarrollado por: Cesar Uriel Gonzalez Saldaña
+Estado: Producción
+
+Descripción
+SIGMAV2 es el sistema de control de inventarios físicos de Tokai de México. Permite llevar a cabo el proceso completo de verificación física y teórica del inventario mediante la importación de archivos Excel, generación e impresión de marbetes (etiquetas de identificación), registro de conteos físicos y generación de reportes.
+
+Tecnologías
+Componente	Tecnología
+Framework	Spring Boot 3.x
+Seguridad	Spring Security + JWT
+Persistencia	JPA / Hibernate + MySQL 8
+Migraciones de BD	Flyway
+Generación de PDFs	JasperReports 6.21.5
+Lectura de Excel	Apache POI
+Gestión de dependencias	Maven 3.8+
+Servidor	Tomcat embebido
+Puerto	8080
+Java	JDK 17+
+Patrón de arquitectura
+Arquitectura Hexagonal (Ports & Adapters) con separación clara entre dominio, aplicación, infraestructura y adaptadores. Se aplican principios SOLID en toda la base de código.
+
+Requisitos previos
+Java JDK 17 o superior
+Maven 3.8 o superior
+MySQL 8.x
+Carpeta C:\Sistemas\SIGMA\Documentos\ creada en el servidor (para archivos de importación y archivos generados)
+Instalación y ejecución
+# 1. Clonar el repositorio
+git clone <url-del-repositorio>
+cd SIGMAV2-SERVICES
+
+# 2. Configurar la base de datos en application.properties
+# spring.datasource.url=jdbc:mysql://localhost:3306/sigmav2_2
+# spring.datasource.username=tu_usuario
+# spring.datasource.password=tu_contraseña
+
+# 3. Compilar el proyecto
+mvn clean install
+
+# 4. Ejecutar la aplicación
+mvn spring-boot:run
+Las migraciones de base de datos se aplican automáticamente con Flyway al iniciar la aplicación.
+
+Módulos del sistema
+Seguridad y Usuarios
+Autenticación mediante JWT con expiración configurable
+Revocación inmediata de tokens al cerrar sesión (tabla revoked_tokens)
+Control de acceso por roles: ADMINISTRADOR, AUXILIAR, ALMACENISTA, AUXILIAR_DE_CONTEO
+Recuperación de contraseña con aprobación del administrador
+Bloqueo de cuenta por intentos fallidos
+Importación de archivos Excel
+inventario.xlsx — Catálogo maestro de productos
+multialmacen.xlsx — Existencias teóricas por almacén y periodo
+Periodos de Inventario
+Contexto temporal que agrupa todos los marbetes, conteos y reportes
+Se recomienda crear el periodo antes de cualquier operación
+Marbetes
+Solicitud de folios consecutivos por almacén
+Generación masiva de marbetes con existencias desde inventory_stock
+Impresión en PDF con JasperReports (actualiza estado a IMPRESO)
+Cancelación con motivo obligatorio (histórico en labels_cancelled)
+Reactivación de marbetes cancelados
+Conteos Físicos
+Primer conteo (C1) y segundo conteo (C2) por marbete
+Actualización de conteos con auditoría completa
+Solo ADMINISTRADOR puede actualizar C2
+Reportes
+Distribución de folios
+Listado general de marbetes
+Marbetes pendientes
+Marbetes con diferencias (C1 vs C2)
+Marbetes cancelados
+Comparativo físico vs teórico
+Inventario físico por almacén con detalle (PDF)
+Inventario físico por producto con detalle en todos los almacenes
+Generación de archivo de existencias
+Archivo TXT con inventario físico final (Existencias_{Periodo}.txt)
+Usa C2 cuando existe; si no, usa C1. Excluye cancelados.
+Flujo de trabajo
+1. Crear periodo de inventario
+2. Importar inventario.xlsx  →  POST /api/sigmav2/inventory/import
+3. Importar multialmacen.xlsx  →  POST /api/sigmav2/multiwarehouse/import
+4. Solicitar folios  →  POST /api/sigmav2/labels/request
+5. Generar marbetes  →  POST /api/sigmav2/labels/generate
+6. Imprimir marbetes (PDF)  →  POST /api/sigmav2/labels/print
+7. Registrar primer conteo  →  POST /api/sigmav2/labels/counts/c1
+8. Registrar segundo conteo  →  POST /api/sigmav2/labels/counts/c2
+9. Revisar diferencias  →  POST /api/sigmav2/labels/reports/with-differences
+10. Generar reportes finales y archivo TXT
+APIs principales
+Autenticación
+POST  /api/sigmav2/auth/login
+POST  /api/sigmav2/auth/logout
+POST  /api/sigmav2/auth/request-recovery
+Usuarios
+GET   /api/sigmav2/users/me
+GET   /api/sigmav2/users/me/activity
+POST  /api/sigmav2/users
+GET   /api/sigmav2/users
+PUT   /api/sigmav2/users/{id}
+Importación
+POST  /api/sigmav2/inventory/import
+POST  /api/sigmav2/multiwarehouse/import
+Marbetes
+POST  /api/sigmav2/labels/request
+POST  /api/sigmav2/labels/generate
+POST  /api/sigmav2/labels/print
+POST  /api/sigmav2/labels/pending-print-count
+POST  /api/sigmav2/labels/cancel
+POST  /api/sigmav2/labels/for-count/list
+Conteos
+POST  /api/sigmav2/labels/counts/c1
+POST  /api/sigmav2/labels/counts/c2
+PUT   /api/sigmav2/labels/counts/c1
+PUT   /api/sigmav2/labels/counts/c2
+Reportes
+POST  /api/sigmav2/labels/reports/distribution
+POST  /api/sigmav2/labels/reports/list
+POST  /api/sigmav2/labels/reports/pending
+POST  /api/sigmav2/labels/reports/with-differences
+POST  /api/sigmav2/labels/reports/cancelled
+POST  /api/sigmav2/labels/reports/comparative
+POST  /api/sigmav2/labels/reports/warehouse-detail/pdf
+POST  /api/sigmav2/labels/reports/product-detail
+Archivo de existencias
+POST  /api/sigmav2/labels/generate-file
+Reglas de negocio clave
+Un marbete representa un producto en un almacén dentro de un periodo
+Los folios son consecutivos y únicos por periodo
+Un marbete cancelado no se elimina; se conserva en labels_cancelled
+C2 solo puede registrarse si existe C1 previo
+Solo el ADMINISTRADOR puede actualizar C2
+No se puede cancelar un marbete sin folios asignados
+Los marbetes con existencias = 0 también se generan para registro completo
+El archivo de existencias usa C2 cuando existe; de lo contrario usa C1
+Cada usuario opera únicamente en los almacenes que tiene asignados (excepto ADMINISTRADOR)
+El token JWT se invalida inmediatamente al hacer logout
+Estructura del proyecto
+SIGMAV2-SERVICES/
+├── src/
+│   ├── main/
+│   │   ├── java/tokai/com/mx/SIGMAV2/
+│   │   │   ├── modules/
+│   │   │   │   ├── labels/          # Marbetes, conteos, reportes
+│   │   │   │   ├── inventory/       # Catálogo y existencias
+│   │   │   │   └── multiwarehouse/  # Importación multialmacén
+│   │   │   └── security/            # JWT, filtros, roles
+│   │   └── resources/
+│   │       ├── reports/             # Plantillas JasperReports (.jrxml)
+│   │       └── db/migration/        # Scripts Flyway
+│   └── test/
+├── docs/                            # Documentación técnica
+├── pom.xml
+└── README.md
+Base de datos — Tablas principales
+Tabla	Descripción
+users	Usuarios del sistema
+revoked_tokens	Tokens JWT revocados
+products	Catálogo de productos
+warehouse	Catálogo de almacenes
+periods	Periodos de inventario
+label_requests	Solicitudes de folios
+labels	Marbetes activos
+labels_cancelled	Marbetes cancelados (histórico)
+label_prints	Registro de impresiones
+multiwarehouse_existences	Existencias importadas
+inventory_stock	Existencias optimizadas para consulta
+request_recovery_password	Solicitudes de recuperación de contraseña
+Versión
+Consulta el archivo docs/RELEASE-NOTES-v1.0.0.md para el historial completo de cambios de la versión 1.0.0.
+
+SIGMAV2 — Tokai de México — 2026
