@@ -110,7 +110,7 @@ public class LabelsController {
 
     // ── Actualizar Conteo C2 ─────────────────────────────────────────────
     @PutMapping("/counts/c2")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
         log.info("Actualizando C2: folio={}, usuario={}", dto.getFolio(), userId);

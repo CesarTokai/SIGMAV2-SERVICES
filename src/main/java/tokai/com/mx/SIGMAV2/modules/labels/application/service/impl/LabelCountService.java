@@ -110,7 +110,7 @@ public class LabelCountService {
     public LabelCountEvent updateCountC2(UpdateCountDTO dto, Long userId, String userRole) {
         log.info("Actualizando conteo C2 para folio {}", dto.getFolio());
         validateRole(userRole, "actualizar C2",
-                "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR_DE_CONTEO");
+                "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
         findLabelForUpdate(dto.getFolio(), userId, roleUpper);
