@@ -27,7 +27,7 @@ public class PeriodsManagementController {
         return ResponseEntity.ok(mapToResponseDTO(period, false));
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     @GetMapping("/{id}")
     public ResponseEntity<PeriodResponseDTO> getPeriod(@PathVariable Long id) {
         Period period = periodManagementUseCase.findById(id);
@@ -64,7 +64,7 @@ public class PeriodsManagementController {
         return ResponseEntity.ok(mapToResponseDTO(period, true));
     }
 
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     @GetMapping
     public ResponseEntity<Page<PeriodResponseDTO>> getAllPeriods(Pageable pageable) {
         Page<Period> periods = periodManagementUseCase.findAll(pageable);

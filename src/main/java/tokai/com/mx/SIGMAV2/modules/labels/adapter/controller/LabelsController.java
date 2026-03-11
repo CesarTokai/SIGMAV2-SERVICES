@@ -212,7 +212,7 @@ public class LabelsController {
 
     // ── Cancelar marbete ─────────────────────────────────────────────────
     @PostMapping("/cancel")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> cancelLabel(@Valid @RequestBody CancelLabelRequestDTO dto) {
         log.info("Cancelando folio={}", dto.getFolio());
         labelService.cancelLabel(dto, getUserIdFromToken(), getUserRoleFromToken());
