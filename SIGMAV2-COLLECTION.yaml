@@ -1,0 +1,4959 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: SIGMAV2 APIs
+meta:
+  id: wrk_db4f7630dd5142c49c79e7778f3497c0
+  created: 1766499860249
+  modified: 1766499860249
+  description: ""
+collection:
+  - url: "{{ _.baseUrl }}/api/sigmav2/users/me/security"
+    name: Seguridad
+    meta:
+      id: req_d1aea2f56d524c69bc544582ef7dd175
+      created: 1768930134880
+      modified: 1770938346476
+      isPrivate: false
+      description: ""
+      sortKey: -1768930134880
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.3.0
+        description: ""
+        disabled: false
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.baseUrl }}/api/sigmav2/users/me/activity"
+    name: actividad
+    meta:
+      id: req_4acdd9f170344d28a7ca45cccebc54ee
+      created: 1770935933380
+      modified: 1770938340399
+      isPrivate: false
+      description: ""
+      sortKey: -1767416348896
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.3.0
+        description: ""
+        disabled: false
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.baseUrl }}/api/sigmav2/users/me/assignments"
+    name: Assigment
+    meta:
+      id: req_61303f03020e48a0afaf145255de1c2c
+      created: 1770937153007
+      modified: 1770938345099
+      isPrivate: false
+      description: ""
+      sortKey: -1768173241888
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.3.0
+        description: ""
+        disabled: false
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.baseUrl }}/api/sigmav2/users/me/personal-info"
+    name: Personal info
+    meta:
+      id: req_3eb9ab4c7d134b27b7a626291590eaf1
+      created: 1770937183871
+      modified: 1770938337683
+      isPrivate: false
+      description: ""
+      sortKey: -1766659455904
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.3.0
+        description: ""
+        disabled: false
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.baseUrl }}/api/sigmav2/users/me/complete"
+    name: Complete
+    meta:
+      id: req_a4f5dba5fd464471a3269ee8fed66c5b
+      created: 1770937205476
+      modified: 1770938334647
+      isPrivate: false
+      description: ""
+      sortKey: -1766281009408
+    method: GET
+    body:
+      mimeType: application/json
+      text: ""
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.3.0
+        description: ""
+        disabled: false
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - name: 🔐 Autenticación
+    meta:
+      id: fld_165cb0a6fdc54b50a427ce5be77a3d21
+      created: 1692000000000
+      modified: 1692000000000
+      sortKey: -1692000000000
+      description: APIs de registro, verificación y login
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/verify"
+        name: 2. Verificar Usuario
+        meta:
+          id: req_0f2115571f974f7ba33aaf601b83d772
+          created: 1692000000000
+          modified: 1761604984871
+          isPrivate: false
+          description: Verifica un usuario con el código enviado por email
+          sortKey: -1692000009000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "cgonzalez@tokai.com.mx",
+              "code": "680341"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/register"
+        name: 1. Registrar Usuario
+        meta:
+          id: req_96e4dd19e7244a8694d4b58dab0f7dca
+          created: 1692000000000
+          modified: 1770649549197
+          isPrivate: false
+          description: Registra un nuevo usuario en el sistema
+          sortKey: -1692000010000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+             "email": "cgonzalez@tokai.com.mx",
+              "password": "Password123!",
+            	"name":"Cesar Uriel",
+              "role": "ADMINISTRADOR",
+              "preVerified": true
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          disabled: true
+          token: "{{ _.baseUrl }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/login"
+        name: 3. Iniciar Sesión
+        meta:
+          id: req_9a03272fdeaa4d29967d5344ba4f25be
+          created: 1692000000000
+          modified: 1761672555188
+          isPrivate: false
+          description: Obtiene el token JWT para autenticación
+          sortKey: -1692000008000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |+
+            {
+             "email": "cgonzalez@tokai.mx.com",
+              "password": "Password123!"
+            }
+
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: ""
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/resend-verification-code"
+        name: 2.5. Renvio de codigo de verificacion
+        meta:
+          id: req_c2b8bfbaf51045f78f750fb616df924a
+          created: 1756826813502
+          modified: 1761604826752
+          isPrivate: false
+          description: Verifica un usuario con el código enviado por email
+          sortKey: -1692000008500
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "cgonzalez@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/getPage"
+        name: Ver solicitudes de recuperacion de contraseñas
+        meta:
+          id: req_44e4539056584adaa3a032facab02d6a
+          created: 1762191198474
+          modified: 1762195377137
+          isPrivate: false
+          description: ""
+          sortKey: -1762191198474
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/createRequest"
+        name: Crear solicitudes de recuperacion de contraseñas
+        meta:
+          id: req_54ec82954ba54cb389d8405db45aeb40
+          created: 1762193498303
+          modified: 1770663383491
+          isPrivate: false
+          description: ""
+          sortKey: -1761027188835.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "obotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.0.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/resolveRequest"
+        name: "Aceptar solicutudes de recuperacion de contraseñas "
+        meta:
+          id: req_3be5c0aa4b484dd7b6675d236a1fb2a0
+          created: 1762195415212
+          modified: 1762195625016
+          isPrivate: false
+          description: ""
+          sortKey: -1760445184016.25
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "requestId": "5"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.0.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/getHistory"
+        name: Ver  historial de solicitudes de recuperacion de contraseñas
+        meta:
+          id: req_280d9043e8fc42ffa40a8b3eed8d68be
+          created: 1763576507711
+          modified: 1763576581615
+          isPrivate: false
+          description: ""
+          sortKey: -1761609193654.75
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/resolveRequest"
+        name: Aceptar solicitud
+        meta:
+          id: req_c7189c24e6e24268b29829094e08f658
+          created: 1763588934647
+          modified: 1763591726758
+          isPrivate: false
+          description: ""
+          sortKey: -1761900196064.375
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "requestId": "27"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 🔍 Consultas Completas
+    meta:
+      id: fld_99891b72325b49e2ba15089f68c0f756
+      created: 1692000000000
+      modified: 1692000000000
+      sortKey: -1691999998000
+      description: APIs para consultar usuarios con información personal completa
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/complete/email/obotello@tokai.com.mx"
+        name: 2. Usuario Completo por Email (Admin/Almacenista)
+        meta:
+          id: req_7bde23e011344c6bbf8ca6b6979e87c6
+          created: 1692000000000
+          modified: 1757008868092
+          isPrivate: false
+          description: Obtiene información completa de un usuario por email
+          sortKey: -1691999998000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/search"
+        name: 4. Buscar Usuario por Email (Solo Admin)
+        meta:
+          id: req_95e6dc0f75fa45cd885e2faa183e161b
+          created: 1692000000000
+          modified: 1760035799233
+          isPrivate: false
+          description: Busca un usuario por email (solo administradores)
+          sortKey: -1691999996000
+        method: GET
+        parameters:
+          - name: email
+            value: cgonzalez@tokai.com.mx
+            description: Email del usuario a buscar
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/me/complete"
+        name: 1. Mi Información Completa
+        meta:
+          id: req_ae2d8c1473554ae28440b6e2618c54d6
+          created: 1692000000000
+          modified: 1757008853691
+          isPrivate: false
+          description: Obtiene información completa del usuario autenticado (usuario +
+            información personal)
+          sortKey: -1691999999000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/complete/id/6"
+        name: 3. Usuario Completo por ID (Admin/Almacenista)
+        meta:
+          id: req_bc1a4dd5e5354db2bea5450e9a9489c5
+          created: 1692000000000
+          modified: 1757008881672
+          isPrivate: false
+          description: Obtiene información completa de un usuario por ID
+          sortKey: -1691999997000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 👤 Información Personal
+    meta:
+      id: fld_a0f9b56f48284c0aaeff065abf35f92c
+      created: 1692000000000
+      modified: 1692000000000
+      sortKey: -1691999999000
+      description: APIs para gestionar información personal de usuarios
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/upload-image"
+        name: 5. Subir Imagen de Perfil
+        meta:
+          id: req_3afcd76b57c54f5e9650eaaa66e53205
+          created: 1692000000000
+          modified: 1757018933523
+          isPrivate: false
+          description: Sube una imagen de perfil para el usuario
+          sortKey: -1692000003000
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: image
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Pictures\Administrador.json
+              type: file
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/assign-role"
+        name: 6. Asignar Rol (Solo Admin)
+        meta:
+          id: req_4ba2244daf79469c841d13f6b5ba0493
+          created: 1692000000000
+          modified: 1757009347734
+          isPrivate: false
+          description: Asigna un rol a un usuario (solo administradores)
+          sortKey: -1692000002000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "userId": 15,
+              "role": "AUXILIAR",
+              "reason": "Cambio temporal"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/user/37"
+        name: 4. Obtener Información Personal de Usuario (Admin/Almacenista)
+        meta:
+          id: req_7c5271d0fb2d4988919ffc58fdcee88e
+          created: 1692000000000
+          modified: 1763663879049
+          isPrivate: false
+          description: Obtiene la información personal de otro usuario por ID
+          sortKey: -1692000004000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/exists"
+        name: 7. Verificar si Existe Información Personal
+        meta:
+          id: req_bb9c0957ac5c422e92abdb51aa950204
+          created: 1692000000000
+          modified: 1757009335583
+          isPrivate: false
+          description: Verifica si el usuario tiene información personal registrada
+          sortKey: -1692000001000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information"
+        name: 1. Crear/Actualizar Información Personal
+        meta:
+          id: req_cf3b9b8936554c73bbfedd6623f8028d
+          created: 1692000000000
+          modified: 1770649550979
+          isPrivate: false
+          description: Crea o actualiza la información personal del usuario autenticado
+          sortKey: -1692000007000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"name": "Juan Carlos",
+            	"firstLastName": "Pérez",
+            	"secondLastName": "González",
+            	"phoneNumber": "5512345678"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information"
+        name: 2. Actualizar Información Personal
+        meta:
+          id: req_ddd0c06e42734cd6aea1dd6944f2dbf6
+          created: 1692000000000
+          modified: 1757018982260
+          isPrivate: false
+          description: Actualiza la información personal existente
+          sortKey: -1692000006000
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "name": "Cesar Uriel ",
+              "firstLastName": "Gonzalez",
+              "secondLastName": "Saldaña",
+              "phoneNumber": "7341218621"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/me/personal-info"
+        name: 3. Obtener Mi Información Personal
+        meta:
+          id: req_e005fbbb939844d6afe78fb7a47d293f
+          created: 1692000000000
+          modified: 1771258860049
+          isPrivate: false
+          description: Obtiene la información personal del usuario autenticado
+          sortKey: -1692000005000
+        method: GET
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/update-image"
+        name: 5.1 Actualizar Imagen (PUT)
+        meta:
+          id: req_b41b28f53ba34ef489f7be9b995fa59e
+          created: 1757012240521
+          modified: 1757012294569
+          isPrivate: false
+          description: Sube una imagen de perfil para el usuario
+          sortKey: -1692000002500
+        method: PUT
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: image
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Pictures\logo_tokai.jpg
+              type: file
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/image"
+        name: 5.2 Obtener Información de Imagen (GET)
+        meta:
+          id: req_5d434c6a7cfa474bb5a414f4afadd8bb
+          created: 1757012332937
+          modified: 1757012356308
+          isPrivate: false
+          description: Sube una imagen de perfil para el usuario
+          sortKey: -1692000002250
+        method: GET
+        body:
+          mimeType: multipart/form-data
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/personal-information/image"
+        name: 5.3  Eliminar Imagen (DELETE)
+        meta:
+          id: req_718e24cc215a40378d7b82fcb4124c7f
+          created: 1757015894776
+          modified: 1757018896686
+          isPrivate: false
+          description: Sube una imagen de perfil para el usuario
+          sortKey: -1692000002125
+        method: DELETE
+        body:
+          mimeType: multipart/form-data
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Admin APIs
+    meta:
+      id: fld_df266b007b29428ca49776e8bcf733c2
+      created: 1693670400000
+      modified: 1757541758652
+      sortKey: -1693670400000
+      description: APIs de administración de usuarios para SIGMAV2
+    children:
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Eliminar Múltiples Usuarios
+        meta:
+          id: req_04475e93069f464486dd70c6f7859c08
+          created: 1693670400000
+          modified: 1760036424850
+          isPrivate: false
+          description: Eliminar múltiples usuarios
+          sortKey: -1693670385000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "DELETE",
+              "userIds": [1, 2, 3]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Desactivar Múltiples Usuarios
+        meta:
+          id: req_0b0fe867874b49c1b4616145e3843840
+          created: 1693670400000
+          modified: 1760036386339
+          isPrivate: false
+          description: Desactivar múltiples usuarios
+          sortKey: -1693670386000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "DEACTIVATE",
+              "userIds": [24, 23]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Activar Múltiples Usuarios
+        meta:
+          id: req_0e60713eb19745c8b84338e3719d8c76
+          created: 1693670400000
+          modified: 1760036364200
+          isPrivate: false
+          description: Activar múltiples usuarios
+          sortKey: -1693670387000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "ACTIVATE",
+              "userIds": [1]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/16
+        name: Obtener Usuario por ID
+        meta:
+          id: req_1941fe8cf46a461fa2c9a0567ae4de6a
+          created: 1693670400000
+          modified: 1757012061481
+          isPrivate: false
+          description: Obtiene detalles de un usuario específico
+          sortKey: -1693670397000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/10/reset-attempts
+        name: Resetear Intentos de Login
+        meta:
+          id: req_1e2dbd5cad8a4c38a43f6b3606b4b851
+          created: 1693670400000
+          modified: 1757011920866
+          isPrivate: false
+          description: Resetear contador de intentos fallidos
+          sortKey: -1693670392000
+        method: POST
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/cleanup-unverified?daysOld=7
+        name: Limpiar Usuarios No Verificados (7 días)
+        meta:
+          id: req_360cb7ac83f74a0eb8aaee84da4af920
+          created: 1693670400000
+          modified: 1757011460577
+          isPrivate: false
+          description: Eliminar usuarios no verificados después de 7 días
+          sortKey: -1693670380000
+        method: DELETE
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users?page=0&size=20&sortBy=createdAt&sortDir=desc
+        name: Listar Usuarios
+        meta:
+          id: req_365eedf4d2f542d9af6746a1c20f6563
+          created: 1693670400000
+          modified: 1761864965441
+          isPrivate: false
+          description: Lista paginada de usuarios
+          sortKey: -1693670399000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users?page=0&size=10&email==ADMINISTRADOR&verified=true&status=true
+        name: Buscar Usuarios con Filtros
+        meta:
+          id: req_369b1425633d49e3833ffda0f06bb06e
+          created: 1693670400000
+          modified: 1761864937112
+          isPrivate: false
+          description: Buscar usuarios con filtros específicos
+          sortKey: -1693670398000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/7/force-verify
+        name: Verificar Usuario Forzosamente
+        meta:
+          id: req_377a96900add4065b4290cb59779ecc9
+          created: 1693670400000
+          modified: 1761864991588
+          isPrivate: false
+          description: Verificar usuario sin código de verificación
+          sortKey: -1693670393000
+        method: POST
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/1/toggle-status
+        name: Activar/Desactivar Usuario
+        meta:
+          id: req_3a2ff9b462e649298cc8cd9471861faa
+          created: 1693670400000
+          modified: 1770649654293
+          isPrivate: false
+          description: Cambiar estado activo/inactivo del usuario
+          sortKey: -1693670391000
+        method: POST
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Cambiar Rol Masivamente
+        meta:
+          id: req_4845f54dbd164f98a017f2766348a3b0
+          created: 1693670400000
+          modified: 1757019338791
+          isPrivate: false
+          description: Cambiar rol de múltiples usuarios
+          sortKey: -1693670384000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "CHANGE_ROLE",
+              "userIds": [16],
+              "newRole": "AUXILIAR_DE_CONTEO"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/15
+        name: Eliminar Usuario
+        meta:
+          id: req_5a77c19f4b164a53817b0ebba8870d5d
+          created: 1693670400000
+          modified: 1757372354909
+          isPrivate: false
+          description: Eliminar usuario por ID
+          sortKey: -1693670394000
+        method: DELETE
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/statistics
+        name: Estadísticas de Usuarios
+        meta:
+          id: req_72e75068490248a69440bd7a027e00f3
+          created: 1693670400000
+          modified: 1760109286315
+          isPrivate: false
+          description: Obtener estadísticas generales del sistema
+          sortKey: -1693670382000
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Reenviar Verificación Masivamente
+        meta:
+          id: req_a6429095af554fb9844a0755481d26aa
+          created: 1693670400000
+          modified: 1761604841197
+          isPrivate: false
+          description: Reenviar verificación a múltiples usuarios
+          sortKey: -1693670383000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "RESEND_VERIFICATION",
+              "userIds": [7]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/10/resend-verification
+        name: Reenviar Código de Verificación
+        meta:
+          id: req_ab02331b5bf3412cab96e93c6a7e8db6
+          created: 1693670400000
+          modified: 1757011904599
+          isPrivate: false
+          description: Reenviar código de verificación por email
+          sortKey: -1693670390000
+        method: POST
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Resetear Intentos Masivamente
+        meta:
+          id: req_be3667ff6444478c9ef549c1fd11ac25
+          created: 1693670400000
+          modified: 1757011862355
+          isPrivate: false
+          description: Resetear intentos de múltiples usuarios
+          sortKey: -1693670388000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "RESET_ATTEMPTS",
+              "userIds": [1, 2, 3]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/register"
+        name: Crear Usuario
+        meta:
+          id: req_c6513de7d7384648a377a533cd6a261e
+          created: 1693670400000
+          modified: 1771024038460
+          isPrivate: false
+          description: Crear nuevo usuario desde panel de administración
+          sortKey: -1693670396000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "name": "Cesar",
+              "firstLastName": "Gonzalez Saldaña",
+              "secondLastName": "Gonzalez Saldaña",
+              "phoneNumber": "7341218621",
+              "comments": "czczxczxczxcz sdasd asd as",
+              "email": "cgonzalez@tokai.com.mx",
+              "password": "Password123!",
+              "role": "ADMINISTRADOR",
+            	"status": true,
+              "preVerified": true
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: ""
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/cleanup-unverified?daysOld=30
+        name: Limpiar Usuarios No Verificados (30 días)
+        meta:
+          id: req_c93e2781dbe34b9980e8b1a93440e8e7
+          created: 1693670400000
+          modified: 1757011468093
+          isPrivate: false
+          description: Eliminar usuarios no verificados después de 30 días
+          sortKey: -1693670381000
+        method: DELETE
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/auth/login
+        name: Login Admin
+        meta:
+          id: req_cd2d0b012c25404b878f92413f2c9cb6
+          created: 1693670400000
+          modified: 1766787021156
+          isPrivate: false
+          description: Login para obtener token JWT de administrador
+          sortKey: -1693670400000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "cgonzalez@tokai.com.mx",
+              "password": "Password123!"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/bulk-action
+        name: Verificar Múltiples Usuarios
+        meta:
+          id: req_e17cc77f5e6e463c9311c9077a94d375
+          created: 1693670400000
+          modified: 1770663196077
+          isPrivate: false
+          description: Verificar múltiples usuarios de una vez
+          sortKey: -1693670389000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "action": "FORCE_VERIFY",
+              "userIds": [2, 3, 4]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/admin/users/10
+        name: Actualizar Usuario
+        meta:
+          id: req_fbb21c527dca472791607783c28796a6
+          created: 1693670400000
+          modified: 1761864580333
+          isPrivate: false
+          description: Actualizar datos de usuario existente
+          sortKey: -1693670395000
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "actualizado@ejemplo.com",
+              "role": "ALMACENISTA",
+              "status": true,
+              "verified": true,
+              "resetAttempts": false
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: ""
+        name: " Asignar Rol a Usuario (POST) - Solo ADMINISTRADOR"
+        meta:
+          id: req_c8d024eef366407abd1bed2111a7f740
+          created: 1757019240250
+          modified: 1757019276134
+          isPrivate: false
+          description: ""
+          sortKey: -1757019240250
+        method: GET
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "userId": 10,
+              "role": "AUXILIAR",
+              "reason": "Promoción por buen desempeño"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/auth/createRequest"
+        name: Resetear el password
+        meta:
+          id: req_75ba4057565a402cb380e248124c2913
+          created: 1761932193301
+          modified: 1761932269382
+          isPrivate: false
+          description: Login para obtener token JWT de administrador
+          sortKey: -1693670399500
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "qbotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Wharehouse
+    meta:
+      id: fld_86532b0d3627417ab2d87c96b0147e3f
+      created: 1757357847700
+      modified: 1757370948687
+      sortKey: -1757357847700
+      description: ""
+    children:
+      - url: http://localhost:8080/api/sigmav2/warehouses
+        name: 1. Listar Almacenes
+        meta:
+          id: req_cf75cec1e7734170a3118fb2e795c767
+          created: 1757365722775
+          modified: 1763755061116
+          isPrivate: false
+          description: ""
+          sortKey: -1757365722775
+        method: GET
+        parameters:
+          - name: page
+            value: "0"
+            description: ""
+            disabled: false
+          - name: size
+            value: "25"
+            description: ""
+            disabled: false
+          - name: sortBy
+            value: warehouseKey
+            description: ""
+            disabled: false
+          - name: sortDir
+            value: asc
+            description: ""
+            disabled: false
+          - name: search
+            value: "false"
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/6
+        name: 2. Obtener Almacén por ID
+        meta:
+          id: req_c967c38ddf964850a9e6576438c2a35b
+          created: 1757368996948
+          modified: 1757371772847
+          isPrivate: false
+          description: ""
+          sortKey: -1757368996948
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses
+        name: 3. Crear Almacén (Solo Admin)
+        meta:
+          id: req_f5fa2879b4a84cd5a9d90977c1630fc5
+          created: 1757369080961
+          modified: 1763761644189
+          isPrivate: false
+          description: ""
+          sortKey: -1757369080961
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nameWarehouse": "Almacen 1",
+              "warehouseKey": "AAA-JDAS",
+            	"observations":"ASDASDASD ASD ASDAS DASD ASDAS DAS"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/1
+        name: " Actualizar Almacén (Solo Admin)"
+        meta:
+          id: req_c02a5ff29d924056920d57e8835bc6d3
+          created: 1757369129964
+          modified: 1757605463955
+          isPrivate: false
+          description: ""
+          sortKey: -1757369081061
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {    
+            "nameWarehouse": "ALM004", 
+             "observations": "Observaciones actualizadaaaaaaaaaaaas"  
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/6
+        name: 5. Eliminar Almacén (Solo Admin)
+        meta:
+          id: req_036ba98fc9a243b3b19eef55648506cb
+          created: 1757369408913
+          modified: 1757607129580
+          isPrivate: false
+          description: ""
+          sortKey: -1757369408913
+        method: DELETE
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/users/4
+        name: 6. Ver Almacenes de Usuario
+        meta:
+          id: req_7aa31d6d694d4453bef1268cc6262ee2
+          created: 1757370771099
+          modified: 1773245353166
+          isPrivate: false
+          description: ""
+          sortKey: -1757370771099
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/users/15/assign
+        name: 7. Asignar Almacenes (Solo Admin)
+        meta:
+          id: req_157d30f469134a6999e02d548aebe07b
+          created: 1757370837843
+          modified: 1757372343957
+          isPrivate: false
+          description: ""
+          sortKey: -1757370837843
+        method: POST
+        body:
+          mimeType: application/json
+          text: '{     "warehouseIds": [6],     "reason": "Asignación inicial del
+            usuario"   }'
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/users/15/warehouses/1
+        name: 8. Revocar Almacén (Solo Admin)
+        meta:
+          id: req_56687ba8ae6a4aec84d282ba9664f8b9
+          created: 1757370904684
+          modified: 1757370956059
+          isPrivate: false
+          description: ""
+          sortKey: -1757370904684
+        method: DELETE
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses/my-warehouses
+        name: 9. Mis Almacenes Asignados
+        meta:
+          id: req_970431235dcc4239b335f12be52b9440
+          created: 1757370970558
+          modified: 1773240497488
+          isPrivate: false
+          description: ""
+          sortKey: -1757370970558
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses
+        name: 10. Búsqueda por Texto
+        meta:
+          id: req_fd92f3a18edd4859a4972902797c7b7f
+          created: 1757371009414
+          modified: 1757371030163
+          isPrivate: false
+          description: ""
+          sortKey: -1757371009414
+        method: GET
+        parameters:
+          - name: search
+            value: principal
+            disabled: false
+          - name: page
+            value: "0"
+            disabled: false
+          - name: size
+            value: "10"
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/warehouses
+        name: 11. Paginación Avanzada
+        meta:
+          id: req_e088610e3a1e40edb14c9e2b3a197351
+          created: 1757371051306
+          modified: 1757541852352
+          isPrivate: false
+          description: ""
+          sortKey: -1757371051306
+        method: GET
+        parameters:
+          - name: page
+            value: "1"
+            disabled: false
+          - name: size
+            value: "5"
+            disabled: false
+          - name: sortBy
+            value: nameWarehouse
+            disabled: false
+          - name: sortDir
+            value: desc
+            disabled: false
+          - name: search
+            value: opcional
+            description: ""
+            disabled: false
+            type: text
+            multiline: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/warehouses/users-with-assignments"
+        name: 1. Listar todos los almacenes
+        meta:
+          id: req_352505c448c74b15bf34e7e1cd066a61
+          created: 1770333203129
+          modified: 1770333269627
+          isPrivate: false
+          description: ""
+          sortKey: -1757192481512.5
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/admin/users/with-warehouses"
+        name: Ver almacenes asignados
+        meta:
+          id: req_91c09275502a4428b49281691f6f2604
+          created: 1770920796775
+          modified: 1773240537337
+          isPrivate: false
+          description: ""
+          sortKey: -1757370804471
+        method: GET
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email":"cgonzalez@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Inventario
+    meta:
+      id: fld_50434813d1c04309923cb9c361a559e7
+      created: 1757432583443
+      modified: 1764022893759
+      sortKey: -1757432583443
+      description: ""
+    children:
+      - url: http://localhost:8080/api/sigmav2/inventory/import
+        name: Importacion de iventarios
+        meta:
+          id: req_7e7fd6852bcd45e58bab51a086eff667
+          created: 1757432940736
+          modified: 1759423601673
+          isPrivate: false
+          description: ""
+          sortKey: -1757432940736
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: periodId
+              value: "3"
+              description: ""
+              disabled: false
+            - name: file
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Documents\inventario.xlsx
+              type: file
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/inventorys/warehouses/my
+        name: Traer todos los inventarios
+        meta:
+          id: req_dbe22ab9170b4914b6785b5354049c1f
+          created: 1757433034296
+          modified: 1758135329701
+          isPrivate: false
+          description: ""
+          sortKey: -1757433034296
+        method: GET
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: ""
+              value: ""
+              description: ""
+              disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/inventory/query
+        name: " Consultar inventario (filtros + paginación)"
+        meta:
+          id: req_48387e4c4a774ca7a7c105d9d9b1649d
+          created: 1758131221179
+          modified: 1758131244251
+          isPrivate: false
+          description: ""
+          sortKey: -1757432987516
+        method: GET
+        parameters:
+          - name: file
+            value: ""
+            description: ""
+            disabled: false
+          - name: period
+            value: ""
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/inventory/query/import
+        name: Consultar estado de una importación
+        meta:
+          id: req_5919b870e9384d72b9fafea6b9db4949
+          created: 1758131271044
+          modified: 1758131413571
+          isPrivate: false
+          description: ""
+          sortKey: -1757432964126
+        method: GET
+        parameters:
+          - name: jobId
+            value: "4"
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/multiwarehouse/summary
+        name: Obtener resumen de inventario por almacén (GET)
+        meta:
+          id: req_7a7c77c4609a425b8627f98a3566867b
+          created: 1758131883616
+          modified: 1758132545017
+          isPrivate: false
+          description: ""
+          sortKey: -1758131883616
+        method: GET
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/inventory/snapshots
+        name: Consultar snapshots por periodo y almacén
+        meta:
+          id: req_454e9f1a4045422d9c2ef2afa4accbd6
+          created: 1758132054201
+          modified: 1759862188657
+          isPrivate: false
+          description: ""
+          sortKey: -1758132054201
+        method: GET
+        parameters:
+          - name: period
+            value: 2023-10-01
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/inventory/stock?productId={ID_PRODUCTO}&warehouseId={ID_ALMACEN}
+        name: Consultar stock actual
+        meta:
+          id: req_ce35d3202af948258f30e2f4b22c39d1
+          created: 1759181883384
+          modified: 1763763923354
+          isPrivate: false
+          description: ""
+          sortKey: -1759181883384
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/11.6.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl
+          }}/api/sigmav2/inventory/period-report?periodId=12&page=0&size=10&sor\
+          t=cveArt,asc"
+        name: Consultar inventario del periodo 12 (primera página, 10 registros)
+        meta:
+          id: req_50f835a142ed4d7dadec40cb8c85bef0
+          created: 1763999556414
+          modified: 1763999700802
+          isPrivate: false
+          description: ""
+          sortKey: -1763999556414
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl
+          }}/api/sigmav2/inventory/period-report?periodId=1&size=25&page=0&sear\
+          ch=texto&sort=cveArt,asc"
+        name: Consultar Inventario del Periodo
+        meta:
+          id: req_908c7fa9ce5e42fd84d1208dabe31393
+          created: 1764022889638
+          modified: 1764022935714
+          isPrivate: false
+          description: ""
+          sortKey: -1764022889638
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/inventory/stock"
+        name: Consulta de Stock
+        meta:
+          id: req_fd24853a85e240edbc12350df6367d6c
+          created: 1764023069175
+          modified: 1764023111188
+          isPrivate: false
+          description: ""
+          sortKey: -1764023069175
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/inventory/all-periods"
+        name: Verifica que existe un periodo
+        meta:
+          id: req_b32a3975e0334a69a0ff98d2399f733e
+          created: 1764023337951
+          modified: 1764023370993
+          isPrivate: false
+          description: ""
+          sortKey: -1764023337951
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/inventory/debug/period/1"
+        name: Verifica los datos
+        meta:
+          id: req_4212f643321b4d588f1a824e9cda6ceb
+          created: 1764023386698
+          modified: 1764023450968
+          isPrivate: false
+          description: ""
+          sortKey: -1764023386698
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl
+          }}/api/sigmav2/inventory/period-report?periodId=4&size=25&page=0"
+        name: Consulta el inventario
+        meta:
+          id: req_52292b490a3c460792c81d1a76404d4f
+          created: 1764023523959
+          modified: 1764025961961
+          isPrivate: false
+          description: ""
+          sortKey: -1764023523959
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/inventory/debug/period/4"
+        name: "Verifica los datos con:"
+        meta:
+          id: req_6490789dbac54ce39bc70eb105ecba2a
+          created: 1764026621734
+          modified: 1764171444664
+          isPrivate: false
+          description: ""
+          sortKey: -1764026621734
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: MultiWarehouse
+    meta:
+      id: fld_1b3de280ea564282a253a0e0f3be3a3d
+      created: 1757611305689
+      modified: 1764108041455
+      sortKey: -1757611305689
+      description: ""
+    children:
+      - url: http://localhost:8080/api/sigmav2/multi-warehouse/existences?search=producto&orderBy=stock&ascending=false&page=0&size=10
+        name: Consulta a multialmacenes almacenados
+        meta:
+          id: req_30f6b3c3751d474bad7bad9403b950c2
+          created: 1757611310658
+          modified: 1757613294608
+          isPrivate: false
+          description: ""
+          sortKey: -1757611310658
+        method: GET
+        body:
+          mimeType: application/json
+          text: ""
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/multi-warehouse/import
+        name: Importar archivo multi-almacén
+        meta:
+          id: req_8a40145685004e1394fce0282b200f03
+          created: 1757613164286
+          modified: 1757714834273
+          isPrivate: false
+          description: ""
+          sortKey: -1757613164286
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: file
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Documents\multialmacen.xlsx
+              type: file
+            - name: period
+              value: 2025-09
+              description: ""
+              disabled: false
+              multiline: false
+              type: text
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/11.5.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/multi-warehouse/existences
+        name: 1. Consultar MultiAlmacén
+        meta:
+          id: req_bb428a4bb154403d8be4879a1b50554a
+          created: 1759344153330
+          modified: 1759344187063
+          isPrivate: false
+          description: ""
+          sortKey: -1759344153330
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/11.6.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/multi-warehouse/import
+        name: 2. Importar MultiAlmacén (Solo ADMINISTRADOR)
+        meta:
+          id: req_6b45ef23e792448d93cd6c5c88585ba8
+          created: 1759344409896
+          modified: 1759793205383
+          isPrivate: false
+          description: ""
+          sortKey: -1759344409896
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: period
+              value: 2025-09
+              description: ""
+              disabled: false
+            - name: file
+              value: ""
+              description: ""
+              disabled: false
+              multiline: false
+              fileName: C:\Users\cesarg\Documents\Archivos para probar
+                sigma\Datos261223\multialmacen.xlsx
+              type: file
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/11.6.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/multi-warehouse/existences?page=0&size=100&_ts=&period_id=4
+        name: Consultar periodo junto con existencias
+        meta:
+          id: req_36255fdb21ef49baa019de2e279e79c6
+          created: 1764106118756
+          modified: 1764254718220
+          isPrivate: false
+          description: ""
+          sortKey: -1764106118756
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/multi-warehouse/stock"
+        name: consultar la cantidad exacta de existencias (stock) de un producto en un
+          almacén específico
+        meta:
+          id: req_8feb92d1e674441da8d40e136bf94ebb
+          created: 1764108035055
+          modified: 1764614073261
+          isPrivate: false
+          description: ""
+          sortKey: -1764108035055
+        method: GET
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "productCode":"COM-3PLNG",
+              "warehouseKey": "7",
+              "periodId": 10
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Periodos
+    meta:
+      id: fld_bda8165a8871415d8663cf662a40d9e1
+      created: 1757694019170
+      modified: 1757694319065
+      sortKey: -1757694019170
+      description: ""
+    children:
+      - url: http://localhost:8080/api/sigmav2/periods
+        name: Crear periodo
+        meta:
+          id: req_e1f81f07137d46a9b54534421db6279d
+          created: 1757632595821
+          modified: 1764004526251
+          isPrivate: false
+          description: ""
+          sortKey: -1757694175320
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "date": "2023-11-01",
+              "comments": "Periodo septiembre 2025"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/1
+        name: Obtener un periodo por ID
+        meta:
+          id: req_cedcf682f80a40aa9d9e74ac9fa63160
+          created: 1757693909432
+          modified: 1757694191400
+          isPrivate: false
+          description: ""
+          sortKey: -1757694175520
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/11.6.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods?page=0&size=10"
+        name: Listar periodos (paginado)
+        meta:
+          id: req_fba478e6f54d45028d704a736395ab64
+          created: 1757693981347
+          modified: 1757694189781
+          isPrivate: false
+          description: ""
+          sortKey: -1757694175420
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/11.6.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/update-comments
+        name: Actualizar comentarios de un periodo
+        meta:
+          id: req_23d28dba13354b938a9e91071141e16a
+          created: 1757694175120
+          modified: 1764007635586
+          isPrivate: false
+          description: ""
+          sortKey: -1757694175120
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+                "id": 4,
+                "comments": "Nuevos comentarios para el periodo"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/delete
+        name: " Eliminar un periodo"
+        meta:
+          id: req_25e357ba36f0407cb6da1613a41cccc4
+          created: 1757694570922
+          modified: 1764005557129
+          isPrivate: false
+          description: ""
+          sortKey: -1757694570922
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"id":3
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/11.6.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/close
+        name: Cerrar un periodo
+        meta:
+          id: req_e120615b4b1c40cda8897f2aa0b86a2c
+          created: 1757694621938
+          modified: 1759274240635
+          isPrivate: false
+          description: ""
+          sortKey: -1757694621938
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"id":6
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/5/CLOSED
+        name: Bloquear un periodo
+        meta:
+          id: req_20eeedc148284ea7867bf693e18a75cc
+          created: 1757694816803
+          modified: 1759274045534
+          isPrivate: false
+          description: ""
+          sortKey: -1757694816803
+        method: POST
+        headers:
+          - name: User-Agent
+            value: insomnia/11.6.0
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/sigmav2/periods/open
+        name: Abrir periodos
+        meta:
+          id: req_6fa88a2366894631b6964cf654f9aaf5
+          created: 1759274451325
+          modified: 1759275074515
+          isPrivate: false
+          description: ""
+          sortKey: -1759274451325
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"id":4
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/11.6.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/distribution"
+        name: Reporte de Distribución de Marbetes por almacen
+        meta:
+          id: req_f91a542552a24ae490a5b77efd077dd4
+          created: 1765305580035
+          modified: 1765384723108
+          isPrivate: false
+          description: ""
+          sortKey: -1759274451425
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/distribution"
+        name: Reporte de Distribución de Marbetes todos
+        meta:
+          id: req_a8bdfa27c512458da44c865a19a38bd0
+          created: 1765384685241
+          modified: 1765384747765
+          isPrivate: false
+          description: ""
+          sortKey: -1759274451375
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":null
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Labels(Marbetes)
+    meta:
+      id: fld_442fedd1316b4229af65525e6b475697
+      created: 1759861778547
+      modified: 1765305588343
+      sortKey: -1759861778547
+      description: ""
+    children:
+      - url: http://localhost:8080/api/sigmav2/labels/summary-test
+        name: Consulta de periodo y almacen
+        meta:
+          id: req_7c494ed31dc344af901da8381c75e3e4
+          created: 1764267762283
+          modified: 1764284149840
+          isPrivate: false
+          description: ""
+          sortKey: -1764267762283
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 7,
+              "warehouseId": 215
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: " Consulta básica (valores por defecto)"
+        meta:
+          id: req_c35c84d105074a3cbeff29269c943ea8
+          created: 1764284132352
+          modified: 1764614011616
+          isPrivate: false
+          description: ""
+          sortKey: -1764284132352
+        method: POST
+        body:
+          mimeType: application/json
+          text: "{}"
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: Con paginación y tamaño personalizado
+        meta:
+          id: req_19678396b9b245849ccbd2f421f32581
+          created: 1764353512352
+          modified: 1764353520014
+          isPrivate: false
+          description: ""
+          sortKey: -1764275947317.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "page": 1,
+              "size": 25
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: Con búsqueda
+        meta:
+          id: req_6d7aea00aa854ac6b0e800dac241bc88
+          created: 1764353534259
+          modified: 1764614161574
+          isPrivate: false
+          description: ""
+          sortKey: -1764280039834.75
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "searchText": "ANILLO M3L AZUL"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: Con ordenamiento
+        meta:
+          id: req_c3200c55cc1e4619948f4ff618ce52c4
+          created: 1764356159043
+          modified: 1764356163825
+          isPrivate: false
+          description: ""
+          sortKey: -1764282086093.375
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "sortBy": "existencias",
+              "sortDirection": "DESC"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: Consulta completa
+        meta:
+          id: req_7580d3bfd62c41c9a6ba307878327e36
+          created: 1764356177570
+          modified: 1764958033283
+          isPrivate: false
+          description: ""
+          sortKey: -1764283109222.6875
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            "periodId": 16,
+              "warehouseId": 323,
+              "page": 0,
+              "size": 50,
+              "searchText": null,
+            "sortDirection": "ASC"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/print"
+        name: Imprimir marbete
+        meta:
+          id: req_a146fcd5712e467a861b6e0624628b04
+          created: 1764710716313
+          modified: 1769725723186
+          isPrivate: false
+          description: ""
+          sortKey: -1764710716313
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 2,
+              "warehouseId": 81
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/summary"
+        name: Ver marbetes generados
+        meta:
+          id: req_03c0796b5bad47fc92e8fcf77f4e91cf
+          created: 1764777356019
+          modified: 1765917348472
+          isPrivate: false
+          description: ""
+          sortKey: -1764777356019
+        method: POST
+        body:
+          mimeType: application/json
+          text: |+
+            {
+              "periodId": 20,
+              "warehouseId": 415
+            }
+
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl
+          }}/api/sigmav2/labels/status?folio=15&periodId=10&warehouseId=295"
+        name: Ver estado del marbete
+        meta:
+          id: req_f1a60a139bb24eb48a68a34b3d5727ae
+          created: 1764788171404
+          modified: 1764798377961
+          isPrivate: false
+          description: ""
+          sortKey: -1764788171404
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-count/list"
+        name: "Consultar conteo de marbetes "
+        meta:
+          id: req_278e4a4ae6d648b8bdd5a426e68f3d8e
+          created: 1765295779949
+          modified: 1765305576782
+          isPrivate: false
+          description: ""
+          sortKey: -1765295779949
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/cancelled"
+        name: Reporte de Marbetes Cancelados
+        meta:
+          id: req_64220ee2408749ed8687d06ddec0ee76
+          created: 1765305590813
+          modified: 1765305764105
+          isPrivate: false
+          description: ""
+          sortKey: -1765305590813
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/with-differences"
+        name: Reporte de Marbetes con Diferencias
+        meta:
+          id: req_0dacef4ac51c4d60af264e5055f6b338
+          created: 1765305804929
+          modified: 1765305906964
+          isPrivate: false
+          description: ""
+          sortKey: -1765305804929
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/pending"
+        name: Reporte de Marbetes Pendientes
+        meta:
+          id: req_6dc9a0ab1ad24b2e83202cd7b8ac7516
+          created: 1765305946444
+          modified: 1765384922019
+          isPrivate: false
+          description: ""
+          sortKey: -1765305946444
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/list"
+        name: Reporte de Listado de Marbetes
+        meta:
+          id: req_63aaac4efc814362ae476cf974c36561
+          created: 1765384135940
+          modified: 1765384883670
+          isPrivate: false
+          description: ""
+          sortKey: -1765384135940
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/comparative"
+        name: Reporte Comparativo
+        meta:
+          id: req_4be5d437ef114695a0d075db6726caa4
+          created: 1765384964093
+          modified: 1765385012231
+          isPrivate: false
+          description: ""
+          sortKey: -1765384964093
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":null
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/warehouse-detail"
+        name: Reporte de Almacén con Detalle
+        meta:
+          id: req_ecbfe9aa90f146de9749d331c9de026f
+          created: 1765385039798
+          modified: 1765385082141
+          isPrivate: false
+          description: ""
+          sortKey: -1765384964193
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/product-detail"
+        name: Reporte de Producto con Detalle
+        meta:
+          id: req_fd3a875d72474f708bb66c64b58c9896
+          created: 1765385101193
+          modified: 1765385222141
+          isPrivate: false
+          description: ""
+          sortKey: -1765385101193
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":null
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-count/list"
+        name: "folios con marbetes "
+        meta:
+          id: req_4b6f512b98a443af9c58c05547cde16a
+          created: 1765470485190
+          modified: 1765470504969
+          isPrivate: false
+          description: ""
+          sortKey: -1765041975676.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"periodId":"16",
+            	"warehouseId":"369",
+            	"folio":"50"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-count"
+        name: buscar exactamente un folio
+        meta:
+          id: req_627d43737206426bb2a48fd6e2c14b82
+          created: 1765470647352
+          modified: 1765471388062
+          isPrivate: false
+          description: ""
+          sortKey: -1764915073540.25
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            { 
+            "folio": 32,
+            "periodId": "16",
+            "warehouseId": "369"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/inventory/import/preview"
+        name: New Request
+        meta:
+          id: req_28887a605e254b79aea4c94d74855435
+          created: 1765902562912
+          modified: 1765903376514
+          isPrivate: false
+          description: ""
+          sortKey: -1765902562912
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: file
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Documents\Archivos para probar sigma\Datos071223 -
+                Prueba1\inventario.xlsx
+              type: file
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/multi-warehouse/import/preview"
+        name: Preview MultiAlmacen
+        meta:
+          id: req_e1d8e1ee65a943b8b97541d79f4a07be
+          created: 1765903929855
+          modified: 1765904028800
+          isPrivate: false
+          description: ""
+          sortKey: -1765643832052.5
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: file
+              value: ""
+              description: ""
+              disabled: false
+              fileName: C:\Users\cesarg\Documents\Archivos para probar sigma\Datos071223 -
+                Prueba1\multialmacen.xlsx
+              type: file
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/print"
+        name: Verificar pendientes
+        meta:
+          id: req_ca89166c535643fdaefbdc8488318015
+          created: 1767029401932
+          modified: 1767029791038
+          isPrivate: false
+          description: ""
+          sortKey: -1764497424332.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 52
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/print"
+        name: Imprimir marbete
+        meta:
+          id: req_765af09609b44dc88f35dbe53f274144
+          created: 1767030545748
+          modified: 1769727373438
+          isPrivate: false
+          description: ""
+          sortKey: -1764604070322.75
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 2,
+              "warehouseId": 81
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.1.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: "🏷️ Marbetes — Flujo Completo"
+    meta:
+      id: fld_marbetes_flujo_completo_001
+      created: 1741651200000
+      modified: 1741651200000
+      sortKey: -1741651200000
+      description: "Flujo completo: Solicitud > Generacion > Impresion > Conteo > Correccion > Exportacion"
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/request"
+        name: "1. Solicitar Folios"
+        meta:
+          id: req_labels_request_001
+          created: 1741651200001
+          modified: 1741651200001
+          isPrivate: false
+          description: "Solicita folios para un producto. Si requestedLabels=0 sin existencias cancela la solicitud."
+          sortKey: -1741651200001
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "productId": 123,
+              "warehouseId": 14,
+              "periodId": 1,
+              "requestedLabels": 10
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/generate"
+        name: "2. Generar Marbetes para una Solicitud"
+        meta:
+          id: req_labels_generate_001
+          created: 1741651200002
+          modified: 1741651200002
+          isPrivate: false
+          description: "Genera marbetes a partir de un requestId. Asigna folios consecutivos."
+          sortKey: -1741651200002
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "requestId": 456,
+              "periodId": 1,
+              "warehouseId": 14
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/generate/batch"
+        name: "3. Generar Lote Masivo (generate/batch)"
+        meta:
+          id: req_labels_generate_batch_001
+          created: 1741651200003
+          modified: 1741651200003
+          isPrivate: false
+          description: "Genera marbetes para multiples productos en un solo llamado."
+          sortKey: -1741651200003
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 14,
+              "products": [
+                { "productId": 123, "requestedLabels": 10 },
+                { "productId": 124, "requestedLabels": 5 },
+                { "productId": 125, "requestedLabels": 15 }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/generate-and-print"
+        name: "4. Generar e Imprimir en un Paso"
+        meta:
+          id: req_labels_generate_and_print_001
+          created: 1741651200004
+          modified: 1741651200004
+          isPrivate: false
+          description: "Genera marbetes para lista de productos Y los imprime. Retorna PDF."
+          sortKey: -1741651200004
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 14,
+              "products": [
+                { "productId": 123, "requestedLabels": 10 }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/pending-print-count"
+        name: "5. Contar Pendientes de Impresion"
+        meta:
+          id: req_labels_pending_print_count_001
+          created: 1741651200005
+          modified: 1741651200005
+          isPrivate: false
+          description: "Cuantos marbetes GENERADO pendientes. Usar ANTES de /print para verificar."
+          sortKey: -1741651200005
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 14
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/debug/count?periodId=1&warehouseId=14"
+        name: "6. Debug Total de Marbetes (debug/count)"
+        meta:
+          id: req_labels_debug_count_001
+          created: 1741651200006
+          modified: 1741651200006
+          isPrivate: false
+          description: "Total de marbetes en todos los estados para periodo+almacen."
+          sortKey: -1741651200006
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/by-folio/1001"
+        name: "7. Buscar Marbete por Folio GET (by-folio/{folio})"
+        meta:
+          id: req_labels_by_folio_001
+          created: 1741651200007
+          modified: 1741651200007
+          isPrivate: false
+          description: "Estado de un marbete por folio sin necesitar periodId/warehouseId."
+          sortKey: -1741651200007
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/product/123?periodId=1&warehouseId=14"
+        name: "8. Marbetes de un Producto (product/{productId})"
+        meta:
+          id: req_labels_product_detail_001
+          created: 1741651200008
+          modified: 1741651200008
+          isPrivate: false
+          description: "Todos los marbetes de un producto en el periodo/almacen."
+          sortKey: -1741651200008
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/cancelled?periodId=1&warehouseId=14"
+        name: "9. Marbetes Cancelados GET"
+        meta:
+          id: req_labels_cancelled_get_001
+          created: 1741651200009
+          modified: 1741651200009
+          isPrivate: false
+          description: "Lista de marbetes cancelados para periodo/almacen."
+          sortKey: -1741651200009
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-count?folio=1001&periodId=1&warehouseId=14"
+        name: "10. Buscar Marbete para Contar GET (for-count)"
+        meta:
+          id: req_labels_for_count_get_001
+          created: 1741651200010
+          modified: 1741651200010
+          isPrivate: false
+          description: "Info del marbete para contar. Variante GET con query params."
+          sortKey: -1741651200010
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/counts/c1"
+        name: "11. Registrar Primer Conteo C1 POST"
+        meta:
+          id: req_labels_counts_c1_post_001
+          created: 1741651200011
+          modified: 1741651200011
+          isPrivate: false
+          description: "Primer conteo fisico. Marbete debe estar IMPRESO y sin C1 previo."
+          sortKey: -1741651200011
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "countedValue": 95
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/counts/c2"
+        name: "12. Registrar Segundo Conteo C2 POST"
+        meta:
+          id: req_labels_counts_c2_post_001
+          created: 1741651200012
+          modified: 1741651200012
+          isPrivate: false
+          description: "Segundo conteo fisico. Requiere C1 previo."
+          sortKey: -1741651200012
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "countedValue": 93
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/counts/c1"
+        name: "13. Actualizar Conteo C1 PUT"
+        meta:
+          id: req_labels_counts_c1_put_001
+          created: 1741651200013
+          modified: 1741651200013
+          isPrivate: false
+          description: "Corrige el primer conteo. Roles: ADMINISTRADOR, ALMACENISTA, AUXILIAR, AUXILIAR_DE_CONTEO."
+          sortKey: -1741651200013
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "countedValue": 96,
+              "observaciones": "Correccion por error de captura"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/counts/c2"
+        name: "14. Actualizar Conteo C2 PUT"
+        meta:
+          id: req_labels_counts_c2_put_001
+          created: 1741651200014
+          modified: 1741651200014
+          isPrivate: false
+          description: "Corrige el segundo conteo. Roles: ADMINISTRADOR, ALMACENISTA, AUXILIAR_DE_CONTEO."
+          sortKey: -1741651200014
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "countedValue": 94,
+              "observaciones": "Ajuste por reconteo verificado"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/cancel"
+        name: "15. Cancelar Marbete POST"
+        meta:
+          id: req_labels_cancel_001
+          created: 1741651200015
+          modified: 1741651200015
+          isPrivate: false
+          description: "Cancela un marbete IMPRESO sin conteos. Registra en label_cancelled."
+          sortKey: -1741651200015
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "reason": "Producto no encontrado en el almacen",
+              "existenciasActuales": 0
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/cancelled/update-stock"
+        name: "16. Actualizar Stock Marbete Cancelado PUT"
+        meta:
+          id: req_labels_cancelled_update_stock_001
+          created: 1741651200016
+          modified: 1741651200016
+          isPrivate: false
+          description: "Actualiza existencias actuales de un marbete cancelado."
+          sortKey: -1741651200016
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "folio": 1001,
+              "existenciasActuales": 5
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-extraordinary-reprint/list"
+        name: "17. Lista para Reimpr. Extraordinaria"
+        meta:
+          id: req_labels_extraordinary_list_001
+          created: 1741651200017
+          modified: 1741651200017
+          isPrivate: false
+          description: "Marbetes IMPRESOS disponibles para reimpresion extraordinaria."
+          sortKey: -1741651200017
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 14
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/extraordinary-reprint"
+        name: "18. Reimpresion Extraordinaria PDF"
+        meta:
+          id: req_labels_extraordinary_reprint_001
+          created: 1741651200018
+          modified: 1741651200018
+          isPrivate: false
+          description: "Reimprime marbetes ya impresos con folios especificos. Retorna PDF."
+          sortKey: -1741651200018
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1,
+              "warehouseId": 14,
+              "folios": [1001, 1002, 1003],
+              "forceReprint": true
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/generate-file"
+        name: "19. Generar Archivo TXT de Existencias"
+        meta:
+          id: req_labels_generate_file_001
+          created: 1741651200019
+          modified: 1741651200019
+          isPrivate: false
+          description: "Genera archivo TXT con existencias para el sistema principal SIGMA. Descarga directa."
+          sortKey: -1741651200019
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 1
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Usuarios
+    meta:
+      id: fld_81d7bae059124d70a0b73733760e717d
+      created: 1769206126670
+      modified: 1769206149270
+      sortKey: -1769206126670
+      description: ""
+    authentication:
+      type: bearer
+      token: "{{ _['authToken '] }}"
+  - name: Pruebas jasper
+    meta:
+      id: fld_02f3648dcb46406cba34bf99d9dfe5cd
+      created: 1769726863336
+      modified: 1769726875964
+      sortKey: -1769726863336
+      description: ""
+    children:
+      - url: "{{ _.baseUrl }}/api/debug/jasper/check-file"
+        name: check-file
+        meta:
+          id: req_3c47a89c9c584864983d58670c671594
+          created: 1769726888591
+          modified: 1769726963511
+          isPrivate: false
+          description: ""
+          sortKey: -1769726873605
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/debug/jasper/parse-xml"
+        name: parse-xml
+        meta:
+          id: req_316c91a148f94d8487f3a0c572bcf133
+          created: 1769727048578
+          modified: 1769727055644
+          isPrivate: false
+          description: ""
+          sortKey: -1769328504242.5
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/debug/jasper/compile"
+        name: /api/debug/jasper/compile
+        meta:
+          id: req_ccfcdc9590af44a08db47378aa56fc65
+          created: 1769727074624
+          modified: 1769727077380
+          isPrivate: false
+          description: ""
+          sortKey: -1769129319561.25
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/debug/jasper/test-cache"
+        name: /api/debug/jasper/test-cache
+        meta:
+          id: req_b6bdbaa5ee954bf8b69457674b690e34
+          created: 1769727087479
+          modified: 1769727089674
+          isPrivate: false
+          description: ""
+          sortKey: -1769029727220.625
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.3.0
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Admin - security
+    meta:
+      id: fld_85f48c66d62e4397a2cc90c2095ce8ad
+      created: 1770938597640
+      modified: 1770938597640
+      sortKey: -1770938597640
+      description: ""
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/admin/activity-summary/by-email"
+        name: Seguridad
+        meta:
+          id: req_9bf874887b1b4bf4936f42be1e90f67d
+          created: 1770938634391
+          modified: 1771260304937
+          isPrivate: false
+          description: ""
+          sortKey: -1770938634391
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email": "obotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/admin/activity/by-email"
+        name: Actividad
+        meta:
+          id: req_7908bea5e253435c9ad364a4660e7294
+          created: 1770938639143
+          modified: 1771024495941
+          isPrivate: false
+          description: ""
+          sortKey: -1770938639143
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email": "obotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/admin/assignments/by-email"
+        name: Almacenes
+        meta:
+          id: req_148688f9769645118871064890ae22cb
+          created: 1770993704355
+          modified: 1771024492312
+          isPrivate: false
+          description: ""
+          sortKey: -1770332753998
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email": "obotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/admin/personal-info/by-email"
+        name: Informacion personal
+        meta:
+          id: req_f14f9ff5485b4bc88183c69b1eadfb1c
+          created: 1770993733651
+          modified: 1770993736769
+          isPrivate: false
+          description: ""
+          sortKey: -1770029813801.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email": "obotello@tokai.com.mx"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/users/admin/activity-log/by-email"
+        name: Ver historial completo de actividades
+        meta:
+          id: req_608a0d6c48ed499ebe60227d6138f1ec
+          created: 1771283212259
+          modified: 1771283819983
+          isPrivate: false
+          description: ""
+          sortKey: -1769878343703.25
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"email": "cgonzalezz@tokai.com.mx",
+            	"page": 0,
+              "size": 20
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/for-count"
+        name: consulta de folios
+        meta:
+          id: req_2ea7bb7c18bd4bf887fa0c079e29b671
+          created: 1771967840394
+          modified: 1772029239665
+          isPrivate: false
+          description: ""
+          sortKey: -1770938636767
+        method: POST
+        body:
+          mimeType: application/json
+          text: |+
+            {
+            	"folio": "205",
+            	"periodId":"3",
+            	"warehouseId":"221"
+            }
+
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Generacion de reportes
+    meta:
+      id: fld_71f1ed4f35174622877c8b1323b62d3d
+      created: 1772645478138
+      modified: 1772645494050
+      sortKey: -1772645478138
+      description: ""
+    children:
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/distribution/pdf"
+        name: Distribucion de marbetes
+        meta:
+          id: req_79ae078a22e14238b7d1c53c8568c3a0
+          created: 1772645495338
+          modified: 1773065639055
+          isPrivate: false
+          description: ""
+          sortKey: -1772645498788
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/list/pdf"
+        name: listado de marbetes
+        meta:
+          id: req_1c79c066a67140689d7b6c998988323c
+          created: 1772647848028
+          modified: 1772647854734
+          isPrivate: false
+          description: ""
+          sortKey: -1771792068965.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/pending/pdf"
+        name: listado de marbetes pendientes
+        meta:
+          id: req_2fa8e0a0d36d47e4a32543cc5a1e61f7
+          created: 1772751689081
+          modified: 1772752390698
+          isPrivate: false
+          description: ""
+          sortKey: -1771365354054.25
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/with-differences/pdf"
+        name: "Listado de marbtes con diferencia "
+        meta:
+          id: req_d2926e2748d646379b6519bee7ade6ae
+          created: 1772815641167
+          modified: 1773077337978
+          isPrivate: false
+          description: ""
+          sortKey: -1771151996598.625
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/cancelled"
+        name: "Reportes cancelados "
+        meta:
+          id: req_fc320bd7cf5449169be681d616e803fa
+          created: 1772819612425
+          modified: 1773065681903
+          isPrivate: false
+          description: ""
+          sortKey: -1772218783876.75
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/cancelled/pdf"
+        name: marbetes cancelados
+        meta:
+          id: req_e4b6a02c1af2420a8013aa4545706156
+          created: 1772820189369
+          modified: 1772820194040
+          isPrivate: false
+          description: ""
+          sortKey: -1771578711509.875
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/comparative"
+        name: Comparativo de marbetes reportes
+        meta:
+          id: req_347dfda83a4d4ee9a7345486f77dec5f
+          created: 1772822665992
+          modified: 1773065657157
+          isPrivate: false
+          description: ""
+          sortKey: -1772432141332.375
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/comparative/pdf"
+        name: comparativo de marbetes
+        meta:
+          id: req_487b4490975a4f6e9e8be0f02bfae31a
+          created: 1772823282996
+          modified: 1772823285634
+          isPrivate: false
+          description: ""
+          sortKey: -1771685390237.6875
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": 254
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/warehouse-detail/pdf"
+        name: Inventario fisico por almacen con detalle
+        meta:
+          id: req_9bf42386bc474dc4b7b0d4b222ff4c6c
+          created: 1773065592569
+          modified: 1773080520911
+          isPrivate: false
+          description: ""
+          sortKey: -1772538820060.1875
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7,
+              "warehouseId": null
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/warehouse-detail/all/pdf"
+        name: Inventario fisico por almacen con detalle todos
+        meta:
+          id: req_1291734494974c73adb21c612aa19c2d
+          created: 1773074955071
+          modified: 1773079437222
+          isPrivate: false
+          description: ""
+          sortKey: -1772485480696.2812
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7
+            	
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/warehouse-detail/pdf"
+        name: Almacenes con detalles
+        meta:
+          id: req_e7ba70cd3d764c21b9dfcd1c80a9f409
+          created: 1773075123122
+          modified: 1773081256860
+          isPrivate: false
+          description: ""
+          sortKey: -1772458811014.3281
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/product-detail"
+        name: Inventario fisico por almacen con detalle
+        meta:
+          id: req_972b6b7384164dca91673256ed478207
+          created: 1773078756366
+          modified: 1773078958772
+          isPrivate: false
+          description: ""
+          sortKey: -1772512150378.2344
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/product-detail/pdf"
+        name: Producto con Detalle
+        meta:
+          id: req_05a53427aa2c4f7ea7241061ad2206f1
+          created: 1773079695085
+          modified: 1773088817063
+          isPrivate: false
+          description: ""
+          sortKey: -1772445476173.3516
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "periodId": 7
+
+            	
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.baseUrl }}/api/sigmav2/labels/reports/product-detail"
+        name: " filtrar por almacén específico:"
+        meta:
+          id: req_2a9a166d693d408eba4b14772deccdda
+          created: 1773079756724
+          modified: 1773079940509
+          isPrivate: false
+          description: ""
+          sortKey: -1772438808752.8633
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "periodId": 7
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.3.1
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _['authToken '] }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_7c41dbb688a84d65aeeb4f891a42ad51
+    created: 1756502012727
+    modified: 1761604231215
+  cookies:
+    - id: 688040ab-89b8-4955-91ca-b62e502e3211
+      key: JSESSIONID
+      value: A49C84F485613C6BC4FF3C2FBB9EE7A8
+      domain: localhost
+      path: /
+      secure: false
+      httpOnly: true
+      hostOnly: true
+environments:
+  name: Base Environment
+  meta:
+    id: env_9c61a8a2488143afa6e781e6de2c4772
+    created: 1692000000000
+    modified: 1762359137998
+    isPrivate: false
+  data:
+    baseUrl: http://localhost:8080
+    jwtToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTMUdNNFYyIiwic3ViIjoiY2dvbnphbGV6QHRva2FpLmNvbS5teCIsImF1dGhvcml0aWVzIjoiUk9MRV9BRE1JTklTVFJBRE9SIiwiaWF0IjoxNzYyMzU5MTExLCJleHAiOjE3NjI0NDU1MTEsImp0aSI6IjQ3NzAzYWJhLTMwNWEtNGNiMC1iOTU4LTI0M2Q4Mjc2ZDczZiIsIm5iZiI6MTc2MjM1OTExMX0.flcJ9yF4iuyGdWERxarU63LVDti6kn-dpfIz19lVYAQ
+    adminToken: ""
