@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserWarehouseFoliosResponse;
+import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserWarehouseSummaryResponse;
 import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.UserWarehouseAssignment;
 
 import java.util.List;
@@ -83,8 +85,76 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
            countQuery = "SELECT COUNT(DISTINCT u.userId) FROM UserWarehouseAssignment u")
     Page<UserWarehouseCountProjection> findUsersWithWarehouses(Pageable pageable);
 
+    /**
+     * OPTIMIZADO: Obtiene usuarios con almacenes en UNA SOLA QUERY con JOIN
+     * Evita N+1 queries: en lugar de 1 query + N queries por usuario,
+     * hace 1 query que trae todo junto
+     *
+     * @param pageable Información de paginación
+     * @return Página de UserWarehouseSummaryResponse con todos los datos
+     */
+    @Query(value = """
+            SELECT
+                u.email                AS usuario,
+                w.warehouse_key        AS claveAlmacen,
+                w.name_warehouse       AS nombreAlmacen,
+                MIN(l.folio)           AS primerFolio,
+                MAX(l.folio)           AS ultimoFolio
+            FROM labels l
+            INNER JOIN users u       ON u.user_id      = l.created_by
+            INNER JOIN warehouse w   ON w.id_warehouse = l.id_warehouse
+            WHERE w.deleted_at IS NULL
+            GROUP BY u.user_id, u.email, w.id_warehouse, w.warehouse_key, w.name_warehouse
+            ORDER BY u.email ASC, w.warehouse_key ASC
+            """,
+           countQuery = """
+            SELECT COUNT(*)
+            FROM (
+                SELECT l.created_by, l.id_warehouse
+                FROM labels l
+                INNER JOIN warehouse w ON w.id_warehouse = l.id_warehouse
+                WHERE w.deleted_at IS NULL
+                GROUP BY l.created_by, l.id_warehouse
+            ) subq
+            """,
+           nativeQuery = true)
+    Page<UserWarehouseSummaryResponse> findUsersWithWarehousesOptimized(Pageable pageable);
+
+    /**
+     * Muestra cada rango de marbetes generado con el usuario que lo generó,
+     * clave/nombre del almacén y los folios primer/último.
+     * Usa label_generation_batches como tabla base.
+     *
+     * @param pageable Información de paginación
+     * @return Página de UserWarehouseFoliosResponse
+     */
+    @Query(value = """
+            SELECT
+                u.email                AS usuario,
+                w.warehouse_key        AS claveAlmacen,
+                w.name_warehouse       AS nombreAlmacen,
+                lgb.primer_folio       AS primerFolio,
+                lgb.ultimo_folio       AS ultimoFolio,
+                lgb.generado_at        AS generadoAt
+            FROM label_generation_batches lgb
+            INNER JOIN users u    ON u.user_id      = lgb.generado_por
+            INNER JOIN warehouse w ON w.id_warehouse = lgb.id_warehouse
+            WHERE w.deleted_at IS NULL
+            ORDER BY lgb.generado_at DESC
+            """,
+           countQuery = """
+            SELECT COUNT(lgb.id_batch)
+            FROM label_generation_batches lgb
+            INNER JOIN warehouse w ON w.id_warehouse = lgb.id_warehouse
+            WHERE w.deleted_at IS NULL
+            """,
+           nativeQuery = true)
+    Page<UserWarehouseFoliosResponse> findUsersWarehousesWithFolios(Pageable pageable);
+
     interface UserWarehouseCountProjection {
         Long getUserId();
         Long getWarehousesCount();
     }
 }
+
+

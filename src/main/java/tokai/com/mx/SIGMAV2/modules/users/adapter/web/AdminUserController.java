@@ -434,7 +434,12 @@ public class AdminUserController {
     }
 
     /**
-     * Lista usuarios que tienen al menos un almacén asignado (paginado)
+     * Lista todos los usuarios ACTIVOS con sus almacenes asignados.
+     *
+     * <p><b>Finalidad:</b> Ver usuario + almacén con rango de folios generados.</p>
+     *
+     * <p>Nota: El parámetro sortBy se ignora en queries nativas SQL.
+     * El ORDER BY está hardcodeado en la query: email ASC, warehouse_key ASC</p>
      */
     @GetMapping("/with-warehouses")
     public ResponseEntity<Map<String, Object>> getUsersWithWarehouses(
@@ -443,41 +448,51 @@ public class AdminUserController {
             @RequestParam(value = "sortBy", defaultValue = "email") String sortBy,
             @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir) {
 
-        // Validar que sortBy sea un campo válido en UserWarehouseAssignment
-        // Solo permite: userId, warehousesCount
-        String validSortBy = "userId";
-        if (sortBy != null && (sortBy.equals("warehousesCount") || sortBy.equals("userId"))) {
-            validSortBy = sortBy;
-        }
+        log.info("Consultando usuario-almacén con folios - página: {}, tamaño: {}", page, size);
 
-        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, validSortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
+        // Para queries nativas SQL, NO usar Sort porque Spring Data no sabe
+        // qué tabla aplicarlo. El ORDER BY ya está en la query SQL.
+        Pageable pageable = PageRequest.of(page, size);
 
-        var assignmentsPage = userWarehouseAssignmentRepository.findUsersWithActiveWarehouses(pageable);
+        var usersPage = userWarehouseAssignmentRepository.findUsersWithWarehousesOptimized(pageable);
 
-        List<UserWarehouseSummaryResponse> users = assignmentsPage.getContent().stream()
-                .map(projection -> userService.findById(projection.getUserId())
-                        .map(user -> UserWarehouseSummaryResponse.builder()
-                                .userId(user.getId())
-                                .email(user.getEmail())
-                                .role(user.getRole().name())
-                                .status(user.isStatus())
-                                .warehousesCount(projection.getWarehousesCount())
-                                .warehouseIds(userWarehouseAssignmentRepository.findWarehouseIdsByUserId(user.getId()))
-                                .build())
-                        .orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        log.info("Encontrados {} registros usuario-almacén con folios", usersPage.getTotalElements());
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("data", users);
-        response.put("totalElements", assignmentsPage.getTotalElements());
-        response.put("totalPages", assignmentsPage.getTotalPages());
-        response.put("currentPage", assignmentsPage.getNumber());
-        response.put("pageSize", assignmentsPage.getSize());
-        response.put("hasNext", assignmentsPage.hasNext());
-        response.put("hasPrevious", assignmentsPage.hasPrevious());
+        response.put("data", usersPage.getContent());
+        response.put("totalElements", usersPage.getTotalElements());
+        response.put("totalPages", usersPage.getTotalPages());
+        response.put("currentPage", usersPage.getNumber());
+        response.put("pageSize", usersPage.getSize());
+        response.put("hasNext", usersPage.hasNext());
+        response.put("hasPrevious", usersPage.hasPrevious());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Resumen por usuario + almacén con primer y último folio generado.
+     * GET /api/sigmav2/admin/users/summary/warehouses-folios
+     */
+    @GetMapping("/summary/warehouses-folios")
+    public ResponseEntity<Map<String, Object>> getUsersWarehousesWithFolios(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        var result = userWarehouseAssignmentRepository.findUsersWarehousesWithFolios(pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", result.getContent());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("currentPage", result.getNumber());
+        response.put("pageSize", result.getSize());
+        response.put("hasNext", result.hasNext());
+        response.put("hasPrevious", result.hasPrevious());
 
         return ResponseEntity.ok(response);
     }
