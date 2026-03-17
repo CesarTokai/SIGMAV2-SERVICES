@@ -203,7 +203,7 @@ public class LabelServiceImpl implements LabelService {
 
         Long minFolio = labels.get(0).getFolio();
         Long maxFolio = labels.get(labels.size() - 1).getFolio();
-        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
+        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, false);
 
         log.info("✅ PDF generado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
         return pdfBytes;
@@ -240,7 +240,7 @@ public class LabelServiceImpl implements LabelService {
 
         Long minFolio = labels.get(0).getFolio();
         Long maxFolio = labels.get(labels.size() - 1).getFolio();
-        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId);
+        persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, true);
 
         log.info("✅ REIMPRESIÓN EXTRAORDINARIA completada: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
         return pdfBytes;

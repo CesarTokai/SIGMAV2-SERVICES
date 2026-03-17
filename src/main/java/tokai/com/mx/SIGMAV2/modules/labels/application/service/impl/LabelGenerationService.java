@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.ProductBatchDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
@@ -38,6 +39,16 @@ public class LabelGenerationService {
                 dto.getProducts().size(), dto.getWarehouseId(), dto.getPeriodId());
 
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
+
+        // ── Regla de negocio: no generar si ya hay marbetes impresos ──────
+        if (persistence.existsImpresosForPeriodAndWarehouse(dto.getPeriodId(), dto.getWarehouseId())) {
+            throw new InvalidLabelStateException(
+                "No se pueden generar más marbetes para el periodo " + dto.getPeriodId() +
+                " y almacén " + dto.getWarehouseId() +
+                ". Ya existen marbetes impresos en este periodo/almacén. " +
+                "El proceso de conteo está en curso.");
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         LocalDateTime now = LocalDateTime.now();
         int totalGenerados = 0;

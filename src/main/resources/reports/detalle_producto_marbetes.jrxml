@@ -185,9 +185,9 @@
                     <printWhenExpression><![CDATA[$F{cancelado} != null && $F{cancelado}]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font fontName="Arial" size="8" isBold="true"/>
+                    <font fontName="Arial" size="8" isBold="true" forecolor="#CC0000"/>
                 </textElement>
-                <textFieldExpression><![CDATA["CANCELADO"]]></textFieldExpression>
+                <textFieldExpression><![CDATA["C"]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement style="Table_TD" x="465" y="0" width="90" height="14" uuid="86cf9553-b2d3-4bc9-b625-1c4444d6cb47">
@@ -209,7 +209,7 @@
                 </textElement>
                 <text><![CDATA[SIGMAV2 - Sistema de Inventarios]]></text>
             </staticText>
-            <textField evaluationTime="Report">
+            <textField>
                 <reportElement x="455" y="4" width="100" height="13" uuid="b2c3d4e5-f6a7-8901-bcde-f12345678943"/>
                 <textElement textAlignment="Right">
                     <font fontName="Arial" size="7"/>

@@ -191,77 +191,54 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
     // Nueva operación: impresión de rango de marbetes
     @Transactional
-    public synchronized LabelPrint printLabelsRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio, Long userId) {
-        log.info("Iniciando printLabelsRange: periodo={}, almacén={}, folios {}-{}",
-            periodId, warehouseId, startFolio, endFolio);
+    public synchronized LabelPrint printLabelsRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio, Long userId, boolean isReprint) {
+        log.info("Iniciando printLabelsRange: periodo={}, almacén={}, folios {}-{}, reimpresión={}",
+            periodId, warehouseId, startFolio, endFolio, isReprint);
 
-        // Validación básica de rango
-        if (endFolio < startFolio) {
-            throw new IllegalArgumentException("Rango inválido: endFolio < startFolio");
-        }
-        long count = endFolio - startFolio + 1;
-        if (count > 500) {
-            throw new IllegalArgumentException("Máximo 500 folios por lote.");
-        }
+        // Los folios son una secuencia GLOBAL compartida entre almacenes.
+        // Un mismo almacén puede tener bloques no consecutivos, por eso solo filtramos
+        // por warehouse/periodo y por el estado esperado (GENERADO o IMPRESO).
+        Label.State estadoEsperado = isReprint ? Label.State.IMPRESO : Label.State.GENERADO;
 
-        // Buscar marbetes del rango en el periodo y almacén específicos
-        // MEJORA: Filtrar por periodo y almacén en la query para mayor eficiencia
-        List<Label> labels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio);
-
-        // Filtrar solo los que pertenecen al periodo y almacén solicitados
-        List<Label> filteredLabels = labels.stream()
+        List<Label> filteredLabels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio)
+            .stream()
             .filter(l -> l.getPeriodId().equals(periodId) && l.getWarehouseId().equals(warehouseId))
+            .filter(l -> l.getEstado() == estadoEsperado)
             .collect(Collectors.toList());
 
-        // Verificar que todos los folios existan
-        if (filteredLabels.size() != count) {
-            // Encontrar faltantes
-            java.util.Set<Long> found = filteredLabels.stream().map(Label::getFolio).collect(Collectors.toSet());
-            StringBuilder sb = new StringBuilder();
-            for (long f = startFolio; f <= endFolio; f++) {
-                if (!found.contains(f)) {
-                    if (!sb.isEmpty()) sb.append(',');
-                    sb.append(f);
-                }
-            }
-            String missing = sb.toString();
+        if (filteredLabels.isEmpty()) {
             throw new IllegalStateException(
-                String.format("No es posible imprimir marbetes no generados. Folios faltantes: %s", missing));
+                String.format("No se encontraron marbetes en estado %s para imprimir en periodo=%d, almacén=%d, rango %d-%d",
+                    estadoEsperado, periodId, warehouseId, startFolio, endFolio));
         }
 
-        // CORRECCIÓN ERROR #5: Validar TODOS los marbetes ANTES de modificar cualquiera
-        // Esto evita inconsistencias si se encuentra un error a mitad del proceso
+        // Validar que no estén cancelados y pertenezcan al periodo/almacén correcto
         List<String> errores = validateLabelsForPrinting(filteredLabels, periodId, warehouseId);
-
-        // Si hay errores, lanzar excepción SIN HABER MODIFICADO NADA
         if (!errores.isEmpty()) {
-            String mensajeError = String.join("; ", errores);
-            log.error("Errores de validación en printLabelsRange: {}", mensajeError);
             throw new IllegalStateException(
-                String.format("No es posible imprimir los marbetes. Errores encontrados: %s", mensajeError));
+                String.format("No es posible imprimir los marbetes. Errores: %s", String.join("; ", errores)));
         }
 
-        // Si llegamos aquí, TODOS los marbetes son válidos
-        // Ahora sí, modificar todos de forma segura
+        // Actualizar estado a IMPRESO
         LocalDateTime now = LocalDateTime.now();
-        log.debug("Actualizando estado de {} marbetes a IMPRESO", filteredLabels.size());
-
+        log.debug("Actualizando {} marbetes ({}) a IMPRESO", filteredLabels.size(), estadoEsperado);
         for (Label l : filteredLabels) {
             l.setEstado(Label.State.IMPRESO);
             l.setImpresoAt(now);
         }
-
-        // Guardar todos los labels actualizados
         jpaLabelRepository.saveAll(filteredLabels);
         log.info("Estados actualizados exitosamente para {} marbetes", filteredLabels.size());
 
-        // Crear registro en label_prints para auditoría
+        // Registro de auditoría con el rango y cantidad real de marbetes impresos
+        long actualMin = filteredLabels.stream().mapToLong(Label::getFolio).min().orElse(startFolio);
+        long actualMax = filteredLabels.stream().mapToLong(Label::getFolio).max().orElse(endFolio);
+
         LabelPrint lp = new LabelPrint();
         lp.setPeriodId(periodId);
         lp.setWarehouseId(warehouseId);
-        lp.setFolioInicial(startFolio);
-        lp.setFolioFinal(endFolio);
-        lp.setCantidadImpresa((int)count);
+        lp.setFolioInicial(actualMin);
+        lp.setFolioFinal(actualMax);
+        lp.setCantidadImpresa(filteredLabels.size());
         lp.setPrintedBy(userId);
         lp.setPrintedAt(now);
 
@@ -372,6 +349,15 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     public List<Label> findPendingLabelsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
         return jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
             periodId, warehouseId, Label.State.GENERADO);
+    }
+
+    /**
+     * Verifica si ya existen marbetes en estado IMPRESO para un periodo y almacén.
+     * Se usa para bloquear la generación de nuevos marbetes una vez iniciada la impresión.
+     */
+    public boolean existsImpresosForPeriodAndWarehouse(Long periodId, Long warehouseId) {
+        return !jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.IMPRESO).isEmpty();
     }
 
     /**
