@@ -34,12 +34,12 @@ public class LabelsController {
     private final LabelService labelService;
     private final AuthenticatedUserService authenticatedUserService;
     private final JasperReportPdfService jasperReportPdfService;
+    
     private Long getUserIdFromToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return authenticatedUserService.getUserIdByEmail(email);
     }
 
-    /** Extrae el rol del usuario autenticado desde el token JWT. */
     private String getUserRoleFromToken() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getAuthorities().stream()
@@ -48,7 +48,8 @@ public class LabelsController {
                 .orElse(null);
     }
 
-    // ── Solicitar folios (deprecado) ─────────────────────────────────────
+    // ...existing code...
+
     @PostMapping("/request")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> requestLabels(@Valid @RequestBody LabelRequestDTO dto) {
@@ -56,7 +57,6 @@ public class LabelsController {
         return ResponseEntity.status(201).build();
     }
 
-    // ── Generar marbetes (deprecado) ─────────────────────────────────────
     @PostMapping("/generate")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<GenerateBatchResponseDTO> generateBatch(@Valid @RequestBody GenerateBatchDTO dto) {
@@ -66,7 +66,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.generateBatch(dto, userId, userRole));
     }
 
-    // ── Imprimir marbetes ────────────────────────────────────────────────
     @PostMapping("/print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
@@ -77,7 +76,6 @@ public class LabelsController {
         return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes");
     }
 
-    // ── Contar marbetes pendientes ───────────────────────────────────────
     @PostMapping("/pending-print-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<PendingPrintCountResponseDTO> getPendingPrintCount(
@@ -85,21 +83,18 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.getPendingPrintCount(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Registrar Conteo C1 ──────────────────────────────────────────────
     @PostMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC1(@Valid @RequestBody CountEventDTO dto) {
         return ResponseEntity.ok(labelService.registerCountC1(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Registrar Conteo C2 ──────────────────────────────────────────────
     @PostMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC2(@Valid @RequestBody CountEventDTO dto) {
         return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Actualizar Conteo C1 ─────────────────────────────────────────────
     @PutMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
@@ -108,7 +103,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
-    // ── Actualizar Conteo C2 ─────────────────────────────────────────────
     @PutMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
@@ -117,7 +111,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.updateCountC2(dto, userId, getUserRoleFromToken()));
     }
 
-    // ── Resumen de marbetes ──────────────────────────────────────────────
     @PostMapping("/summary")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<LabelSummaryResponseDTO>> getLabelSummary(@RequestBody LabelSummaryRequestDTO dto) {
@@ -126,7 +119,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.getLabelSummary(dto, userId, getUserRoleFromToken()));
     }
 
-    // ── Generar marbetes para lista de productos ─────────────────────────
     @PostMapping("/generate/batch")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> generateBatchList(@Valid @RequestBody GenerateBatchListDTO dto) {
@@ -134,34 +126,27 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
-    // ── Generar e Imprimir en un solo paso ───────────────────────────────
     @PostMapping("/generate-and-print")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> generateAndPrint(@Valid @RequestBody GenerateBatchListDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
         log.info("🚀 /generate-and-print: usuario={}", userId);
-
         labelService.generateBatchList(dto, userId, userRole);
-
         PendingPrintCountRequestDTO countDto = new PendingPrintCountRequestDTO();
         countDto.setPeriodId(dto.getPeriodId());
         countDto.setWarehouseId(dto.getWarehouseId());
         var countResponse = labelService.getPendingPrintCount(countDto, userId, userRole);
-
         if (countResponse.getCount() == 0) {
             return ResponseEntity.badRequest().build();
         }
-
         PrintRequestDTO printDto = new PrintRequestDTO();
         printDto.setPeriodId(dto.getPeriodId());
         printDto.setWarehouseId(dto.getWarehouseId());
         byte[] pdfBytes = labelService.printLabels(printDto, userId, userRole);
-
         return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes");
     }
 
-    // ── Estado de marbete ────────────────────────────────────────────────
     @GetMapping("/status")
     public ResponseEntity<LabelStatusResponseDTO> getLabelStatus(
             @RequestParam Long folio, @RequestParam Long periodId, @RequestParam Long warehouseId) {
@@ -182,7 +167,6 @@ public class LabelsController {
                 "totalLabels", count, "userId", userId));
     }
 
-    // ── Marbetes cancelados ──────────────────────────────────────────────
     @GetMapping("/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<List<LabelCancelledDTO>> getCancelledLabels(
@@ -196,7 +180,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.updateCancelledStock(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Detalle por producto ─────────────────────────────────────────────
     @GetMapping("/product/{productId}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<LabelDetailDTO>> getLabelsByProduct(
@@ -210,7 +193,6 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.getLabelStatus(folio, null, null, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Cancelar marbete ─────────────────────────────────────────────────
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> cancelLabel(@Valid @RequestBody CancelLabelRequestDTO dto) {
@@ -219,7 +201,6 @@ public class LabelsController {
         return ResponseEntity.ok().build();
     }
 
-    // ── Consulta para conteo ─────────────────────────────────────────────
     @GetMapping("/for-count")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelForCountDTO> getLabelForCount(
@@ -240,71 +221,69 @@ public class LabelsController {
         return ResponseEntity.ok(labels);
     }
 
-    // ── Reportes ─────────────────────────────────────────────────────────
+    // ── Reportes JSON ────────────────────────────────────────────────────
     @PostMapping("/reports/distribution")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DistributionReportDTO>> getDistributionReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<DistributionReportDTO>> getDistributionReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getDistributionReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.LabelListReportDTO>> getLabelListReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<LabelListReportDTO>> getLabelListReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getLabelListReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/pending")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.PendingLabelsReportDTO>> getPendingLabelsReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<PendingLabelsReportDTO>> getPendingLabelsReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getPendingLabelsReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/with-differences")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.DifferencesReportDTO>> getDifferencesReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<DifferencesReportDTO>> getDifferencesReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getDifferencesReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/cancelled")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.CancelledLabelsReportDTO>> getCancelledLabelsReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<CancelledLabelsReportDTO>> getCancelledLabelsReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getCancelledLabelsReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/comparative")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ComparativeReportDTO>> getComparativeReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<ComparativeReportDTO>> getComparativeReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getComparativeReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/warehouse-detail")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.WarehouseDetailReportDTO>> getWarehouseDetailReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<WarehouseDetailReportDTO>> getWarehouseDetailReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getWarehouseDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/reports/product-detail")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ProductDetailReportDTO>> getProductDetailReport(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.ReportFilterDTO filter) {
+    public ResponseEntity<List<ProductDetailReportDTO>> getProductDetailReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getProductDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    // ── Generar archivo TXT (descarga directa) ───────────────────────────
     @PostMapping("/generate-file")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> generateInventoryFile(@Valid @RequestBody GenerateFileRequestDTO dto) {
         Long userId = getUserIdFromToken();
         log.info("Generando archivo TXT para periodo={}, usuario={}", dto.getPeriodId(), userId);
         GenerateFileResponseDTO response = labelService.generateInventoryFile(dto.getPeriodId(), userId, getUserRoleFromToken());
-
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_PLAIN);
         headers.setContentDisposition(
@@ -316,7 +295,6 @@ public class LabelsController {
         return ResponseEntity.ok().headers(headers).body(response.getFileBytes());
     }
 
-    // ── Reimpresión Extraordinaria ───────────────────────────────────────
     @PostMapping("/for-extraordinary-reprint/list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<List<Map<String, Object>>> getImpresosForExtraordinaryReprint(
@@ -349,7 +327,6 @@ public class LabelsController {
     }
 
     // ── PDFs de reportes ─────────────────────────────────────────────────
-
     @PostMapping("/reports/distribution/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<?> getDistributionReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
@@ -357,6 +334,18 @@ public class LabelsController {
         List<DistributionReportDTO> data = labelService.getDistributionReport(filter, userId, userRole);
         if (data.isEmpty()) return noDataResponse("distribución", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateDistributionPdf(data), "distribucion_marbetes");
+    }
+
+    @PostMapping("/reports/distribution/pdf/all")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllDistributionReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<DistributionReportDTO> data = labelService.getDistributionReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("distribución de todos los almacenes", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateDistributionPdf(data), "distribucion_todos_almacenes_marbetes");
     }
 
     @PostMapping("/reports/list/pdf")
@@ -368,6 +357,18 @@ public class LabelsController {
         return buildPdfResponse(jasperReportPdfService.generateListPdf(data), "listado_marbetes");
     }
 
+    @PostMapping("/reports/list/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllLabelListReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<LabelListReportDTO> data = labelService.getLabelListReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("listado de todos los marbetes", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateListPdf(data), "listado_todos_marbetes");
+    }
+
     @PostMapping("/reports/pending/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<?> getPendingLabelsReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
@@ -377,6 +378,18 @@ public class LabelsController {
         return buildPdfResponse(jasperReportPdfService.generatePendingPdf(data), "pendientes_marbetes");
     }
 
+    @PostMapping("/reports/pending/pdf/all")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllPendingLabelsReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<PendingLabelsReportDTO> data = labelService.getPendingLabelsReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("marbetes pendientes de todos los almacenes", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generatePendingPdf(data), "pendientes_todos_almacenes_marbetes");
+    }
+
     @PostMapping("/reports/with-differences/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<?> getDifferencesReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
@@ -384,6 +397,18 @@ public class LabelsController {
         List<DifferencesReportDTO> data = labelService.getDifferencesReport(filter, userId, userRole);
         if (data.isEmpty()) return noDataResponse("marbetes con diferencias", filter.getPeriodId(), filter.getWarehouseId());
         return buildPdfResponse(jasperReportPdfService.generateDifferencesPdf(data), "diferencias_marbetes");
+    }
+
+    @PostMapping("/reports/with-differences/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllDifferencesReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<DifferencesReportDTO> data = labelService.getDifferencesReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("marbetes con diferencias", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateDifferencesPdf(data), "diferencias_todos_almacenes_marbetes");
     }
 
     @PostMapping("/reports/cancelled/pdf")
@@ -404,30 +429,16 @@ public class LabelsController {
         return buildPdfResponse(jasperReportPdfService.generateComparativePdf(data), "comparativo_marbetes");
     }
 
-    @PostMapping("/reports/warehouse-detail/pdf")
+    @PostMapping("/reports/comparative/all/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> getWarehouseDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
-        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
-        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
-        if (data.isEmpty()) return noDataResponse("detalle por almacén", filter.getPeriodId(), filter.getWarehouseId());
-        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_almacen_marbetes");
-    }
-
-    /**
-     * Reporte de inventario físico por almacén con detalle — TODOS los almacenes.
-     * Solo requiere el periodo; se consultan todos los almacenes accesibles por el usuario.
-     */
-    @PostMapping("/reports/warehouse-detail/all/pdf")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> getAllWarehousesDetailReportPdf(
-            @Valid @RequestBody tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.AllWarehousesReportRequestDTO request) {
+    public ResponseEntity<?> getAllComparativeReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
         Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
         ReportFilterDTO filter = new ReportFilterDTO();
         filter.setPeriodId(request.getPeriodId());
         filter.setWarehouseId(null);
-        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
-        if (data.isEmpty()) return noDataResponse("detalle de todos los almacenes", request.getPeriodId(), null);
-        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_todos_almacenes_marbetes");
+        List<ComparativeReportDTO> data = labelService.getComparativeReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("comparativo de todos los almacenes", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateComparativePdf(data), "comparativo_todos_almacenes_marbetes");
     }
 
     @PostMapping("/reports/product-detail/pdf")
@@ -439,10 +450,42 @@ public class LabelsController {
         return buildPdfResponse(jasperReportPdfService.generateProductDetailPdf(data), "detalle_producto_marbetes");
     }
 
-    // ── Helper: sin datos ────────────────────────────────────────────────
+    @PostMapping("/reports/product-detail/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllProductsDetailReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<ProductDetailReportDTO> data = labelService.getProductDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle de todos los productos", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateProductDetailPdf(data), "detalle_todos_productos_marbetes");
+    }
+
+    @PostMapping("/reports/warehouse-detail/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getWarehouseDetailReportPdf(@Valid @RequestBody ReportFilterDTO filter) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle por almacén", filter.getPeriodId(), filter.getWarehouseId());
+        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_almacen_marbetes");
+    }
+
+    @PostMapping("/reports/warehouse-detail/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getAllWarehousesDetailReportPdf(@Valid @RequestBody AllWarehousesReportRequestDTO request) {
+        Long userId = getUserIdFromToken(); String userRole = getUserRoleFromToken();
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(request.getPeriodId());
+        filter.setWarehouseId(null);
+        List<WarehouseDetailReportDTO> data = labelService.getWarehouseDetailReport(filter, userId, userRole);
+        if (data.isEmpty()) return noDataResponse("detalle de todos los almacenes", request.getPeriodId(), null);
+        return buildPdfResponse(jasperReportPdfService.generateWarehouseDetailPdf(data), "detalle_todos_almacenes_marbetes");
+    }
+
     private ResponseEntity<Map<String, Object>> noDataResponse(String reporte, Long periodId, Long warehouseId) {
         String almacen = warehouseId != null ? "almacén " + warehouseId : "todos los almacenes";
-        log.warn("⚠️ Sin registros para reporte '{}' — periodo={}, almacén={}", reporte, periodId, warehouseId);
+        log.warn("⚠️ Sin registros para reporte '{}' — periodo={}, almacén={}", reporte, periodId, almacen);
         return ResponseEntity.status(404).body(Map.of(
                 "success", false,
                 "message", "No se encontraron registros de " + reporte + " para el periodo " + periodId + " en " + almacen + ".",
@@ -451,7 +494,6 @@ public class LabelsController {
         ));
     }
 
-    // ── Helper: construir ResponseEntity PDF ────────────────────────────
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, String prefix) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String filename  = String.format("%s_%s.pdf", prefix, timestamp);
@@ -463,13 +505,11 @@ public class LabelsController {
         return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 
-    // ── Helper original (para impresión de marbetes con periodId y warehouseId) ─
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, Long periodId, Long warehouseId, String prefix) {
         String safePeriodId = String.valueOf(periodId).replaceAll("[^0-9]", "");
         String safeWarehouseId = String.valueOf(warehouseId).replaceAll("[^0-9]", "");
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String filename = String.format("%s_P%s_A%s_%s.pdf", prefix, safePeriodId, safeWarehouseId, timestamp);
-
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDisposition(
@@ -478,3 +518,4 @@ public class LabelsController {
         return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 }
+

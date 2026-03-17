@@ -67,8 +67,8 @@ public class LabelReportService {
         validateAccess(userId, filter.getWarehouseId(), userRole);
 
         List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findPrintedLabelsByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findPrintedLabelsByPeriod(filter.getPeriodId());
+                ? jpaLabelRepository.findAllLabelsByPeriodAndWarehouseForDistribution(filter.getPeriodId(), filter.getWarehouseId())
+                : jpaLabelRepository.findAllLabelsByPeriodForDistribution(filter.getPeriodId());
 
         // Cargar usuarios referenciados en batch
         Set<Long> userIds = labels.stream().map(Label::getCreatedBy).collect(Collectors.toSet());

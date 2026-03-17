@@ -1,287 +1,217 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5 -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
-              http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
-              name="listado_marbetes"
-              pageWidth="595" pageHeight="842"
-              whenNoDataType="NoPages"
-              columnWidth="555" leftMargin="20" rightMargin="20"
-              topMargin="20" bottomMargin="20"
-              uuid="f6a7b8c9-d012-3456-789a-bcdef1234567">
-
-    <!-- ═══════════════ ESTILOS (sin bordes) ═══════════════ -->
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="listado_marbetes" pageWidth="595" pageHeight="842" whenNoDataType="NoPages" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="f6a7b8c9-d012-3456-789a-bcdef1234567">
     <style name="Table_CH" mode="Opaque" backcolor="#BFE1FF"/>
     <style name="Table_TD" mode="Opaque" backcolor="#FFFFFF"/>
-
-    <!-- ═══════════════ PARÁMETROS ═══════════════ -->
-    <parameter name="periodId"    class="java.lang.Integer"/>
+    <parameter name="periodId" class="java.lang.Integer"/>
     <parameter name="warehouseId" class="java.lang.Integer"/>
-    <parameter name="fecha"       class="java.lang.String">
+    <parameter name="fecha" class="java.lang.String">
         <defaultValueExpression><![CDATA["Sin fecha"]]></defaultValueExpression>
     </parameter>
-    <parameter name="REPORT_DIR"  class="java.lang.String">
+    <parameter name="REPORT_DIR" class="java.lang.String">
         <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
     </parameter>
-    <parameter name="usuario"     class="java.lang.String">
-        <defaultValueExpression><![CDATA["Sistema"]]></defaultValueExpression>
-    </parameter>
-
-    <!-- ═══════════════ FIELDS ═══════════════ -->
-    <field name="numeroMarbete"       class="java.lang.Long"/>
-    <field name="claveProducto"       class="java.lang.String"/>
+    <field name="numeroMarbete" class="java.lang.Long"/>
+    <field name="claveProducto" class="java.lang.String"/>
     <field name="descripcionProducto" class="java.lang.String"/>
-    <field name="unidad"              class="java.lang.String"/>
-    <field name="claveAlmacen"        class="java.lang.String"/>
-    <field name="nombreAlmacen"       class="java.lang.String"/>
-    <field name="conteo1"             class="java.math.BigDecimal"/>
-    <field name="conteo2"             class="java.math.BigDecimal"/>
-    <field name="estado"              class="java.lang.String"/>
-    <field name="cancelado"           class="java.lang.Boolean"/>
-    <field name="periodId"            class="java.lang.Long"/>
-    <field name="periodName"          class="java.lang.String"/>
-
-    <!-- ═══════════════ VARIABLES ═══════════════ -->
+    <field name="unidad" class="java.lang.String"/>
+    <field name="claveAlmacen" class="java.lang.String"/>
+    <field name="nombreAlmacen" class="java.lang.String"/>
+    <field name="conteo1" class="java.math.BigDecimal"/>
+    <field name="conteo2" class="java.math.BigDecimal"/>
+    <field name="estado" class="java.lang.String"/>
+    <field name="cancelado" class="java.lang.Boolean"/>
+    <field name="periodId" class="java.lang.Long"/>
+    <field name="periodName" class="java.lang.String"/>
     <variable name="canceladosCount" class="java.lang.Integer" calculation="Sum">
         <variableExpression><![CDATA[$F{cancelado} == Boolean.TRUE ? 1 : 0]]></variableExpression>
     </variable>
-
-    <!-- ═══════════════ TITULO ═══════════════ -->
     <title>
-        <band height="90" splitType="Stretch">
+        <band height="80" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="51" width="555" height="1" uuid="b1000001-0000-0000-0000-000000000011"/>
+            </line>
             <image scaleImage="RetainShape" hAlign="Left" onErrorType="Blank">
-                <reportElement x="0" y="0" width="110" height="40" uuid="b1000001-0000-0000-0000-000000000001"/>
+                <reportElement x="0" y="0" width="120" height="50" uuid="81408ea8-d2a9-4a5e-a04a-9923d8114d4c">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "Logo.png"]]></imageExpression>
             </image>
             <staticText>
-                <reportElement x="110" y="2" width="335" height="18" uuid="b1000001-0000-0000-0000-000000000003"/>
+                <reportElement x="194" y="10" width="166" height="18" uuid="8c77cec8-568b-455e-a62b-f7b4925c3f51"/>
                 <textElement textAlignment="Center">
-                    <font fontName="Arial" size="11"/>
+                    <font fontName="Arial" size="13" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Listado General de Marbetes]]></text>
+                <text><![CDATA[Listado de Marbetes]]></text>
             </staticText>
             <textField>
-                <reportElement x="110" y="22" width="335" height="14" uuid="b1000001-0000-0000-0000-000000000005"/>
+                <reportElement x="202" y="30" width="151" height="14" uuid="8258a14f-0377-443d-bc38-17e8b3556e9b"/>
                 <textElement textAlignment="Center">
                     <font fontName="Arial" size="9"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$P{fecha}]]></textFieldExpression>
             </textField>
             <image scaleImage="RetainShape" hAlign="Right" onErrorType="Blank">
-                <reportElement x="445" y="0" width="110" height="40" uuid="b1000001-0000-0000-0000-000000000010"/>
+                <reportElement x="435" y="0" width="120" height="50" uuid="2e78f4c0-79b8-4ae6-af08-e656c72eb333">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
                 <imageExpression><![CDATA[$P{REPORT_DIR} + "logo_tokai.png"]]></imageExpression>
             </image>
-            <line>
-                <reportElement x="0" y="88" width="555" height="1" uuid="b1000001-0000-0000-0000-000000000011"/>
-            </line>
+            <staticText>
+                <reportElement x="213" y="-7" width="128" height="18" uuid="e919f8dc-71a6-4ac0-835f-fb1288acaa93"/>
+                <textElement textAlignment="Center"/>
+                <text><![CDATA[TOKAI de Mexico S.A de C.V]]></text>
+            </staticText>
         </band>
     </title>
-
-    <!-- ═══════════════ ENCABEZADO DE COLUMNAS ═══════════════ -->
-    <!--
-        Distribución (total 555px):
-        Marbete        x=0    w=40
-        Clave Prod     x=40   w=55
-        Descripción    x=95   w=150
-        Und            x=245  w=30
-        Clv Almacén    x=275  w=50
-        Conteo 1       x=325  w=70
-        Conteo 2       x=395  w=70
-        Estado         x=465  w=40
-        Canc           x=505  w=50
-    -->
     <columnHeader>
         <band height="20" splitType="Stretch">
             <staticText>
-                <reportElement style="Table_CH" x="0"   y="0" width="40"  height="20" uuid="b2000001-0000-0000-0000-000000000001"/>
+                <reportElement style="Table_CH" x="0" y="0" width="40" height="20" uuid="b2000001-0000-0000-0000-000000000001"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Marbete]]></text>
+                <text><![CDATA[N. Marbete]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="40"  y="0" width="55"  height="20" uuid="b2000001-0000-0000-0000-000000000002"/>
+                <reportElement style="Table_CH" x="40" y="0" width="80" height="20" uuid="b2000001-0000-0000-0000-000000000002">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Clave]]></text>
+                <text><![CDATA[Producto]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="95" y="0" width="150" height="20" uuid="b2000001-0000-0000-0000-000000000003"/>
+                <reportElement style="Table_CH" x="120" y="0" width="163" height="20" uuid="b2000001-0000-0000-0000-000000000003">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Descripción]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="245" y="0" width="30"  height="20" uuid="b2000001-0000-0000-0000-000000000004"/>
+                <reportElement style="Table_CH" x="283" y="0" width="30" height="20" uuid="b2000001-0000-0000-0000-000000000004"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Und]]></text>
+                <text><![CDATA[Unidad]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="275" y="0" width="50"  height="20" uuid="b2000001-0000-0000-0000-000000000005"/>
-                <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font fontName="Arial" size="7" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Clv Alm]]></text>
-            </staticText>
-            <staticText>
-                <reportElement style="Table_CH" x="325" y="0" width="70"  height="20" uuid="b2000001-0000-0000-0000-000000000007"/>
+                <reportElement style="Table_CH" x="313" y="0" width="37" height="20" uuid="b2000001-0000-0000-0000-000000000005"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Conteo 1]]></text>
+                <text><![CDATA[Almacén]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="395" y="0" width="70"  height="20" uuid="b2000001-0000-0000-0000-000000000008"/>
+                <reportElement style="Table_CH" x="350" y="0" width="70" height="20" uuid="b2000001-0000-0000-0000-000000000006">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <text><![CDATA[Conteo 2]]></text>
+                <text><![CDATA[Conteo1]]></text>
             </staticText>
             <staticText>
-                <reportElement style="Table_CH" x="465" y="0" width="40"  height="20" uuid="b2000001-0000-0000-0000-000000000009"/>
+                <reportElement style="Table_CH" x="420" y="0" width="70" height="20" uuid="b2000001-0000-0000-0000-000000000007">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Conteo2]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Table_CH" x="490" y="0" width="65" height="20" uuid="b2000001-0000-0000-0000-000000000008"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Estado]]></text>
             </staticText>
-            <staticText>
-                <reportElement style="Table_CH" x="505" y="0" width="50"  height="20" uuid="b2000001-0000-0000-0000-000000000010"/>
-                <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font fontName="Arial" size="8" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Canc]]></text>
-            </staticText>
         </band>
     </columnHeader>
-
-    <!-- ═══════════════ DETALLE ═══════════════ -->
     <detail>
         <band height="18" splitType="Stretch">
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="0"   y="0" width="40"  height="18" uuid="b3000001-0000-0000-0000-000000000001"/>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Table_TD" x="0" y="0" width="40" height="18" uuid="b3000001-0000-0000-0000-000000000001"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{numeroMarbete}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="40"  y="0" width="55"  height="18" uuid="b3000001-0000-0000-0000-000000000002"/>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Table_TD" x="40" y="0" width="80" height="18" uuid="b3000001-0000-0000-0000-000000000002"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{claveProducto}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="95" y="0" width="150" height="18" uuid="b3000001-0000-0000-0000-000000000003"/>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Table_TD" x="120" y="0" width="163" height="18" uuid="b3000001-0000-0000-0000-000000000003">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
                 <textElement verticalAlignment="Middle">
                     <font fontName="Arial" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descripcionProducto}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="245" y="0" width="30"  height="18" uuid="b3000001-0000-0000-0000-000000000004"/>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Table_TD" x="283" y="0" width="30" height="18" uuid="b3000001-0000-0000-0000-000000000004"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{unidad}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="275" y="0" width="50"  height="18" uuid="b3000001-0000-0000-0000-000000000005"/>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Table_TD" x="313" y="0" width="37" height="18" uuid="b3000001-0000-0000-0000-000000000005"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font fontName="Arial" size="7"/>
+                    <font fontName="Arial" size="8"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{claveAlmacen}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Table_TD" x="325" y="0" width="70"  height="18" uuid="b3000001-0000-0000-0000-000000000007"/>
-                <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font fontName="Arial" size="6"/>
+                <reportElement style="Table_TD" x="350" y="0" width="70" height="18" uuid="b3000001-0000-0000-0000-000000000006">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{conteo1} == null ? "-" : new java.text.DecimalFormat("#,##0").format($F{conteo1})]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Table_TD" x="395" y="0" width="70"  height="18" uuid="b3000001-0000-0000-0000-000000000008"/>
-                <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font fontName="Arial" size="6"/>
-                </textElement>
-                <textFieldExpression><![CDATA[$F{conteo2} == null ? "-" : new java.text.DecimalFormat("#,##0").format($F{conteo2})]]></textFieldExpression>
-            </textField>
-            <textField isStretchWithOverflow="true">
-                <reportElement style="Table_TD" x="465" y="0" width="40"  height="18" uuid="b3000001-0000-0000-0000-000000000009"/>
+                <reportElement style="Table_TD" x="420" y="0" width="70" height="18" uuid="b3000001-0000-0000-0000-000000000007">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="7"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$F{estado}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{conteo2} == null ? "-" : new java.text.DecimalFormat("#,##0").format($F{conteo2})]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Table_TD" x="505" y="0" width="50"  height="18" forecolor="#CC0000" uuid="b3000001-0000-0000-0000-000000000010"/>
+                <reportElement style="Table_TD" x="490" y="0" width="65" height="18" uuid="b3000001-0000-0000-0000-000000000008"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="Arial" size="8" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$F{cancelado} == Boolean.TRUE ? "X" : ""]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{cancelado} == Boolean.TRUE ? "C" : ""]]></textFieldExpression>
             </textField>
         </band>
     </detail>
-
-    <!-- ═══════════════ PIE DE PÁGINA ═══════════════ -->
     <pageFooter>
         <band height="20" splitType="Stretch">
-            <line>
-                <reportElement x="0" y="0" width="555" height="1" uuid="b4000001-0000-0000-0000-000000000001"/>
-            </line>
-            <staticText>
-                <reportElement x="0" y="4" width="200" height="13" uuid="b4000001-0000-0000-0000-000000000002"/>
-                <textElement><font fontName="Arial" size="7" isItalic="true"/></textElement>
-                <text><![CDATA[SIGMAV2 - Sistema de Inventarios]]></text>
-            </staticText>
-            <textField evaluationTime="Report">
-                <reportElement x="455" y="4" width="100" height="13" uuid="b4000001-0000-0000-0000-000000000004"/>
-                <textElement textAlignment="Right"><font fontName="Arial" size="7"/></textElement>
+            <textField>
+                <reportElement x="500" y="0" width="55" height="14" uuid="b4000001-0000-0000-0000-000000000004"/>
+                <textElement textAlignment="Right">
+                    <font fontName="Arial" size="8"/>
+                </textElement>
                 <textFieldExpression><![CDATA["Pag. " + $V{PAGE_NUMBER}]]></textFieldExpression>
             </textField>
         </band>
     </pageFooter>
-
-    <!-- ═══════════════ RESUMEN ═══════════════ -->
     <summary>
-        <band height="30" splitType="Stretch">
-            <line>
-                <reportElement x="0" y="0" width="555" height="1" uuid="b5000001-0000-0000-0000-000000000001"/>
-            </line>
-            <staticText>
-                <reportElement x="270" y="6" width="110" height="18" uuid="b5000001-0000-0000-0000-000000000002"/>
-                <textElement textAlignment="Right">
-                    <font fontName="Arial" size="10" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Total marbetes:]]></text>
-            </staticText>
-            <textField>
-                <reportElement x="380" y="6" width="50" height="18" uuid="b5000001-0000-0000-0000-000000000003"/>
-                <textElement textAlignment="Center">
-                    <font fontName="Arial" size="10" isBold="true"/>
-                </textElement>
-                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
-            </textField>
-            <staticText>
-                <reportElement x="430" y="6" width="70" height="18" uuid="b5000001-0000-0000-0000-000000000004"/>
-                <textElement textAlignment="Right">
-                    <font fontName="Arial" size="10" isBold="true"/>
-                </textElement>
-                <text><![CDATA[Cancelados:]]></text>
-            </staticText>
-            <textField>
-                <reportElement x="500" y="6" width="55" height="18" forecolor="#CC0000" uuid="b5000001-0000-0000-0000-000000000005"/>
-                <textElement textAlignment="Center">
-                    <font fontName="Arial" size="10" isBold="true"/>
-                </textElement>
-                <textFieldExpression><![CDATA[$V{canceladosCount}]]></textFieldExpression>
-            </textField>
-        </band>
+        <band height="38" splitType="Stretch"/>
     </summary>
-
 </jasperReport>
