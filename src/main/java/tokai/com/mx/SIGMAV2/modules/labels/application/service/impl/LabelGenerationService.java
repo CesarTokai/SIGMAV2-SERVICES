@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO.ProductBatchDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException;
@@ -28,6 +29,7 @@ public class LabelGenerationService {
 
     private final LabelsPersistenceAdapter persistence;
     private final WarehouseAccessService warehouseAccessService;
+    private final JpaProductRepository productRepository;
 
     /**
      * Genera marbetes directamente para una lista de productos.
@@ -40,15 +42,50 @@ public class LabelGenerationService {
 
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
-        // ── Regla de negocio: no generar si ya hay marbetes impresos ──────
-        if (persistence.existsImpresosForPeriodAndWarehouse(dto.getPeriodId(), dto.getWarehouseId())) {
-            throw new InvalidLabelStateException(
-                "No se pueden generar más marbetes para el periodo " + dto.getPeriodId() +
-                " y almacén " + dto.getWarehouseId() +
-                ". Ya existen marbetes impresos en este periodo/almacén. " +
-                "El proceso de conteo está en curso.");
+        List<Long> productosConFoliosExistentes = new ArrayList<>();
+        List<LabelRequest> labelRequestsExistentes = new ArrayList<>();
+        
+        for (ProductBatchDTO product : dto.getProducts()) {
+            Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
+                    product.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
+            
+            if (existing.isPresent()) {
+                LabelRequest lr = existing.get();
+                labelRequestsExistentes.add(lr);
+                
+                // Solo bloquear si tiene folios generados (> 0)
+                if (lr.getFoliosGenerados() != null && lr.getFoliosGenerados() > 0) {
+                    productosConFoliosExistentes.add(product.getProductId());
+                    log.warn("⚠️ Producto {} ya tiene {} folios generados en período/almacén",
+                            product.getProductId(), lr.getFoliosGenerados());
+                } else {
+                    log.info("ℹ️ Producto {} tiene LabelRequest pero sin folios, se permitirá generar",
+                            product.getProductId());
+                }
+            }
         }
-        // ─────────────────────────────────────────────────────────────────
+
+        if (!productosConFoliosExistentes.isEmpty()) {
+            throw new InvalidLabelStateException(
+                "No se pueden regenerar marbetes para los productos que ya tienen folios: " + productosConFoliosExistentes +
+                ". Solo se pueden generar productos sin folios existentes en este período/almacén.");
+        }
+
+        // ── Validación de productos: verificar que existen en el catálogo ──────
+        List<Long> productosNoEncontrados = new ArrayList<>();
+        for (ProductBatchDTO product : dto.getProducts()) {
+            if (!productRepository.existsById(product.getProductId())) {
+                productosNoEncontrados.add(product.getProductId());
+                log.warn("⚠️ Producto {} no existe en el catálogo", product.getProductId());
+            }
+        }
+        
+        if (!productosNoEncontrados.isEmpty()) {
+            throw new InvalidLabelStateException(
+                "No se pueden generar marbetes: Los siguientes productos no existen en el catálogo: " + 
+                productosNoEncontrados + ". Verifique que los productos hayan sido importados correctamente.");
+        }
+        log.info("✅ Todos los productos existen en el catálogo");
 
         LocalDateTime now = LocalDateTime.now();
         int totalGenerados = 0;
@@ -56,22 +93,26 @@ public class LabelGenerationService {
         for (ProductBatchDTO product : dto.getProducts()) {
             int cantidad = product.getLabelsToGenerate();
 
-            // Crear o reutilizar LabelRequest para este producto/periodo/almacén
+            // Reutilizar LabelRequest si existe pero sin folios, si no crear uno nuevo
+            LabelRequest labelRequest;
             Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
                     product.getProductId(), dto.getWarehouseId(), dto.getPeriodId());
-
-            LabelRequest labelRequest;
+            
             if (existing.isPresent()) {
                 labelRequest = existing.get();
-                log.info("📋 Usando LabelRequest existente (ID: {}) para producto {}",
+                log.info("📋 Reutilizando LabelRequest existente (ID: {}) para producto {}",
                         labelRequest.getIdLabelRequest(), product.getProductId());
+                // Actualizar solo foliosGenerados
+                labelRequest.setFoliosGenerados(cantidad);
+                labelRequest.setRequestedLabels(cantidad);
+                persistence.save(labelRequest);
             } else {
                 labelRequest = new LabelRequest();
                 labelRequest.setProductId(product.getProductId());
                 labelRequest.setWarehouseId(dto.getWarehouseId());
                 labelRequest.setPeriodId(dto.getPeriodId());
                 labelRequest.setRequestedLabels(cantidad);
-                labelRequest.setFoliosGenerados(0);
+                labelRequest.setFoliosGenerados(cantidad);
                 labelRequest.setCreatedBy(userId);
                 labelRequest.setCreatedAt(now);
                 labelRequest = persistence.save(labelRequest);
@@ -79,9 +120,6 @@ public class LabelGenerationService {
                         labelRequest.getIdLabelRequest(), product.getProductId());
             }
 
-            // Actualizar foliosGenerados
-            labelRequest.setFoliosGenerados(labelRequest.getFoliosGenerados() + cantidad);
-            persistence.save(labelRequest);
 
             long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
 

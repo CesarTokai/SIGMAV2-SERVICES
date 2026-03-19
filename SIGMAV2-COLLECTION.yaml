@@ -3585,9 +3585,9 @@ collection:
               "periodId": 1,
               "warehouseId": 14,
               "products": [
-                { "productId": 123, "requestedLabels": 10 },
-                { "productId": 124, "requestedLabels": 5 },
-                { "productId": 125, "requestedLabels": 15 }
+                { "productId": 123, "labelsToGenerate": 10 },
+                { "productId": 124, "labelsToGenerate": 5 },
+                { "productId": 125, "labelsToGenerate": 15 }
               ]
             }
         headers:
@@ -3623,7 +3623,7 @@ collection:
               "periodId": 1,
               "warehouseId": 14,
               "products": [
-                { "productId": 123, "requestedLabels": 10 }
+                { "productId": 123, "labelsToGenerate": 10 }
               ]
             }
         headers:
