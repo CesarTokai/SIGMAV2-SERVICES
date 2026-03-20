@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * Servicio para validar el acceso de usuarios a almacenes.
  * Implementa las reglas de negocio de contexto informativo:
- * - ADMINISTRADOR y AUXILIAR: Acceso a todos los almacenes
- * - ALMACENISTA y AUXILIAR_DE_CONTEO: Solo almacenes asignados
+ * - ADMINISTRADOR, AUXILIAR y AUXILIAR_DE_CONTEO: Acceso a todos los almacenes (sin restricción)
+ * - ALMACENISTA: Solo almacenes asignados
  */
 @Service
 @RequiredArgsConstructor
@@ -20,7 +20,7 @@ public class WarehouseAccessService {
     private final UserWarehouseRepository userWarehouseRepository;
 
     // Roles con acceso total a todos los almacenes
-    private static final List<String> ROLES_WITH_FULL_ACCESS = List.of("ADMINISTRADOR", "AUXILIAR");
+    private static final List<String> ROLES_WITH_FULL_ACCESS = List.of("ADMINISTRADOR", "AUXILIAR_DE_CONTEO");
 
     /**
      * Valida que un usuario tenga acceso a un almacén específico

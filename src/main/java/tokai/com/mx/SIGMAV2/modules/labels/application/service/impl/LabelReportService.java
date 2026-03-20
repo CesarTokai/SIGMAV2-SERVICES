@@ -64,7 +64,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte distribución: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         List<Label> labels = filter.getWarehouseId() != null
                 ? jpaLabelRepository.findAllLabelsByPeriodAndWarehouseForDistribution(filter.getPeriodId(), filter.getWarehouseId())
@@ -101,7 +105,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte listado: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         List<Label> labels = filter.getWarehouseId() != null
                 ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
@@ -141,7 +149,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte pendientes: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         // Traer TODOS los marbetes (cancelados y no cancelados)
         List<Label> labels = filter.getWarehouseId() != null
@@ -188,7 +200,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<DifferencesReportDTO> getDifferencesReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte diferencias: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         // ── 1. Marbetes activos (no cancelados) con diferencia ──────────
         List<Label> labels = filter.getWarehouseId() != null
@@ -259,7 +275,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<CancelledLabelsReportDTO> getCancelledLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte cancelados: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null
                 ? jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(filter.getPeriodId(), filter.getWarehouseId(), false)
@@ -299,7 +319,11 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte comparativo: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
 
         List<Label> labels = filter.getWarehouseId() != null
                 ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
@@ -352,6 +376,8 @@ public class LabelReportService {
             if (teoricas.compareTo(BigDecimal.ZERO) != 0) {
                 porcentaje = diferencia.divide(teoricas, 4, RoundingMode.HALF_UP)
                         .multiply(new BigDecimal("100"));
+
+
             }
 
             ProductEntity   p = prodMap.get(first.getProductId());
@@ -378,17 +404,20 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte almacén-detalle: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
-
+        
         // Se traen TODOS los marbetes (incluidos cancelados) para mostrar el inventario completo
         // Si no se especifica almacén, se filtran por los almacenes accesibles al usuario
         List<Label> labels;
         if (filter.getWarehouseId() != null) {
+            // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+            if (!isAuxiliarDeConteo(userRole)) {
+                warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+            }
             labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId());
         } else {
             List<Long> accessibleWarehouses = warehouseAccessService.getAccessibleWarehouses(userId, userRole);
             if (accessibleWarehouses == null) {
-                // Acceso total (ADMINISTRADOR / AUXILIAR)
+                // Acceso total (ADMINISTRADOR / AUXILIAR / AUXILIAR_DE_CONTEO)
                 labels = jpaLabelRepository.findByPeriodId(filter.getPeriodId());
             } else {
                 labels = accessibleWarehouses.isEmpty()
@@ -448,17 +477,20 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte producto-detalle: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        validateAccess(userId, filter.getWarehouseId(), userRole);
-
+        
         // Se traen TODOS los marbetes (incluidos cancelados) para mostrar inventario completo
         // Si no se especifica almacén, se filtran por los almacenes accesibles al usuario
         List<Label> labels;
         if (filter.getWarehouseId() != null) {
+            // AUXILIAR_DE_CONTEO no tiene restricción de almacén
+            if (!isAuxiliarDeConteo(userRole)) {
+                warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+            }
             labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId());
         } else {
             List<Long> accessibleWarehouses = warehouseAccessService.getAccessibleWarehouses(userId, userRole);
             if (accessibleWarehouses == null) {
-                // Acceso total (ADMINISTRADOR / AUXILIAR)
+                // Acceso total (ADMINISTRADOR / AUXILIAR / AUXILIAR_DE_CONTEO)
                 labels = jpaLabelRepository.findByPeriodId(filter.getPeriodId());
             } else {
                 labels = accessibleWarehouses.isEmpty()
@@ -629,11 +661,18 @@ public class LabelReportService {
                 .collect(Collectors.toMap(WarehouseEntity::getIdWarehouse, Function.identity()));
     }
 
-    /** Valida acceso al almacén si se especificó uno concreto. */
+    /** Valida acceso al almacén si se especificó uno concreto.
+     *  AUXILIAR_DE_CONTEO tiene acceso sin restricción a todos los almacenes.
+     */
     private void validateAccess(Long userId, Long warehouseId, String userRole) {
-        if (warehouseId != null) {
+        if (warehouseId != null && !isAuxiliarDeConteo(userRole)) {
             warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
         }
+    }
+
+    /** Verifica si el rol es AUXILIAR_DE_CONTEO (sin restricción de almacén). */
+    private boolean isAuxiliarDeConteo(String userRole) {
+        return userRole != null && userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO");
     }
 
     // ── clase interna de soporte para generateInventoryFile ─────────────
