@@ -42,8 +42,9 @@ public class LabelGenerationService {
 
         warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
 
+        // ── Separar productos en dos grupos: con folios y sin folios ──────
         List<Long> productosConFoliosExistentes = new ArrayList<>();
-        List<LabelRequest> labelRequestsExistentes = new ArrayList<>();
+        List<ProductBatchDTO> productosAGenerar = new ArrayList<>();
         
         for (ProductBatchDTO product : dto.getProducts()) {
             Optional<LabelRequest> existing = persistence.findByProductWarehousePeriod(
@@ -51,29 +52,42 @@ public class LabelGenerationService {
             
             if (existing.isPresent()) {
                 LabelRequest lr = existing.get();
-                labelRequestsExistentes.add(lr);
                 
-                // Solo bloquear si tiene folios generados (> 0)
+                // Si tiene folios generados (> 0), NO puede generarse
                 if (lr.getFoliosGenerados() != null && lr.getFoliosGenerados() > 0) {
                     productosConFoliosExistentes.add(product.getProductId());
-                    log.warn("⚠️ Producto {} ya tiene {} folios generados en período/almacén",
+                    log.warn("⚠️ Producto {} ya tiene {} folios generados, será saltado",
                             product.getProductId(), lr.getFoliosGenerados());
                 } else {
-                    log.info("ℹ️ Producto {} tiene LabelRequest pero sin folios, se permitirá generar",
+                    // Puede generarse (tiene solicitud pero sin folios)
+                    productosAGenerar.add(product);
+                    log.info("✅ Producto {} puede generarse (solicitud sin folios)",
                             product.getProductId());
                 }
+            } else {
+                // No tiene solicitud previa, pero se puede generar
+                productosAGenerar.add(product);
+                log.info("✅ Producto {} puede generarse (sin solicitud previa)",
+                        product.getProductId());
             }
         }
 
-        if (!productosConFoliosExistentes.isEmpty()) {
+        // Si todos los productos tienen folios, bloquear
+        if (productosAGenerar.isEmpty()) {
             throw new InvalidLabelStateException(
-                "No se pueden regenerar marbetes para los productos que ya tienen folios: " + productosConFoliosExistentes +
-                ". Solo se pueden generar productos sin folios existentes en este período/almacén.");
+                "No se pueden generar marbetes: Todos los productos ya tienen folios generados: " + 
+                productosConFoliosExistentes + ". Solo se pueden generar productos sin folios en este período/almacén.");
+        }
+
+        // Si hay algunos productos con folios, avisar pero continuar
+        if (!productosConFoliosExistentes.isEmpty()) {
+            log.warn("⚠️ Los siguientes productos serán saltados por tener folios: {}", 
+                    productosConFoliosExistentes);
         }
 
         // ── Validación de productos: verificar que existen en el catálogo ──────
         List<Long> productosNoEncontrados = new ArrayList<>();
-        for (ProductBatchDTO product : dto.getProducts()) {
+        for (ProductBatchDTO product : productosAGenerar) {
             if (!productRepository.existsById(product.getProductId())) {
                 productosNoEncontrados.add(product.getProductId());
                 log.warn("⚠️ Producto {} no existe en el catálogo", product.getProductId());
@@ -85,12 +99,12 @@ public class LabelGenerationService {
                 "No se pueden generar marbetes: Los siguientes productos no existen en el catálogo: " + 
                 productosNoEncontrados + ". Verifique que los productos hayan sido importados correctamente.");
         }
-        log.info("✅ Todos los productos existen en el catálogo");
+        log.info("✅ Todos los productos a generar existen en el catálogo");
 
         LocalDateTime now = LocalDateTime.now();
         int totalGenerados = 0;
 
-        for (ProductBatchDTO product : dto.getProducts()) {
+        for (ProductBatchDTO product : productosAGenerar) {
             int cantidad = product.getLabelsToGenerate();
 
             // Reutilizar LabelRequest si existe pero sin folios, si no crear uno nuevo
@@ -102,9 +116,9 @@ public class LabelGenerationService {
                 labelRequest = existing.get();
                 log.info("📋 Reutilizando LabelRequest existente (ID: {}) para producto {}",
                         labelRequest.getIdLabelRequest(), product.getProductId());
-                // Actualizar solo foliosGenerados
+                // Actualizar solo foliosGenerados — NO sobrescribir requestedLabels
+                // requestedLabels conserva el valor original solicitado
                 labelRequest.setFoliosGenerados(cantidad);
-                labelRequest.setRequestedLabels(cantidad);
                 persistence.save(labelRequest);
             } else {
                 labelRequest = new LabelRequest();

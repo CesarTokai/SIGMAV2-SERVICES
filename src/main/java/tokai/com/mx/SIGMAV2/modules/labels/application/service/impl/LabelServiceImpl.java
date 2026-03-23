@@ -339,7 +339,10 @@ public class LabelServiceImpl implements LabelService {
         // Usar paginación real en lugar de cargar 100k registros — MEJORA M2
         List<Label> labels = jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId);
 
+        // CORRECCIÓN: Solo contar marbetes GENERADOS (los que están listos para imprimir)
+        // No contar IMPRESOS ni CANCELADOS
         Map<Long, Long> generatedByProduct = labels.stream()
+                .filter(l -> l.getEstado() != null && l.getEstado().name().equals("GENERADO"))
                 .collect(Collectors.groupingBy(Label::getProductId, Collectors.counting()));
 
         List<InventoryStockEntity> allStock = inventoryStockRepository
