@@ -2,6 +2,13 @@
 
 > Documentación esencial para que agentes de IA comprendan rápidamente la arquitectura, patrones y workflows de este codebase.
 
+**Stack Técnico:**
+- **Java:** 21 (LTS)
+- **Spring Boot:** 3.5.5
+- **Base de Datos:** MySQL 8.0+
+- **Build:** Maven 3.8.1+
+- **Migraciones:** Flyway
+
 ---
 
 ## 🏗️ Arquitectura Hexagonal (Ports & Adapters)
@@ -49,15 +56,16 @@ modules/{nombre}/
 
 | Módulo | Responsabilidad | Ubicación |
 |--------|-----------------|-----------|
-| **users** | Autenticación, gestión de usuarios, roles | `modules/users/` |
+| **users** | Autenticación, gestión de usuarios, roles, rastreo de actividad | `modules/users/` |
 | **inventory** | Catálogo de productos, existencias teóricas | `modules/inventory/` |
 | **labels** | Marbetes (etiquetas), folios, impresión PDF, conteos C1/C2 | `modules/labels/` |
 | **periods** | Contexto temporal que agrupa operaciones | `modules/periods/` |
 | **warehouse** | Almacenes físicos, acceso por rol | `modules/warehouse/` |
 | **MultiWarehouse** | Importación de existencias por almacén | `modules/MultiWarehouse/` |
 | **mail** | Envío de notificaciones por email | `modules/mail/` |
-| **security** | Seguridad JWT, filtros, autenticación | `security/` |
+| **security** | Seguridad JWT, filtros, autenticación, auditoría | `security/` |
 | **personal_information** | Datos adicionales de usuarios (comentarios) | `modules/personal_information/` |
+| **request_recovery_password** | Solicitudes de recuperación de contraseña, verificación | `modules/request_recovery_password/` |
 
 ---
 
@@ -73,6 +81,30 @@ modules/{nombre}/
 // Modelo: security/infrastructure/entity/RevokedToken.java
 // Servicio: security/infrastructure/service/TokenRevocationService.java
 // Filtro: security/infrastructure/filter/JwtRevocationFilter.java
+```
+
+### Rastreo de Actividad del Usuario
+
+- **Tabla:** `users` — Campos: `last_login_at`, `last_activity_at`, `password_changed_at`
+- **Filtro:** `UserActivityFilter` se ejecuta después de `JwtAuthenticationFilter` (línea 72 en `SecurityConfig`)
+- **Actualización síncrona:** Registra la actividad en cada request autenticado (maneja excepciones sin bloquear)
+
+```java
+// Filtro: security/infrastructure/filter/UserActivityFilter.java
+// Actualiza lastActivityAt en cada request autenticado
+```
+
+### Auditoría (AOP)
+
+- **Anotación:** `@Auditable(action="...", resource="...")` en métodos/clases a auditar
+- **Aspect:** `AuditAspect` usa `@Around` para capturar entrada/salida/excepciones
+- **Tabla:** `audit_logs` — Registra: usuario, acción, recurso, IP, timestamp, resultado
+- **Resolución de usuario:** Obtiene nombre completo desde `BeanUser` + `BeanPersonalInformation`
+
+```java
+// Ubicación: shared/audit/
+// AuditAspect.java — @Aspect que procesa @Auditable
+// Auditable.java — Anotación para marcar métodos auditables
 ```
 
 ### Roles y Permisos
@@ -100,6 +132,8 @@ Ejemplos actuales:
 - `V1_0_7__Create_revoked_tokens_table.sql`
 - `V1_1_1__Create_user_warehouse_assignments.sql`
 - `V1_1_2__Populate_inventory_stock_from_multiwarehouse.sql`
+- `V1_2_0__Add_user_activity_tracking.sql` — Campos `last_login_at`, `last_activity_at`, `password_changed_at` en users
+- `V1_2_2__Add_audit_fields_to_labels.sql` — Campos de auditoría en `labels_cancelled` y `label_count_events`
 
 ---
 
@@ -146,6 +180,23 @@ Ejemplos actuales:
 ---
 
 ## 📝 Patrones de Código Específicos
+
+### 0. Dependencias Clave
+
+```xml
+<!-- Spring AOP para auditoría y aspectos (pom.xml) -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-aop</artifactId>
+</dependency>
+
+<!-- MapStruct para mapeos entre DTOs y entidades -->
+<dependency>
+    <groupId>org.mapstruct</groupId>
+    <artifactId>mapstruct</artifactId>
+    <version>1.5.5.Final</version>
+</dependency>
+```
 
 ### 1. Mappers con MapStruct
 
@@ -313,5 +364,5 @@ Para entender un módulo específico, sigue este orden:
 
 ---
 
-**Última actualización:** 2026-03-12
+**Última actualización:** 2026-03-23
 
