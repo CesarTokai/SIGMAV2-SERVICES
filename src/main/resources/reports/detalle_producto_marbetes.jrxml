@@ -185,9 +185,9 @@
                     <printWhenExpression><![CDATA[$F{cancelado} != null && $F{cancelado}]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font fontName="Arial" size="8" isBold="true" forecolor="#CC0000"/>
+                    <font fontName="Arial" size="8" isBold="true" />
                 </textElement>
-                <textFieldExpression><![CDATA["C"]]></textFieldExpression>
+                <textFieldExpression><![CDATA["Cancelado"]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement style="Table_TD" x="465" y="0" width="90" height="14" uuid="86cf9553-b2d3-4bc9-b625-1c4444d6cb47">
