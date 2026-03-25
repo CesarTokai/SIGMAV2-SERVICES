@@ -49,7 +49,6 @@ public class SecurityConfig {
         this.jpaUserRepository = jpaUserRepository;
     }
 
-    // configuration of security filter chain
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, UserActivityFilter activityFilter) throws Exception {
         return httpSecurity
@@ -61,7 +60,6 @@ public class SecurityConfig {
                                 "/api/sigmav2/users/register",
                                 "/api/sigmav2/users/verify",
                                 "/api/sigmav2/users/exists",
-                                // Permitir solo endpoints públicos concretos
                                 "/api/sigmav2/auth/createRequest",
                                 "/api/sigmav2/auth/verifyUser",
                                 "/api/sigmav2/auth/login",
