@@ -543,21 +543,21 @@ public class LabelsController {
         try {
             // Generar marbetes con QR incluido
             List<MarbeteReportDTO> marbetesConQR = marbeteQRIntegrationService.generarMarbetesConQR(
-                dto.getPeriodId(), 
+                dto.getPeriodId(),
                 dto.getWarehouseId()
             );
-            
+
             if (marbetesConQR.isEmpty()) {
-                log.warn("⚠️ No hay marbetes para generar período={}, almacén={}", 
+                log.warn("⚠️ No hay marbetes para generar período={}, almacén={}",
                          dto.getPeriodId(), dto.getWarehouseId());
                 return ResponseEntity.notFound().build();
             }
-            
+
             // Generar PDF con la plantilla que incluye QR
             byte[] pdfBytes = generarPDFConQR(marbetesConQR);
-            
+
             log.info("✅ PDF con QR generado: {} marbetes, {} bytes", marbetesConQR.size(), pdfBytes.length);
-            
+
             return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes_con_qr");
             
         } catch (Exception e) {
@@ -584,7 +584,7 @@ public class LabelsController {
         
         Long userId = getUserIdFromToken();
         
-        try {
+            try {
             // Parsear request
             List<Long> folios = (List<Long>) request.get("folios");
             Long periodId = ((Number) request.get("periodId")).longValue();
@@ -595,12 +595,12 @@ public class LabelsController {
             // Generar QR solo para estos folios
             List<MarbeteReportDTO> marbetesConQR = marbeteQRIntegrationService
                 .generarMarbetesEspecificosConQR(folios, periodId, warehouseId);
-            
+
             if (marbetesConQR.isEmpty()) {
                 log.warn("⚠️ No se encontraron los folios solicitados");
                 return ResponseEntity.notFound().build();
             }
-            
+
             byte[] pdfBytes = generarPDFConQR(marbetesConQR);
             
             log.info("✅ PDF específico con QR generado: {} marbetes", marbetesConQR.size());

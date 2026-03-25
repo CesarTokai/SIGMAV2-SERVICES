@@ -49,6 +49,11 @@ public class MarbeteQRIntegrationService {
         
         // 1. Obtener todos los marbetes del período y almacén
         List<Label> marbetes = labelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId);
+
+        // Excluir marbetes en estado GENERADO (no deben imprimirse)
+        marbetes = marbetes.stream()
+                .filter(m -> m.getEstado() != Label.State.GENERADO)
+                .toList();
         
         List<MarbeteReportDTO> gruposAgrupadosPor3 = new ArrayList<>();
         
@@ -188,7 +193,12 @@ public class MarbeteQRIntegrationService {
                     .orElse(null);
                     
                 if (label != null) {
-                    marbetesObtenidos.add(label);
+                    // Sólo incluir si no está en estado GENERADO (no imprimir)
+                    if (label.getEstado() != Label.State.GENERADO) {
+                        marbetesObtenidos.add(label);
+                    } else {
+                        log.warn("Marbete {} está en estado GENERADO — se omite de impresión", folio);
+                    }
                 } else {
                     log.warn("Marbete no encontrado: folio={}, periodId={}, warehouseId={}", folio, periodId, warehouseId);
                 }
