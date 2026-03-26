@@ -121,9 +121,9 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
     Page<UserWarehouseSummaryResponse> findUsersWithWarehousesOptimized(Pageable pageable);
 
     /**
-     * Muestra cada rango de marbetes generado con el usuario que lo generó,
+     * Muestra cada lote de marbetes generado con el usuario que lo generó,
      * clave/nombre del almacén y los folios primer/último.
-     * Usa label_generation_batches como tabla base.
+     * Usa la tabla 'labels' agrupada por usuario/almacén para extraer primer y último folio.
      *
      * @param pageable Información de paginación
      * @return Página de UserWarehouseFoliosResponse
@@ -133,28 +133,66 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
                 u.email                AS usuario,
                 w.warehouse_key        AS claveAlmacen,
                 w.name_warehouse       AS nombreAlmacen,
-                lgb.primer_folio       AS primerFolio,
-                lgb.ultimo_folio       AS ultimoFolio,
-                lgb.generado_at        AS generadoAt
-            FROM label_generation_batches lgb
-            INNER JOIN users u    ON u.user_id      = lgb.generado_por
-            INNER JOIN warehouse w ON w.id_warehouse = lgb.id_warehouse
+                MIN(l.folio)           AS primerFolio,
+                MAX(l.folio)           AS ultimoFolio,
+                MAX(l.created_at)      AS generadoAt
+            FROM labels l
+            INNER JOIN users u       ON u.user_id      = l.created_by
+            INNER JOIN warehouse w   ON w.id_warehouse = l.id_warehouse
             WHERE w.deleted_at IS NULL
-            ORDER BY lgb.generado_at DESC
+            GROUP BY u.user_id, u.email, w.id_warehouse, w.warehouse_key, w.name_warehouse
+            ORDER BY MAX(l.created_at) DESC
             """,
            countQuery = """
-            SELECT COUNT(lgb.id_batch)
-            FROM label_generation_batches lgb
-            INNER JOIN warehouse w ON w.id_warehouse = lgb.id_warehouse
-            WHERE w.deleted_at IS NULL
+            SELECT COUNT(*)
+            FROM (
+                SELECT l.created_by, l.id_warehouse
+                FROM labels l
+                INNER JOIN warehouse w ON w.id_warehouse = l.id_warehouse
+                WHERE w.deleted_at IS NULL
+                GROUP BY l.created_by, l.id_warehouse
+            ) subq
             """,
            nativeQuery = true)
     Page<UserWarehouseFoliosResponse> findUsersWarehousesWithFolios(Pageable pageable);
+
+    /**
+     * Obtiene los folios de almacenes generados por un usuario específico (por email)
+     * @param email Email del usuario
+     * @param pageable Información de paginación
+     * @return Página de UserWarehouseFoliosResponse
+     */
+    @Query(value = """
+            SELECT
+                u.email                AS usuario,
+                w.warehouse_key        AS claveAlmacen,
+                w.name_warehouse       AS nombreAlmacen,
+                MIN(l.folio)           AS primerFolio,
+                MAX(l.folio)           AS ultimoFolio,
+                MAX(l.created_at)      AS generadoAt
+            FROM labels l
+            INNER JOIN users u       ON u.user_id      = l.created_by
+            INNER JOIN warehouse w   ON w.id_warehouse = l.id_warehouse
+            WHERE w.deleted_at IS NULL AND u.email = :email
+            GROUP BY u.user_id, u.email, w.id_warehouse, w.warehouse_key, w.name_warehouse
+            ORDER BY MAX(l.created_at) DESC
+            """,
+           countQuery = """
+            SELECT COUNT(*)
+            FROM (
+                SELECT l.created_by, l.id_warehouse
+                FROM labels l
+                INNER JOIN warehouse w ON w.id_warehouse = l.id_warehouse
+                INNER JOIN users u ON u.user_id = l.created_by
+                WHERE w.deleted_at IS NULL AND u.email = :email
+                GROUP BY l.created_by, l.id_warehouse
+            ) subq
+            """,
+           nativeQuery = true)
+    Page<UserWarehouseFoliosResponse> findMyWarehousesWithFolios(@Param("email") String email, Pageable pageable);
 
     interface UserWarehouseCountProjection {
         Long getUserId();
         Long getWarehousesCount();
     }
 }
-
-

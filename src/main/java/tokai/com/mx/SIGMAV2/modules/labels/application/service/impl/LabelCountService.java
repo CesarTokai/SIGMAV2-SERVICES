@@ -14,6 +14,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCo
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.CountHistoryService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,6 +37,7 @@ public class LabelCountService {
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
     private final JpaWarehouseRepository warehouseRepository;
+    private final CountHistoryService countHistoryService;
 
     @Transactional
     public LabelCountEvent registerCountC1(CountEventDTO dto, Long userId, String userRole) {
@@ -55,7 +57,13 @@ public class LabelCountService {
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR);
-        return persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
+        
+        // Registrar en historial (el email se obtiene del contexto de seguridad en el controlador)
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), userRole, dto.getWarehouseId(), dto.getPeriodId());
+        
+        return result;
     }
 
     @Transactional
@@ -76,7 +84,13 @@ public class LabelCountService {
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
-        return persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+        
+        // Registrar en historial
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, dto.getWarehouseId(), dto.getPeriodId());
+        
+        return result;
     }
 
     @Transactional
@@ -101,6 +115,11 @@ public class LabelCountService {
         eventC1.setUpdatedBy(userId);
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
+        
+        // Registrar actualización en historial
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        countHistoryService.recordCountUpdate(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), valorAnterior.intValue(), userRole, null, null);
+        
         log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                 dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
         return updated;
@@ -128,6 +147,11 @@ public class LabelCountService {
         eventC2.setUpdatedBy(userId);
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
+        
+        // Registrar actualización en historial
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        countHistoryService.recordCountUpdate(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), oldValue.intValue(), userRole, null, null);
+        
         log.info("Conteo C2 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                 dto.getFolio(), oldValue, dto.getCountedValue(), userId);
         return updated;

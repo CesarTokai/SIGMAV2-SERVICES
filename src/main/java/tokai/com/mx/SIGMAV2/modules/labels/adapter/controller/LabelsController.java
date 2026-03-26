@@ -37,10 +37,15 @@ public class LabelsController {
     private final AuthenticatedUserService authenticatedUserService;
     private final JasperReportPdfService jasperReportPdfService;
     private final MarbeteQRIntegrationService marbeteQRIntegrationService;
+    private final tokai.com.mx.SIGMAV2.modules.labels.application.service.CountHistoryQueryService countHistoryQueryService;
     
     private Long getUserIdFromToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return authenticatedUserService.getUserIdByEmail(email);
+    }
+
+    private String getUserEmailFromToken() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
     private String getUserRoleFromToken() {
@@ -686,6 +691,232 @@ public class LabelsController {
         } catch (Exception e) {
             log.error("❌ Error generando PDF con QR: {}", e.getMessage(), e);
             throw new RuntimeException("Error al generar PDF con QR: " + e.getMessage(), e);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // HISTORIAL DE CONTEOS — Endpoints para consultar registro de usuarios
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Obtiene el historial de conteos registrados por el usuario autenticado
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con el historial de conteos del usuario
+     */
+    @GetMapping("/history/my-counts")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getMyCountHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            Long userId = getUserIdFromToken();
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getCountHistoryByUserId(userId, pageable);
+            log.info("Historial de conteos obtenido para usuario {}: {} registros", userId, historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial de conteos del usuario",
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber()
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos del usuario", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtiene el historial de conteos de un usuario específico (solo administrador)
+     * @param userId ID del usuario
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con el historial de conteos del usuario
+     */
+    @GetMapping("/history/user/{userId}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<?> getUserCountHistory(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getCountHistoryByUserId(userId, pageable);
+            log.info("Historial de conteos obtenido para usuario {}: {} registros", userId, historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial de conteos del usuario " + userId,
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber()
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos para usuario {}", userId, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtiene el historial de conteos de un almacén específico
+     * @param warehouseId ID del almacén
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con el historial de conteos del almacén
+     */
+    @GetMapping("/history/warehouse/{warehouseId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA')")
+    public ResponseEntity<?> getWarehouseCountHistory(
+            @PathVariable Long warehouseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getCountHistoryByWarehouse(warehouseId, pageable);
+            log.info("Historial de conteos obtenido para almacén {}: {} registros", warehouseId, historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial de conteos del almacén " + warehouseId,
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber()
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos para almacén {}", warehouseId, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtiene el historial de conteos de un período específico
+     * @param periodId ID del período
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con el historial de conteos del período
+     */
+    @GetMapping("/history/period/{periodId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getPeriodCountHistory(
+            @PathVariable Long periodId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getCountHistoryByPeriod(periodId, pageable);
+            log.info("Historial de conteos obtenido para período {}: {} registros", periodId, historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial de conteos del período " + periodId,
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber()
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos para período {}", periodId, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtiene el historial completo de un folio específico
+     * @param folio Folio del marbete
+     * @return Lista con el historial completo del folio (C1, C2, actualizaciones)
+     */
+    @GetMapping("/history/folio/{folio}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getFolioCountHistory(@PathVariable Long folio) {
+        try {
+            var historial = countHistoryQueryService.getCountHistoryByFolio(folio);
+            log.info("Historial de conteos obtenido para folio {}: {} registros", folio, historial.size());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial completo del folio " + folio,
+                "data", historial,
+                "totalRecords", historial.size()
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos para folio {}", folio, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtiene el historial de conteos de un usuario en un período específico
+     * @param userId ID del usuario
+     * @param periodId ID del período
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con el historial filtrado
+     */
+    @GetMapping("/history/user/{userId}/period/{periodId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA')")
+    public ResponseEntity<?> getUserPeriodCountHistory(
+            @PathVariable Long userId,
+            @PathVariable Long periodId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getCountHistoryByUserAndPeriod(userId, periodId, pageable);
+            Long totalConteos = countHistoryQueryService.countUserContosInPeriod(userId, periodId);
+            
+            log.info("Historial de conteos obtenido para usuario {} en período {}: {} registros", 
+                    userId, periodId, historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial de conteos del usuario " + userId + " en período " + periodId,
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber(),
+                "totalConteosRegistrados", totalConteos
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial de conteos para usuario {} en período {}", userId, periodId, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
         }
     }
 }
