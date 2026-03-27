@@ -100,7 +100,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
         LabelCountEvent eventC1 = events.stream()
@@ -116,9 +116,19 @@ public class LabelCountService {
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
         
-        // Registrar actualización en historial
+        // Registrar actualización en historial con periodId y warehouseId correctos
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountUpdate(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), valorAnterior.intValue(), userRole, null, null);
+        countHistoryService.recordCountUpdate(
+            userId,
+            email,
+            dto.getFolio(),
+            1,
+            dto.getCountedValue().intValue(),
+            valorAnterior.intValue(),
+            userRole,
+            label.getWarehouseId(),
+            label.getPeriodId()
+        );
         
         log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                 dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
@@ -132,7 +142,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
         LabelCountEvent eventC2 = events.stream()
@@ -148,9 +158,19 @@ public class LabelCountService {
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
         
-        // Registrar actualización en historial
+        // Registrar actualización en historial con periodId y warehouseId correctos
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountUpdate(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), oldValue.intValue(), userRole, null, null);
+        countHistoryService.recordCountUpdate(
+            userId,
+            email,
+            dto.getFolio(),
+            2,
+            dto.getCountedValue().intValue(),
+            oldValue.intValue(),
+            userRole,
+            label.getWarehouseId(),
+            label.getPeriodId()
+        );
         
         log.info("Conteo C2 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                 dto.getFolio(), oldValue, dto.getCountedValue(), userId);
@@ -258,4 +278,3 @@ public class LabelCountService {
         }
     }
 }
-
