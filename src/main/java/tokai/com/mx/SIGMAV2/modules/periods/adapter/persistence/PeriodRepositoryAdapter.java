@@ -29,7 +29,7 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
 
     @Override
     public Optional<Period> findByDate(java.time.LocalDate date) {
-        return jpaPeriodRepository.findByDate(date.withDayOfMonth(1)).map(this::toDomain);
+        return jpaPeriodRepository.findByDate(date).map(this::toDomain);
     }
 
     @Override
@@ -44,7 +44,7 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
 
     @Override
     public boolean existsByDate(java.time.LocalDate date) {
-        return jpaPeriodRepository.existsByDate(date.withDayOfMonth(1));
+        return jpaPeriodRepository.existsByDate(date);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class PeriodRepositoryAdapter implements PeriodRepository {
         if (period == null) return null;
         PeriodEntity entity = new PeriodEntity();
         entity.setId(period.getId());
-        entity.setDate(period.getDate() != null ? period.getDate().withDayOfMonth(1) : null);
+        entity.setDate(period.getDate()); // No normaliza el día
         entity.setComments(period.getComments());
         entity.setState(period.getState());
         return entity;

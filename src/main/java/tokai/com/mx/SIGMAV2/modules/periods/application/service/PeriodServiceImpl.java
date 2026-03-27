@@ -20,19 +20,18 @@ public class PeriodServiceImpl implements PeriodManagementUseCase {
     @Override
     @Transactional
     public Period createPeriod(LocalDate date, String comments) {
-        LocalDate normalizedDate = date.withDayOfMonth(1);
-        int year = normalizedDate.getYear();
-        int month = normalizedDate.getMonthValue();
+        int year = date.getYear();
+        int month = date.getMonthValue();
 
         if (periodRepository.countByYear(year) >= 12) {
             throw new IllegalStateException("No se pueden crear más de 12 periodos en el año " + year);
         }
-        if (periodRepository.existsByDate(normalizedDate)) {
-            throw new IllegalArgumentException("Ya existe un periodo para el mes " + month + " del año " + year);
+        if (periodRepository.existsByDate(date)) {
+            throw new IllegalArgumentException("Ya existe un periodo para la fecha " + date);
         }
 
         Period period = Period.builder()
-                .date(normalizedDate)
+                .date(date)
                 .comments(comments)
                 .state(Period.PeriodState.OPEN)
                 .build();
