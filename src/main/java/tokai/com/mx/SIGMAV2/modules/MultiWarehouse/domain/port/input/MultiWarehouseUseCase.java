@@ -40,6 +40,11 @@ public interface MultiWarehouseUseCase {
     Page<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search, Pageable pageable);
 
     /**
+     * Busca existencias de multialmacén con filtros opcionales (sin paginación).
+     */
+    List<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search);
+
+    /**
      * Obtiene el stock de un producto en un almacén para un periodo dado.
      *
      * @return Optional vacío si no existe el registro
@@ -92,4 +97,3 @@ public interface MultiWarehouseUseCase {
      */
     WizardStepResult processWizardStep(MultiWarehouseWizardStepDTO stepDTO);
 }
-

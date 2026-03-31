@@ -121,21 +121,16 @@ public class InventoryController {
     // ── Reporte por periodo ───────────────────────────────────────────────
 
     @GetMapping("/period-report")
-    public ResponseEntity<Page<InventoryPeriodReportDTO>> periodReport(
+    public ResponseEntity<List<InventoryPeriodReportDTO>> periodReport(
             @RequestParam("periodId") Long periodId,
             @RequestParam(value = "warehouseId", required = false) Long warehouseId,
-            @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
-            @RequestParam(value = "sort", defaultValue = "existQty,asc") String[] sort) {
+            @RequestParam(value = "search", required = false) String search) {
 
-        List<Sort.Order> orders = buildSortOrders(sort);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
+        List<InventorySnapshotJpaEntity> entities =
+                jpaInventorySnapshotRepository.findByPeriodWithSearchNoPage(periodId, warehouseId, search);
 
-        Page<InventorySnapshotJpaEntity> entitiesPage =
-                jpaInventorySnapshotRepository.findByPeriodWithSearch(periodId, warehouseId, search, pageable);
-
-        Page<InventoryPeriodReportDTO> reportPage = entitiesPage.map(e -> {
+        List<InventoryPeriodReportDTO> reportList = new ArrayList<>();
+        for (InventorySnapshotJpaEntity e : entities) {
             InventoryPeriodReportDTO dto = new InventoryPeriodReportDTO();
             jpaProductRepository.findById(e.getProductId()).ifPresentOrElse(pe -> {
                 dto.setCveArt(pe.getCveArt());
@@ -148,10 +143,10 @@ public class InventoryController {
             });
             dto.setExistQty(e.getExistQty());
             dto.setStatus(e.getStatus());
-            return dto;
-        });
+            reportList.add(dto);
+        }
 
-        return ResponseEntity.ok(reportPage);
+        return ResponseEntity.ok(reportList);
     }
 
     // ── Helpers privados ──────────────────────────────────────────────────

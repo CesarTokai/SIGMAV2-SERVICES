@@ -3,8 +3,6 @@ package tokai.com.mx.SIGMAV2.modules.MultiWarehouse.adapter.web;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -21,6 +19,7 @@ import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.application.result.WizardStep
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model.MultiWarehouseExistence;
 import tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.port.input.MultiWarehouseUseCase;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,21 +38,14 @@ public class MultiWarehouseController {
 
     private final MultiWarehouseUseCase multiWarehouseUseCase;
 
-    // -------------------------------------------------------------------------
-    // Consulta de existencias
-    // -------------------------------------------------------------------------
 
     @PostMapping("/existences")
-    public Page<MultiWarehouseExistence> getExistences(
-            @RequestBody MultiWarehouseSearchDTO searchDTO,
-            Pageable pageable) {
+    public List<MultiWarehouseExistence> getExistences(
+            @RequestBody MultiWarehouseSearchDTO searchDTO) {
         log.debug("POST /existences - periodId={}, search={}", searchDTO.getPeriodId(), searchDTO.getSearch());
-        return multiWarehouseUseCase.findExistences(searchDTO, pageable);
+        return multiWarehouseUseCase.findExistences(searchDTO);
     }
 
-    // -------------------------------------------------------------------------
-    // Importación
-    // -------------------------------------------------------------------------
 
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/import")

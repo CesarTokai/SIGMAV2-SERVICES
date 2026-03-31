@@ -41,6 +41,19 @@ public interface JpaInventorySnapshotRepository extends JpaRepository<InventoryS
     @Query("UPDATE InventorySnapshotJpaEntity s SET s.status = 'B' WHERE s.periodId = :periodId AND s.warehouseId = :warehouseId AND s.productId NOT IN :activeProductIds")
     int markAsInactiveNotInImport(Long periodId, Long warehouseId, List<Long> activeProductIds);
 
+    @Query("SELECT s FROM InventorySnapshotJpaEntity s " +
+           "LEFT JOIN ProductEntity p ON s.productId = p.idProduct " +
+           "WHERE s.periodId = :periodId " +
+           "AND (:warehouseId IS NULL OR s.warehouseId = :warehouseId) " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "     LOWER(p.cveArt) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "     LOWER(p.descr) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "     LOWER(p.uniMed) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<InventorySnapshotJpaEntity> findByPeriodWithSearchNoPage(
+            @Param("periodId") Long periodId,
+            @Param("warehouseId") Long warehouseId,
+            @Param("search") String search);
+
 
 
 }

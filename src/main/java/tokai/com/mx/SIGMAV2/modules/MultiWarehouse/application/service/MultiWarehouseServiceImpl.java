@@ -38,18 +38,7 @@ import java.security.MessageDigest;
 import java.security.DigestInputStream;
 import java.io.InputStream;
 
-/**
- * Implementación del caso de uso MultiWarehouse.
- *
- * <p><b>Arquitectura aplicada:</b>
- * <ul>
- *   <li>Implementa {@link MultiWarehouseUseCase} (input port) — sin {@code ResponseEntity}.</li>
- *   <li>Accede a catálogos externos solo a través de ports de salida
- *       ({@link MultiWarehouseWarehousePort}, {@link MultiWarehouseInventoryPort}).</li>
- *   <li>El controlador ({@code MultiWarehouseController}) traduce los result objects a HTTP.</li>
- * </ul>
- *
- */
+
 @Service
 @RequiredArgsConstructor
 public class MultiWarehouseServiceImpl implements MultiWarehouseUseCase {
@@ -73,6 +62,20 @@ public class MultiWarehouseServiceImpl implements MultiWarehouseUseCase {
     // =========================================================================
 
     @Override
+    public List<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search) {
+        // Reutiliza la lógica de paginación pero trae todos los resultados
+        List<MultiWarehouseExistence> result = new ArrayList<>();
+        int page = 0;
+        int size = 1000; // tamaño grande para evitar demasiadas iteraciones
+        Page<MultiWarehouseExistence> current;
+        do {
+            current = multiWarehouseRepository.findExistences(search, PageRequest.of(page++, size));
+            result.addAll(current.getContent());
+        } while (current.hasNext());
+        return result;
+    }
+
+        @Override
     public Page<MultiWarehouseExistence> findExistences(MultiWarehouseSearchDTO search, Pageable pageable) {
         log.debug("findExistences: periodId={}, search={}",
                   search != null ? search.getPeriodId() : null,
