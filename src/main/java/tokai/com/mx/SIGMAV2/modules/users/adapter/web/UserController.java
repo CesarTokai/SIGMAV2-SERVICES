@@ -13,6 +13,7 @@ import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserRequest;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.UserDomainResponse;
 import tokai.com.mx.SIGMAV2.modules.users.adapter.web.dto.VerifyUserRequest;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.repository.UserWarehouseAssignmentRepository;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.Optional;
 public class UserController {
 
     private final UserService userService;
+    private final UserWarehouseAssignmentRepository userWarehouseAssignmentRepository;
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@RequestBody UserRequest request) {
@@ -149,6 +151,30 @@ public class UserController {
             response.put("email", request.getEmail());
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    @GetMapping("/my-warehouses-folios")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO','USUARIO')")
+    public ResponseEntity<Map<String, Object>> getMyWarehousesWithFolios(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        // Obtener email del usuario autenticado
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        
+        // Inyectar el repositorio (debes agregarlo como dependencia en el constructor)
+        var result = userWarehouseAssignmentRepository.findMyWarehousesWithFolios(email, pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", result.getContent());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("currentPage", result.getNumber());
+        response.put("pageSize", result.getSize());
+        response.put("hasNext", result.hasNext());
+        response.put("hasPrevious", result.hasPrevious());
+        return ResponseEntity.ok(response);
     }
 
     private UserDomainResponse mapToUserDomainResponse(User user) {

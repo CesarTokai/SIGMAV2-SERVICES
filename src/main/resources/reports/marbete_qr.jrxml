@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Carta_Tres_Cuadros" pageWidth="612" pageHeight="792" whenNoDataType="NoPages" columnWidth="582" leftMargin="15" rightMargin="15" topMargin="20" bottomMargin="20" uuid="70af64f2-2177-4f3c-a1e2-51dc72b8f58d">
+    <property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+    <field name="nomMarbete1" class="java.lang.String"/>
+    <field name="clave1" class="java.lang.String"/>
+    <field name="descr1" class="java.lang.String"/>
+    <field name="almacen1" class="java.lang.String"/>
+    <field name="fecha1" class="java.lang.String"/>
+    <field name="qrImage1" class="java.awt.image.BufferedImage"/>
+    <field name="nomMarbete2" class="java.lang.String"/>
+    <field name="clave2" class="java.lang.String"/>
+    <field name="descr2" class="java.lang.String"/>
+    <field name="almacen2" class="java.lang.String"/>
+    <field name="fecha2" class="java.lang.String"/>
+    <field name="qrImage2" class="java.awt.image.BufferedImage"/>
+    <field name="nomMarbete3" class="java.lang.String"/>
+    <field name="clave3" class="java.lang.String"/>
+    <field name="descr3" class="java.lang.String"/>
+    <field name="almacen3" class="java.lang.String"/>
+    <field name="fecha3" class="java.lang.String"/>
+    <field name="qrImage3" class="java.awt.image.BufferedImage"/>
+    <detail>
+        <band height="328" splitType="Stretch">
+            <rectangle>
+                <reportElement x="28" y="0" width="150" height="224" uuid="791267c0-ac8e-42b8-a9b3-39784e0e812c"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="29" y="2" width="52" height="11" uuid="a246188e-8aea-47cf-8f33-5d86caa074cb"/>
+                <textElement>
+                    <font size="8.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="71" y="2" width="70" height="11" uuid="4e4bde0d-cc79-440a-bb2a-8b2294b1bfc4"/>
+                <textElement>
+                    <font size="8.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="28" y="15" width="150" height="21" uuid="48f02926-fb29-47bd-801b-94a4c04e34db"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="28" y="36" width="150" height="34" uuid="84e86106-f500-48bd-9cbd-c3ac6287927c"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr1}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="28" y="205" width="53" height="18" uuid="d85a33d0-28d1-420a-a7ce-ecaa98d244a5"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="81" y="205" width="90" height="18" uuid="3f6e5ff9-88ce-47fc-967b-901f54841239"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="142" y="2" width="37" height="11" uuid="bfd30885-8e77-4709-92d4-98bba4574394"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha1}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="28" y="14" width="150" height="1" uuid="72a3f164-3f00-467a-ae65-39004d762445">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <line direction="BottomUp">
+                <reportElement positionType="Float" x="141" y="0" width="1" height="14" uuid="e45c90d1-2d49-466e-9e26-a3f4793c891d">
+                    <property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+                </reportElement>
+            </line>
+            <rectangle>
+                <reportElement x="230" y="0" width="150" height="224" uuid="2676d135-cfca-4637-acc8-6e34be75ee48"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="231" y="2" width="52" height="11" uuid="7dd4fa9a-078e-48b6-a8f7-15402566ce88"/>
+                <textElement>
+                    <font size="8.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="273" y="2" width="70" height="11" uuid="ff3dbc5e-65c9-465f-84f7-c53329367312"/>
+                <textElement>
+                    <font size="8.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="230" y="15" width="150" height="21" uuid="14d2cec7-d29e-4dfd-8cd2-43157838e135"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="230" y="36" width="150" height="34" uuid="95317801-8e71-4617-b804-b3cedbf30225"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr2}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="230" y="205" width="53" height="18" uuid="f4c0a66c-977f-4b84-8b6e-1b8d0cabbd06"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="283" y="205" width="90" height="18" uuid="11e6f2f6-b0ca-4874-8ee1-e8eb76901afe"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="344" y="2" width="37" height="11" uuid="9135ea8b-d0ed-47c4-9aa5-4d9a2b6b0c22"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha2}]]></textFieldExpression>
+            </textField>
+            <image>
+                <reportElement x="252" y="80" width="106" height="100" uuid="f07a520f-0190-4cc1-99cd-0ff3b9745b8c"/>
+                <imageExpression><![CDATA[$F{qrImage2}]]></imageExpression>
+            </image>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="230" y="14" width="150" height="1" uuid="2aff412e-4520-46ca-897e-43f91c7982cf">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <line direction="BottomUp">
+                <reportElement positionType="Float" x="343" y="0" width="1" height="14" uuid="dd69c93a-5536-44c5-abb3-3494c9a88acf">
+                    <property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+                </reportElement>
+            </line>
+            <rectangle>
+                <reportElement x="410" y="0" width="150" height="224" uuid="f484abe2-ca7c-4e11-97ef-a7897652479e"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="411" y="2" width="52" height="11" uuid="063f996b-bdb3-4f97-acdf-c3c219e4e82f"/>
+                <textElement>
+                    <font size="8.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="453" y="2" width="70" height="11" uuid="d2a216ab-adb2-4b7b-a343-3ac831ce7cf7"/>
+                <textElement>
+                    <font size="8.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="410" y="15" width="150" height="21" uuid="fa5cdd7a-bacc-45b3-b4a3-41a5267632b4"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="410" y="36" width="150" height="34" uuid="af39a715-305b-4c9c-8493-29e714dcd7b6"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr3}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="410" y="205" width="53" height="18" uuid="a642eb2f-e2bc-469f-9e48-7dc49fe310bf"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="463" y="205" width="90" height="18" uuid="dd6b0020-163c-47be-a978-2b8b402ef2ee"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="524" y="2" width="37" height="11" uuid="7247fcc1-c8eb-4aed-934e-e75eae3ff5ea"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha3}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="410" y="14" width="150" height="1" uuid="5894786b-91f7-4a18-b8dc-c3752d459d35">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <line direction="BottomUp">
+                <reportElement positionType="Float" x="523" y="0" width="1" height="14" uuid="2057aac0-ede1-4095-954c-e1557fb1818a">
+                    <property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+                </reportElement>
+            </line>
+            <image>
+                <reportElement x="50" y="80" width="106" height="100" uuid="81bc9149-c5dc-4645-983a-6b219f710d19"/>
+                <imageExpression><![CDATA[$F{qrImage1}]]></imageExpression>
+            </image>
+            <image>
+                <reportElement x="435" y="80" width="106" height="100" uuid="cd78ce9d-fac3-49a2-9ab9-4b4c4387b01d"/>
+                <imageExpression><![CDATA[$F{qrImage3}]]></imageExpression>
+            </image>
+        </band>
+    </detail>
+</jasperReport>
