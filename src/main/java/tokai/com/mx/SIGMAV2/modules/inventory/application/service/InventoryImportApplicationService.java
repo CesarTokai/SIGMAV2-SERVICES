@@ -128,6 +128,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
             // ── 4. Procesamiento fila por fila ───────────────────────────
             Set<Long> importedProductIds = new HashSet<>();
+            int processedCount = 0;
 
             for (int i = 0; i < rows.size(); i++) {
                 InventoryImportRow row = rows.get(i);
@@ -138,6 +139,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                 if (!rowErrors.isEmpty()) {
                     errors.addAll(rowErrors);
                     stats.skipped++;
+                    log.debug("Fila {} validación fallida: {} errores", rowNum, rowErrors.size());
                     continue;
                 }
 
@@ -145,6 +147,8 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     Product product = processProduct(row, stats, errors, rowNum);
                     importedProductIds.add(product.getId());
                     processSnapshot(product, period, row.getExistQty(), stats);
+                    processedCount++;
+                    log.debug("Fila {} procesada OK: {}", rowNum, row.getCveArt());
                 } catch (Exception e) {
                     String msg = String.format("Fila %d [%s]: %s", rowNum, row.getCveArt(), e.getMessage());
                     errors.add(msg);
@@ -152,6 +156,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     stats.skipped++;
                 }
             }
+            log.info("Filas procesadas correctamente: {}/{}", processedCount, rows.size());
 
             // ── 5. Desactivar productos ausentes en el Excel ─────────────
             deactivateMissingProducts(period, importedProductIds, stats, errors);
