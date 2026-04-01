@@ -41,4 +41,9 @@ public class InventoryImportJobRepositoryAdapter implements InventoryImportJobRe
     public Optional<InventoryImportJob> findById(Long id) {
         return jpa.findById(id).map(mapper::toDomain);
     }
+
+    @Override
+    public Optional<InventoryImportJob> findLatestByPeriodId(Long periodId) {
+        return jpa.findLatestByPeriodId(periodId).map(mapper::toDomain);
+    }
 }

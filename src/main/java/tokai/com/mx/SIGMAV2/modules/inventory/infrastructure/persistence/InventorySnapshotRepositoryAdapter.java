@@ -69,11 +69,7 @@ public class InventorySnapshotRepositoryAdapter implements InventorySnapshotRepo
 
     @Override
     public Optional<InventorySnapshot> findByProductPeriod(Long productId, Long periodId) {
-        // Buscar snapshot por productId y periodId (sin warehouseId)
-        List<InventorySnapshotJpaEntity> entities = jpaRepository.findByPeriodId(periodId);
-        return entities.stream()
-                .filter(e -> e.getProductId().equals(productId))
-                .findFirst()
+        return jpaRepository.findByProductIdAndPeriodId(productId, periodId)
                 .map(this::toDomainModel);
     }
 

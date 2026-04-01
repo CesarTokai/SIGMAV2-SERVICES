@@ -28,10 +28,12 @@ import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.Perso
 
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Servicio de APLICACIÓN para importación de inventario.
@@ -67,6 +69,9 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     private final InventorySnapshotRepository    snapshotRepository;
     private final InventoryImportJobRepository   importJobRepository;
     private final PersonalInformationService     personalInformationService;
+
+    /** Lock por período para evitar importaciones concurrentes (#8 race condition) */
+    private static final Map<Long, Object> PERIOD_LOCKS = new ConcurrentHashMap<>();
 
     // ════════════════════════════════════════════════════════════════════════
     //  MÉTODO PRINCIPAL
@@ -108,10 +113,61 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
             Period period = mapPeriod(periodEntity);
 
-            // ── 3. Parseo del Excel ──────────────────────────────────────
+            // ── 2b. Protección contra importación concurrente (#8) ───────
+            Object lock = PERIOD_LOCKS.computeIfAbsent(periodId, k -> new Object());
+            synchronized (lock) {
+                try {
+                    return doImport(file, period, username, errors, stats);
+                } finally {
+                    PERIOD_LOCKS.remove(periodId);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error crítico al importar inventario: {}", e.getMessage(), e);
+            errors.add("Error crítico al importar inventario: " + e.getMessage());
+        }
+
+        return new InventoryImportResultDTO(
+                stats.totalRows, stats.inserted, stats.updated,
+                stats.deactivated, errors, logFileUrl
+        );
+    }
+
+    /**
+     * Lógica interna de importación, ejecutada dentro del lock de período.
+     */
+    private InventoryImportResultDTO doImport(MultipartFile file, Period period,
+                                               String username, List<String> errors,
+                                               ImportStats stats) {
+        String logFileUrl = null;
+        try {
+            // ── 3. Detección de archivo duplicado por checksum (#5) ──────
+            String checksum = computeChecksum(file);
+            if (checksum != null) {
+                Optional<InventoryImportJob> lastJob = importJobRepository.findLatestByPeriodId(period.getId());
+                if (lastJob.isPresent() && checksum.equals(lastJob.get().getChecksum())) {
+                    errors.add("El archivo es idéntico al de la última importación para este periodo. No se realizaron cambios.");
+                    return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
+                }
+            }
+
+            // ── 3b. FIX #10: Advertir si ya existen snapshots con warehouse ──
+            List<InventorySnapshot> existingSnapshots =
+                    snapshotRepository.findByPeriodAndWarehouse(period.getId(), null);
+            boolean hasWarehouseSnapshots = existingSnapshots.stream()
+                    .anyMatch(s -> s.getWarehouse() != null && s.getWarehouse().getId() != null);
+            if (hasWarehouseSnapshots) {
+                errors.add("ADVERTENCIA: Ya existen registros con almacén asignado para este periodo "
+                        + "(probablemente importados desde MultiAlmacén). "
+                        + "La importación de inventario simple se registrará SIN almacén. "
+                        + "MultiAlmacén seguirá siendo la fuente de verdad para marbetes.");
+                log.warn("Re-importación de inventario simple sobre periodo con datos de multialmacén");
+            }
+
+            // ── 4. Parseo del Excel ──────────────────────────────────────
             List<InventoryImportRow> rows = parseExcel(file, errors);
 
-            // Si hubo errores críticos al parsear (columnas faltantes, etc.)
             if (!errors.isEmpty()) {
                 return new InventoryImportResultDTO(0, 0, 0, 0, errors, null);
             }
@@ -126,20 +182,18 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
             stats.totalRows = rows.size();
 
-            // ── 4. Procesamiento fila por fila ───────────────────────────
+            // ── 5. Procesamiento fila por fila ───────────────────────────
             Set<Long> importedProductIds = new HashSet<>();
             int processedCount = 0;
 
             for (int i = 0; i < rows.size(); i++) {
                 InventoryImportRow row = rows.get(i);
-                int rowNum = i + 2; // +2 porque fila 1 es encabezado
+                int rowNum = i + 2;
 
-                // Validar fila antes de procesarla
                 List<String> rowErrors = validateRow(row, rowNum);
                 if (!rowErrors.isEmpty()) {
                     errors.addAll(rowErrors);
                     stats.skipped++;
-                    log.debug("Fila {} validación fallida: {} errores", rowNum, rowErrors.size());
                     continue;
                 }
 
@@ -148,7 +202,6 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     importedProductIds.add(product.getId());
                     processSnapshot(product, period, row.getExistQty(), stats);
                     processedCount++;
-                    log.debug("Fila {} procesada OK: {}", rowNum, row.getCveArt());
                 } catch (Exception e) {
                     String msg = String.format("Fila %d [%s]: %s", rowNum, row.getCveArt(), e.getMessage());
                     errors.add(msg);
@@ -158,12 +211,13 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
             }
             log.info("Filas procesadas correctamente: {}/{}", processedCount, rows.size());
 
-            // ── 5. Desactivar productos ausentes en el Excel ─────────────
+            // ── 6. Desactivar productos ausentes en el Excel (bulk) ──────
             deactivateMissingProducts(period, importedProductIds, stats, errors);
 
-            // ── 6. Registrar bitácora ────────────────────────────────────
+            // ── 7. Registrar bitácora ────────────────────────────────────
             String nombreCompleto = resolveFullName(username);
             InventoryImportJob job = buildImportJob(file, period, stats, errors, nombreCompleto);
+            job.setChecksum(checksum);
             InventoryImportJob savedJob = importJobRepository.save(job);
             logFileUrl = generateLogFileUrl(savedJob.getId());
 
@@ -171,17 +225,13 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     stats.totalRows, stats.inserted, stats.updated, stats.deactivated, errors.size());
 
         } catch (Exception e) {
-            log.error("Error crítico al importar inventario: {}", e.getMessage(), e);
+            log.error("Error crítico en doImport: {}", e.getMessage(), e);
             errors.add("Error crítico al importar inventario: " + e.getMessage());
         }
 
         return new InventoryImportResultDTO(
-                stats.totalRows,
-                stats.inserted,
-                stats.updated,
-                stats.deactivated,
-                errors,
-                logFileUrl
+                stats.totalRows, stats.inserted, stats.updated,
+                stats.deactivated, errors, logFileUrl
         );
     }
 
@@ -212,43 +262,43 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
     /**
      * Valida una fila individual antes de procesarla.
-     * Retorna lista de errores; si está vacía, la fila es válida.
-     * ✅ FIX: STATUS ahora es OBLIGATORIO (nunca puede ser null o vacío)
+     * CVE_ART es el único campo bloqueante. DESCR y UNI_MED generan advertencia
+     * pero se usan defaults para no rechazar la fila.
      */
     private List<String> validateRow(InventoryImportRow row, int rowNum) {
         List<String> errors = new ArrayList<>();
         String prefix = "Fila " + rowNum;
 
-        // CVE_ART obligatorio
+        // CVE_ART obligatorio — sin esto no se puede procesar
         if (row.getCveArt() == null || row.getCveArt().isBlank()) {
             errors.add(prefix + ": CVE_ART es obligatorio.");
-            return errors; // sin CVE_ART no hay nada más que validar
+            return errors;
         }
         if (row.getCveArt().length() > MAX_CVE_ART_LENGTH) {
             errors.add(prefix + " [" + row.getCveArt() + "]: CVE_ART supera los "
                     + MAX_CVE_ART_LENGTH + " caracteres permitidos.");
         }
 
-        // DESCR obligatorio
+        // DESCR: si viene vacío, se usará default en processProduct (no es bloqueante)
         if (row.getDescr() == null || row.getDescr().isBlank()) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: DESCR es obligatorio.");
+            row.setDescr("SIN DESCRIPCION");
+            log.debug("Fila {} [{}]: DESCR vacío, usando 'SIN DESCRIPCION'", rowNum, row.getCveArt());
         } else if (row.getDescr().length() > MAX_DESCR_LENGTH) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: DESCR supera los "
-                    + MAX_DESCR_LENGTH + " caracteres.");
+            row.setDescr(row.getDescr().substring(0, MAX_DESCR_LENGTH));
+            log.debug("Fila {} [{}]: DESCR truncado a {} caracteres", rowNum, row.getCveArt(), MAX_DESCR_LENGTH);
         }
 
-        // UNI_MED obligatorio
+        // UNI_MED: si viene vacío, se usará default (no es bloqueante)
         if (row.getUniMed() == null || row.getUniMed().isBlank()) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: UNI_MED es obligatorio.");
+            row.setUniMed("PZ");
+            log.debug("Fila {} [{}]: UNI_MED vacío, usando 'PZ'", rowNum, row.getCveArt());
         } else if (row.getUniMed().length() > MAX_UNI_MED_LENGTH) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: UNI_MED supera los "
-                    + MAX_UNI_MED_LENGTH + " caracteres.");
+            row.setUniMed(row.getUniMed().substring(0, MAX_UNI_MED_LENGTH));
         }
 
-        // LIN_PROD opcional, pero si viene, validar longitud
+        // LIN_PROD opcional, truncar si excede
         if (row.getLinProd() != null && row.getLinProd().length() > MAX_LIN_PROD_LENGTH) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: LIN_PROD supera los "
-                    + MAX_LIN_PROD_LENGTH + " caracteres.");
+            row.setLinProd(row.getLinProd().substring(0, MAX_LIN_PROD_LENGTH));
         }
 
         // EXIST_QTY no puede ser negativa
@@ -257,12 +307,12 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     + row.getExistQty() + ").");
         }
 
-        // ✅ FIX: STATUS es OBLIGATORIO y siempre debe tener valor (A o B)
-        if (row.getStatus() == null || row.getStatus().isBlank()) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: STATUS es obligatorio (valores: A, B).");
-        } else if (!VALID_STATUSES.contains(row.getStatus().toUpperCase())) {
-            errors.add(prefix + " [" + row.getCveArt() + "]: STATUS inválido '"
-                    + row.getStatus() + "'. Valores permitidos: A, B.");
+        // STATUS: si viene vacío ya se defaulteó a "A" en parseExcel
+        if (row.getStatus() != null && !row.getStatus().isBlank()
+                && !VALID_STATUSES.contains(row.getStatus().toUpperCase())) {
+            // resolveStatus en processProduct manejará la normalización
+            log.debug("Fila {} [{}]: STATUS '{}' será normalizado en processProduct",
+                    rowNum, row.getCveArt(), row.getStatus());
         }
 
         return errors;
@@ -274,10 +324,12 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
     private Product processProduct(InventoryImportRow row, ImportStats stats,
                                    List<String> errors, int rowNum) {
-        // Normalizar status con default "A"
         Product.Status incomingStatus = resolveStatus(row.getStatus(), row.getCveArt(), rowNum, errors);
 
-        return productRepository.findByCveArt(row.getCveArt())
+        // FIX #3: Normalizar CVE_ART a uppercase para evitar duplicados por case-sensitivity
+        String normalizedCveArt = row.getCveArt().trim().toUpperCase();
+
+        return productRepository.findByCveArt(normalizedCveArt)
                 .map(existing -> {
                     boolean changed = false;
 
@@ -307,7 +359,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                 })
                 .orElseGet(() -> {
                     Product p = new Product();
-                    p.setCveArt(row.getCveArt());
+                    p.setCveArt(normalizedCveArt);
                     p.setDescr(row.getDescr());
                     p.setUniMed(row.getUniMed());
                     p.setLinProd(row.getLinProd());
@@ -350,27 +402,25 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     }
 
     /**
-     * Desactiva en BD los productos que pertenecían al periodo pero no vinieron en el Excel.
+     * FIX #1: Desactiva productos ausentes usando BULK UPDATE en lugar de N+1 queries.
+     * Antes: loop con productRepository.save() + snapshotRepository.save() por cada ausente.
+     * Ahora: 1 sola query UPDATE ... WHERE productId NOT IN (:importedIds).
      */
     private void deactivateMissingProducts(Period period, Set<Long> importedProductIds,
                                             ImportStats stats, List<String> errors) {
         try {
-            List<InventorySnapshot> existingSnapshots =
-                    snapshotRepository.findByPeriodAndWarehouse(period.getId(), null);
-            for (InventorySnapshot snapshot : existingSnapshots) {
-                if (snapshot.getProduct() == null) continue;
-                Long productId = snapshot.getProduct().getId();
-                if (!importedProductIds.contains(productId)) {
-                    Product product = snapshot.getProduct();
-                    if (product.getStatus() != Product.Status.B) {
-                        product.setStatus(Product.Status.B);
-                        productRepository.save(product);
-                        // El status del snapshot se actualizará por el adaptador
-                        snapshotRepository.save(snapshot);
-                        stats.deactivated++;
-                        log.info("Producto desactivado por ausencia en Excel: {}", product.getCveArt());
-                    }
-                }
+            if (importedProductIds.isEmpty()) {
+                log.warn("No se importaron productos — no se desactivará nada para evitar marcar TODO como baja.");
+                return;
+            }
+
+            List<Long> activeIds = new ArrayList<>(importedProductIds);
+            int deactivated = snapshotRepository.markAsInactiveNotInImport(
+                    period.getId(), null, activeIds);
+
+            if (deactivated > 0) {
+                stats.deactivated = deactivated;
+                log.info("Productos desactivados por ausencia en Excel: {} (bulk UPDATE)", deactivated);
             }
         } catch (Exception e) {
             log.warn("Error al desactivar productos faltantes: {}", e.getMessage());
@@ -443,11 +493,15 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                 if (isRowEmpty(row)) continue;
 
                 InventoryImportRow importRow = new InventoryImportRow();
-                importRow.setCveArt(cellStringFromRow(row, cveArtIdx));
+                // FIX #3: Normalizar CVE_ART a uppercase al parsear
+                String rawCveArt = cellStringFromRow(row, cveArtIdx);
+                importRow.setCveArt(rawCveArt != null ? rawCveArt.trim().toUpperCase() : null);
                 importRow.setDescr(cellStringFromRow(row, descrIdx));
                 importRow.setLinProd(linProdIdx != -1 ? cellStringFromRow(row, linProdIdx) : null);
                 importRow.setUniMed(cellStringFromRow(row, uniMedIdx));
-                importRow.setExistQty(cellDecimal(row, existQtyIdx));
+                // FIX: Escalar EXIST a 2 decimales según regla de negocio
+                BigDecimal rawExist = cellDecimal(row, existQtyIdx);
+                importRow.setExistQty(rawExist.setScale(2, RoundingMode.HALF_UP));
 
                 // ✅ FIX: default "A" si no hay columna STATUS o el valor está vacío
                 String rawStatus = statusIdx != -1 ? cellStringFromRow(row, statusIdx) : null;
@@ -617,7 +671,6 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
         } catch (Exception ex) {
             job.setErrorsJson("[\"Error al serializar lista de errores\"]");
         }
-        job.setChecksum(computeChecksum(file));
         return job;
     }
 

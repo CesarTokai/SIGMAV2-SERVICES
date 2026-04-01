@@ -9,4 +9,5 @@ public interface InventoryImportJobRepository {
     InventoryImportJob save(InventoryImportJob job);
     List<InventoryImportJob> findAll();
     Optional<InventoryImportJob> findById(Long id);
+    Optional<InventoryImportJob> findLatestByPeriodId(Long periodId);
 }

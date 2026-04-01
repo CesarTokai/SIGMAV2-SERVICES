@@ -37,9 +37,15 @@ public interface JpaInventorySnapshotRepository extends JpaRepository<InventoryS
     @Query("SELECT s FROM InventorySnapshotJpaEntity s WHERE s.productId = :productId AND s.warehouseId = :warehouseId AND s.periodId = :periodId")
     Optional<InventorySnapshotJpaEntity> findByProductIdAndWarehouseIdAndPeriodId(Long productId, Long warehouseId, Long periodId);
 
+    @Query("SELECT s FROM InventorySnapshotJpaEntity s WHERE s.productId = :productId AND s.periodId = :periodId")
+    Optional<InventorySnapshotJpaEntity> findByProductIdAndPeriodId(@Param("productId") Long productId, @Param("periodId") Long periodId);
+
     @Modifying
-    @Query("UPDATE InventorySnapshotJpaEntity s SET s.status = 'B' WHERE s.periodId = :periodId AND s.warehouseId = :warehouseId AND s.productId NOT IN :activeProductIds")
-    int markAsInactiveNotInImport(Long periodId, Long warehouseId, List<Long> activeProductIds);
+    @Query("UPDATE InventorySnapshotJpaEntity s SET s.status = 'B' WHERE s.periodId = :periodId AND (:warehouseId IS NULL OR s.warehouseId = :warehouseId) AND s.productId NOT IN :activeProductIds")
+    int markAsInactiveNotInImport(@Param("periodId") Long periodId, @Param("warehouseId") Long warehouseId, @Param("activeProductIds") List<Long> activeProductIds);
+
+    @Query("SELECT COUNT(s) FROM InventorySnapshotJpaEntity s WHERE s.periodId = :periodId AND (:warehouseId IS NULL OR s.warehouseId = :warehouseId)")
+    long countByPeriodAndWarehouse(@Param("periodId") Long periodId, @Param("warehouseId") Long warehouseId);
 
     @Query("SELECT s FROM InventorySnapshotJpaEntity s " +
            "LEFT JOIN ProductEntity p ON s.productId = p.idProduct " +
