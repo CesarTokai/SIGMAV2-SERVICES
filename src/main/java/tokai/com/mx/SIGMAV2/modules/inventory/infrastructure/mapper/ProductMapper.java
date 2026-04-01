@@ -15,20 +15,32 @@ public class ProductMapper {
         product.setLinProd(entity.getLinProd());
         String uniMed = entity.getUniMed();
         product.setUniMed((uniMed == null || uniMed.trim().isEmpty()) ? "pz" : uniMed);
-        product.setStatus(Product.Status.valueOf(entity.getStatus()));
+        // ✅ FIX: Convertir Enum de entity a Enum de dominio
+        if (entity.getStatus() != null) {
+            product.setStatus(Product.Status.valueOf(entity.getStatus().name()));
+        } else {
+            product.setStatus(Product.Status.A); // Default a "A" si es null
+        }
         product.setCreatedAt(entity.getCreatedAt());
         return product;
     }
+    
     public ProductEntity toEntity(Product product) {
         if (product == null) return null;
         ProductEntity entity = new ProductEntity();
-        entity.setIdProduct(product.getId()); // ⭐ MAPEAR EL ID
+        entity.setIdProduct(product.getId());
         entity.setCveArt(product.getCveArt());
         entity.setDescr(product.getDescr());
         entity.setLinProd(product.getLinProd());
         String uniMed = product.getUniMed();
         entity.setUniMed((uniMed == null || uniMed.trim().isEmpty()) ? "pz" : uniMed);
-        entity.setStatus(product.getStatus().name());
+        // ✅ FIX: Asignar el Enum directamente (no .name())
+        // La entidad ahora es @Enumerated(EnumType.STRING)
+        if (product.getStatus() != null) {
+            entity.setStatus(ProductEntity.Status.valueOf(product.getStatus().name()));
+        } else {
+            entity.setStatus(ProductEntity.Status.A); // Default a "A"
+        }
         entity.setCreatedAt(product.getCreatedAt());
         return entity;
     }

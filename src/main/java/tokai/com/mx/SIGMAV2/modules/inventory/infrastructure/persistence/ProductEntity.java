@@ -26,8 +26,10 @@ public class ProductEntity {
     @Column(name = "uni_med")
     private String uniMed;
 
-    @Column(name = "status")
-    private String status;
+    // ✅ FIX: nullable = false + @Enumerated para evitar NULL en status
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Status status;
 
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
@@ -35,5 +37,6 @@ public class ProductEntity {
     @Column(name = "lin_prod")
     private String linProd;
 
-
+    // ✅ Enum Status
+    public enum Status { A, B }
 }

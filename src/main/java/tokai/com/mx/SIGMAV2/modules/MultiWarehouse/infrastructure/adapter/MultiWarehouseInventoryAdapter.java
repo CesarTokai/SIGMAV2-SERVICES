@@ -51,11 +51,12 @@ public class MultiWarehouseInventoryAdapter implements MultiWarehouseInventoryPo
         ProductEntity entity = new ProductEntity();
         entity.setCveArt(cveArt);
         entity.setDescr(description);
-        entity.setStatus("A");
+        // ✅ RN-MWH-003: Productos nuevos se crean con estado "A" (Alta)
+        entity.setStatus(ProductEntity.Status.A);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUniMed("PZA");
         ProductEntity saved = productRepository.save(entity);
-        log.info("Producto creado via port: cveArt={}, id={}", cveArt, saved.getIdProduct());
+        log.info("Producto creado via port: cveArt={}, id={} (Status: A por defecto)", cveArt, saved.getIdProduct());
         return saved.getIdProduct();
     }
 

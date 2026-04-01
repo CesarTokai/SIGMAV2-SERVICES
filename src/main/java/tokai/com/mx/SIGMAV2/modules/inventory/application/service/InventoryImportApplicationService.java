@@ -208,6 +208,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     /**
      * Valida una fila individual antes de procesarla.
      * Retorna lista de errores; si está vacía, la fila es válida.
+     * ✅ FIX: STATUS ahora es OBLIGATORIO (nunca puede ser null o vacío)
      */
     private List<String> validateRow(InventoryImportRow row, int rowNum) {
         List<String> errors = new ArrayList<>();
@@ -251,8 +252,10 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                     + row.getExistQty() + ").");
         }
 
-        // STATUS debe ser A o B (si viene)
-        if (row.getStatus() != null && !VALID_STATUSES.contains(row.getStatus().toUpperCase())) {
+        // ✅ FIX: STATUS es OBLIGATORIO y siempre debe tener valor (A o B)
+        if (row.getStatus() == null || row.getStatus().isBlank()) {
+            errors.add(prefix + " [" + row.getCveArt() + "]: STATUS es obligatorio (valores: A, B).");
+        } else if (!VALID_STATUSES.contains(row.getStatus().toUpperCase())) {
             errors.add(prefix + " [" + row.getCveArt() + "]: STATUS inválido '"
                     + row.getStatus() + "'. Valores permitidos: A, B.");
         }
@@ -311,8 +314,10 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     }
 
     /**
-     * ✅ FIX CENTRAL: Ahora propaga el status del producto al snapshot.
-     * Contador updated se incrementa DESPUÉS del save().
+     * ✅ FIX CENTRAL: Propaga el status del producto al snapshot SIEMPRE.
+     * El problema anterior era que en re-importaciones, el snapshot venía de BD
+     * con un Product que solo tenía el ID (sin status), y nunca se actualizaba.
+     * Ahora se asigna el producto COMPLETO al snapshot antes de guardar.
      */
     private void processSnapshot(Product product, Period period,
                                   BigDecimal existQty, ImportStats stats) {
@@ -320,7 +325,6 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
                 .findByProductPeriod(product.getId(), period.getId())
                 .orElseGet(() -> {
                     InventorySnapshot s = new InventorySnapshot();
-                    s.setProduct(product);
                     s.setPeriod(period);
                     s.setCreatedAt(LocalDateTime.now());
                     return s;
@@ -330,7 +334,9 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
         BigDecimal current = snapshot.getExistQty();
         boolean qtyChanged = current == null || current.compareTo(existQty) != 0;
 
-        // El status se propaga por el adaptador usando el status del producto
+        // ✅ FIX: Siempre asignar el producto COMPLETO (con status) al snapshot
+        // Esto garantiza que toJpaEntity() tenga acceso al status correcto
+        snapshot.setProduct(product);
         snapshot.setExistQty(existQty != null ? existQty : BigDecimal.ZERO);
         snapshotRepository.save(snapshot);
         if (isUpdate && qtyChanged) {
@@ -419,7 +425,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
             }
 
             if (statusIdx == -1) {
-                log.warn("Columna STATUS no encontrada en el Excel — se usará 'A' como valor por defecto.");
+                log.warn("Columna STATUS no encontrada en el Excel — se usará 'A' como valor por defecto para TODAS las filas.");
             }
 
             // ── Leer filas de datos ──────────────────────────────────────
@@ -529,11 +535,14 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Resuelve el Product.Status desde un string, con default "A" y log de advertencia.
+     * ✅ FIX: Resuelve el Product.Status desde un string, con default "A" y log de advertencia.
+     * NUNCA retorna null — siempre retorna A o B.
      */
     private Product.Status resolveStatus(String rawStatus, String cveArt,
                                           int rowNum, List<String> errors) {
         if (rawStatus == null || rawStatus.isBlank()) {
+            // En re-importación, si la columna STATUS está vacía, mantener "A" por defecto
+            log.debug("Fila {} [{}]: STATUS vacío, usando 'A' por defecto", rowNum, cveArt);
             return Product.Status.A;
         }
         String normalized = rawStatus.trim().toUpperCase();

@@ -123,9 +123,11 @@ public class InventorySnapshotRepositoryAdapter implements InventorySnapshotRepo
         if (snapshot.getWarehouse() != null) {
             entity.setWarehouseId(snapshot.getWarehouse().getId());
         }
-        // Si el producto tiene status, lo asignamos
+        // ✅ FIX: Status SIEMPRE se asigna, con default "A" si es null
         if (snapshot.getProduct() != null && snapshot.getProduct().getStatus() != null) {
             entity.setStatus(snapshot.getProduct().getStatus().name());
+        } else {
+            entity.setStatus("A"); // Default según regla de negocio
         }
 
         return entity;
