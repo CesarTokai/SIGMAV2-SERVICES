@@ -88,18 +88,6 @@ public class AuthController {
                 jwtBlacklistService.blacklist(token, exp);
 
                 String subject = decoded.getSubject();
-                // marcar usuario como inactivo si existe
-                try {
-                    if (subject != null) {
-                        jpaUserRepository.findByEmail(subject).ifPresent(u -> {
-                            u.setStatus(false);
-                            jpaUserRepository.save(u);
-                        });
-                    }
-                } catch (Exception ignore) {
-                    // no propagar
-                }
-
                 // Registrar en bitácora
                 AuditEntry entry = new AuditEntry();
                 entry.setAction("LOGOUT");

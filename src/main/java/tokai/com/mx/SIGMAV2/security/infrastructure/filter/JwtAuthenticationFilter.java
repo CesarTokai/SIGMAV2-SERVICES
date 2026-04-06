@@ -75,79 +75,50 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Obtener token del header
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
             
-            log.warn("=== JWT FILTER DEBUG ===");
-            log.warn("Authorization header recibido: [{}]", authHeader);
-            log.warn("Request URI: {}", request.getRequestURI());
-            
             if (authHeader == null || authHeader.trim().isEmpty()) {
-                log.warn("Header Authorization faltante o vacío");
                 sendErrorResponse(response, new TokenMissingException());
                 return;
             }
 
             if (!authHeader.startsWith("Bearer ")) {
-                log.warn("Header Authorization no comienza con 'Bearer ': [{}]", authHeader);
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }
 
             // Extraer token (remover "Bearer ")
             String token = authHeader.substring(7);
-            log.warn("Token extraído (longitud: {}): [{}...]", 
-                     token.length(), token.length() > 30 ? token.substring(0, 30) : token);
             if (token.trim().isEmpty()) {
-                log.warn("Token vacío después de extraer 'Bearer '");
                 sendErrorResponse(response, new TokenMalformedException());
                 return;
             }
             // Validar si el token está en la blacklist (memoria - legacy)
             // Nota: JwtRevocationFilter ya verifica la BD, esto es un segundo nivel
             if (jwtBlacklistService.isBlacklisted(token)) {
-                log.warn("Token JWT en blacklist (memoria), acceso denegado");
                 sendErrorResponse(response, new TokenRevokedException());
                 return;
             }
-
-            // Intentar reutilizar DecodedJWT validado por JwtRevocationFilter
-            // Esto evita doble parsing del token (optimización)
+            
             DecodedJWT decodedJWT = (DecodedJWT) request.getAttribute("DECODED_JWT");
-
-            // Si no está en el atributo, validar el token
-            // IMPORTANTE: validateToken() verifica:
-            //  1. Firma válida
-            //  2. Expiración natural (exp < now) ← Aquí se detecta token expirado
-            //  3. Claims correctos
-            // NO consulta BD - la expiración se valida por la fecha 'exp' dentro del token
+            
             if (decodedJWT == null) {
                 decodedJWT = jwtUtils.validateToken(token); // Puede lanzar TokenExpiredException
             }
-
-            // Extraer información del token
             String username = decodedJWT.getSubject();
             String claims = decodedJWT.getClaim("authorities").asString();
 
-            // Crear authorities
             Collection<? extends GrantedAuthority> authorities = 
                 AuthorityUtils.commaSeparatedStringToAuthorityList(claims);
-
-            log.debug("JWT parsed username={} authoritiesClaim={} parsedAuthorities={}", username, claims, authorities);
 
             // Verificar en BD que el usuario asociado al token esté activo
             if (username != null && !username.isBlank()) {
                 Optional<BeanUser> maybe = jpaUserRepository.findByEmail(username);
                 if (maybe.isPresent()) {
                     BeanUser beanUser = maybe.get();
-                    log.warn("🔍 VALIDACIÓN DE STATUS - Usuario: {}, Status en BD: {}, Activo: {}",
-                             username, beanUser.isStatus(), beanUser.isStatus() ? "SÍ" : "NO");
                     if (!beanUser.isStatus()) {
                         // Usuario inactivo: rechazar con 403
-                        log.warn("❌ USUARIO DESACTIVADO - Rechazando acceso para: {}", username);
                         sendForbiddenResponse(response, "El usuario se encuentra inactivo");
                         return;
                     }
-                    log.warn("✅ Usuario activo - Permitiendo acceso");
-                } else {
-                    log.warn("⚠️  Usuario {} no encontrado en BD", username);
                 }
             }
 
@@ -156,20 +127,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             context.setAuthentication(new UsernamePasswordAuthenticationToken(username, null, authorities));
             SecurityContextHolder.setContext(context);
 
-            log.debug("Authentication set for username={} with authorities={}", username, authorities);
             // Continuar con la cadena de filtros
             filterChain.doFilter(request, response);
 
         } catch (JwtException e) {
-            // Captura excepciones de JWT:
-            // - TokenExpiredException: exp < now() (expiración natural por tiempo)
-            // - TokenRevokedException: token en lista negra (revocación manual)
-            // - TokenInvalidException: firma inválida, claims incorrectos
-            // - TokenMalformedException: formato inválido
-            log.warn("Error de autenticación JWT: {} - {}", e.getErrorCode(), e.getMessage());
             sendErrorResponse(response, e);
         } catch (Exception e) {
-            log.error("Error inesperado en autenticación: {}", e.getMessage(), e);
             sendErrorResponse(response, new TokenInvalidException("Error interno de autenticación", 
                 "Ha ocurrido un error inesperado durante la autenticación"));
         }

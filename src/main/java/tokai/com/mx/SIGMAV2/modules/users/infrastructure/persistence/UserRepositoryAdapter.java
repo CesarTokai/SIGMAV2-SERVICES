@@ -36,22 +36,11 @@ public class UserRepositoryAdapter implements UserRepository {
     @Override
     @Transactional
     public User save(User user) {
-        log.debug("💾 Guardando usuario: {}", user.getEmail());
-        log.info("📝 Usuario ANTES de mapear - Status: {}, Email: {}", user.isStatus(), user.getEmail());
 
         BeanUser beanUser = userMapper.toBean(user);
-        log.info("🔄 Usuario DESPUÉS de mapear a BeanUser - Status: {}, Email: {}", beanUser.isStatus(), beanUser.getEmail());
-
-        // Usar merge() para asegurar que JPA detecta y actualiza todos los cambios en entidades detached
         BeanUser managedBeanUser = entityManager.merge(beanUser);
         entityManager.flush();
-
-        log.info("✅ Usuario GUARDADO EN BD - Status: {}, Email: {}", managedBeanUser.isStatus(), managedBeanUser.getEmail());
-
         User returnedUser = userMapper.toDomain(managedBeanUser);
-        log.info("🎯 Usuario EN RETORNO - Status: {}, Email: {}", returnedUser.isStatus(), returnedUser.getEmail());
-        log.debug("Usuario guardado: id={}, email={}, status={}", managedBeanUser.getId(), managedBeanUser.getEmail(), managedBeanUser.isStatus());
-
         return returnedUser;
     }
 

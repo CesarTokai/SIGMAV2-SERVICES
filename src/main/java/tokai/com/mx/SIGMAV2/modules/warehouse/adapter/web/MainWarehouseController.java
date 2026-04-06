@@ -63,8 +63,6 @@ public class MainWarehouseController {
             @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir,
             @RequestParam(value = "search", required = false) String search) {
 
-        log.info("Listando almacenes - page: {}, size: {}, search: '{}'", page, size, search);
-        
         try {
             Long currentUserId = getCurrentUserId();
             

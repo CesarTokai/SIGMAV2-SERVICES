@@ -159,8 +159,6 @@ public class UserApplicationService implements UserService {
      */
     @Override
     public Optional<User> findByEmail(String email) {
-        log.info("Buscando usuario por email: {}", email);
-        
         ValidationUtils.validateEmail(email);
         return userRepository.findByEmail(email.toLowerCase().trim());
     }
@@ -170,8 +168,6 @@ public class UserApplicationService implements UserService {
      */
     @Override
     public Optional<User> findById(Long id) {
-        log.info("Buscando usuario por ID: {}", id);
-        
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID de usuario inválido");
         }
@@ -194,8 +190,6 @@ public class UserApplicationService implements UserService {
     @Override
     @Transactional
     public void deleteByEmail(String email) {
-        log.info("Eliminando usuario: {}", email);
-        
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
         
@@ -212,8 +206,6 @@ public class UserApplicationService implements UserService {
      */
     @Override
     public Optional<User> verify(String email, String code) {
-        log.info("Verificando usuario: {}", email);
-        
         ValidationUtils.validateEmail(email);
         ValidationUtils.validateVerificationCode(code);
         String normalizedEmail = email.toLowerCase().trim();
@@ -242,9 +234,6 @@ public class UserApplicationService implements UserService {
     @Override
     @Transactional
     public void resendVerificationCode(String email) {
-        log.info("Reenviando código de verificación para usuario: {}", email);
-        
-        // Validar email
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
 
@@ -280,8 +269,6 @@ public class UserApplicationService implements UserService {
     @Override
     @Transactional
     public User update(User user) {
-        log.info("Actualizando usuario ID: {}", user.getId());
-        
         if (user.getId() == null) {
             throw new IllegalArgumentException("No se puede actualizar un usuario sin ID");
         }
@@ -299,8 +286,6 @@ public class UserApplicationService implements UserService {
      */
     @Override
     public User updateUserRole(Long userId, String role) {
-        log.info("Actualizando rol del usuario ID: {} a {}", userId, role);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con ID: " + userId));
         try {
