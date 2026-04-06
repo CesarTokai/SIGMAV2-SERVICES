@@ -304,7 +304,6 @@ public class UserApplicationService implements UserService {
      */
     @Override
     public Page<User> findAllUsers(Pageable pageable) {
-        log.info("Obteniendo usuarios con paginación: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         return userRepository.findAll(pageable);
     }
     

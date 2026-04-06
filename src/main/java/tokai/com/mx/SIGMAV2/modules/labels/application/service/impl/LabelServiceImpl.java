@@ -205,7 +205,6 @@ public class LabelServiceImpl implements LabelService {
         Long maxFolio = labels.get(labels.size() - 1).getFolio();
         persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, false);
 
-        log.info("✅ PDF generado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
         return pdfBytes;
     }
 
@@ -281,7 +280,6 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public PendingPrintCountResponseDTO getPendingPrintCount(PendingPrintCountRequestDTO dto, Long userId, String userRole) {
-        log.info("Contando marbetes pendientes: periodId={}, warehouseId={}", dto.getPeriodId(), dto.getWarehouseId());
 
         if (!warehouseAccessService.hasFullAccess(userRole)) {
             warehouseAccessService.validateWarehouseAccess(userId, dto.getWarehouseId(), userRole);
@@ -314,8 +312,6 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole) {
-        log.info("getLabelSummary: periodId={}, warehouseId={}, page={}, size={}",
-                dto.getPeriodId(), dto.getWarehouseId(), dto.getPage(), dto.getSize());
 
         final Long periodId = dto.getPeriodId() != null ? dto.getPeriodId()
                 : persistence.findLastCreatedPeriodId()

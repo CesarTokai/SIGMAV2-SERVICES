@@ -93,8 +93,7 @@ public class AdminUserController {
             @RequestParam(value = "verified", required = false) Boolean verified,
             @RequestParam(value = "status", required = false) Boolean status) {
 
-        log.info("Obteniendo usuarios - page: {}, size: {}, sortBy: {}, email: {}, role: {}, verified: {}, status: {}", 
-                page, size, sortBy, email, role, verified, status);
+
 
         Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? 
                 Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
@@ -456,7 +455,6 @@ public class AdminUserController {
 
         var usersPage = userWarehouseAssignmentRepository.findUsersWithWarehousesOptimized(pageable);
 
-        log.info("Encontrados {} registros usuario-almacén con folios", usersPage.getTotalElements());
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

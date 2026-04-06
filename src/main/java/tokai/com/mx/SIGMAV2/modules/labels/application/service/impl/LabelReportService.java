@@ -63,8 +63,7 @@ public class LabelReportService {
 
     @Transactional(readOnly = true)
     public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Reporte distribución: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
+
         // AUXILIAR_DE_CONTEO no tiene restricción de almacén
         if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
@@ -104,8 +103,6 @@ public class LabelReportService {
 
     @Transactional(readOnly = true)
     public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Reporte listado: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
         // AUXILIAR_DE_CONTEO no tiene restricción de almacén
         if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
@@ -351,11 +348,6 @@ public class LabelReportService {
                 }
                 if (c2 != null) fisicas = fisicas.add(c2);
                 else pendientes++;
-            }
-
-            if (pendientes > 0) {
-                log.warn("Producto {} almacén {}: {} marbetes sin C2 no contabilizados en físicas",
-                        first.getProductId(), first.getWarehouseId(), pendientes);
             }
 
             BigDecimal teoricas = BigDecimal.ZERO;

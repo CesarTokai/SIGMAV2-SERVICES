@@ -79,7 +79,6 @@ public class LabelsController {
     public ResponseEntity<byte[]> printLabels(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
         String userRole = getUserRoleFromToken();
-        log.info("Imprimiendo marbetes: usuario={}, periodo={}, almacén={}", userId, dto.getPeriodId(), dto.getWarehouseId());
         byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
         return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes");
     }
@@ -123,7 +122,6 @@ public class LabelsController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<LabelSummaryResponseDTO>> getLabelSummary(@RequestBody LabelSummaryRequestDTO dto) {
         Long userId = getUserIdFromToken();
-        log.info("POST /summary: periodId={}, warehouseId={}", dto.getPeriodId(), dto.getWarehouseId());
         return ResponseEntity.ok(labelService.getLabelSummary(dto, userId, getUserRoleFromToken()));
     }
 
