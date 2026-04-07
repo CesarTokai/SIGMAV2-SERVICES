@@ -441,10 +441,6 @@ public class LabelServiceImpl implements LabelService {
         };
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // ESTADO Y DETALLES
-    // ═══════════════════════════════════════════════════════════════════════
-
     @Override
     @Transactional(readOnly = true)
     public LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {

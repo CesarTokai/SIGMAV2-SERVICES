@@ -91,7 +91,23 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new IllegalArgumentException("El DTO de actualización no puede ser nulo");
         }
 
-        // Normalizar el nombre: recortar espacios; comparación y validación serán case-insensitive
+        // Normalizar la clave (si viene en el DTO)
+        String normalizedKey = null;
+        if (dto.getWarehouseKey() != null && !dto.getWarehouseKey().isBlank()) {
+            normalizedKey = dto.getWarehouseKey().toUpperCase().trim();
+            
+            // Verificar si la clave ha cambiado
+            String currentKey = entity.getWarehouseKey();
+            if (!normalizedKey.equalsIgnoreCase(currentKey)) {
+                // Verificar si existe otro almacén activo con la misma clave (excluyendo el propio ID)
+                boolean keyExists = warehouseRepository.existsByWarehouseKeyAndIdNotAndDeletedAtIsNull(normalizedKey, id);
+                if (keyExists) {
+                    throw new IllegalArgumentException("La clave de almacén ya existe: " + normalizedKey);
+                }
+            }
+        }
+
+        // Normalizar el nombre: recortar espacios
         String normalizedName = StringUtils.trimToEmpty(dto.getNameWarehouse());
 
         // Verificar si el nombre ha cambiado antes de validar (ignorar mayúsculas/minúsculas y espacios)
@@ -107,11 +123,14 @@ public class WarehouseServiceImpl implements WarehouseService {
         userRepository.findById(updatedBy)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario actualizador no encontrado"));
 
-        // Resolver conflictos con registros eliminados que compartan el mismo nombre ANTES de modificar el entity,
+        // Resolver conflictos con registros eliminados que compartan el mismo nombre o clave ANTES de modificar el entity,
         // para evitar auto-flush de JPA que podría violar la restricción única.
-        ensureDeletedConflictsRenamed(normalizedName, null, id);
+        ensureDeletedConflictsRenamed(normalizedName, normalizedKey, id);
 
         // Ahora sí, aplicar los cambios al entity
+        if (normalizedKey != null) {
+            entity.setWarehouseKey(normalizedKey);
+        }
         entity.setNameWarehouse(normalizedName);
         // Actualizar observaciones solo si vienen en el DTO (para no sobrescribir con null si no se envía)
         if (dto.getObservations() != null) {
