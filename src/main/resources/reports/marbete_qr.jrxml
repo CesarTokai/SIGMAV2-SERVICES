@@ -29,61 +29,61 @@
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="29" y="2" width="52" height="11" uuid="a246188e-8aea-47cf-8f33-5d86caa074cb"/>
+                <reportElement x="29" y="4" width="52" height="11" uuid="a246188e-8aea-47cf-8f33-5d86caa074cb"/>
                 <textElement>
                     <font size="8.5" isBold="false"/>
                 </textElement>
                 <text><![CDATA[N.Marbete:]]></text>
             </staticText>
             <textField>
-                <reportElement x="71" y="2" width="70" height="11" uuid="4e4bde0d-cc79-440a-bb2a-8b2294b1bfc4"/>
+                <reportElement x="71" y="4" width="70" height="11" uuid="4e4bde0d-cc79-440a-bb2a-8b2294b1bfc4"/>
                 <textElement>
                     <font size="8.5"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{nomMarbete1}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="28" y="15" width="150" height="21" uuid="48f02926-fb29-47bd-801b-94a4c04e34db"/>
+                <reportElement x="28" y="19" width="150" height="21" uuid="48f02926-fb29-47bd-801b-94a4c04e34db"/>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{clave1}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="28" y="36" width="150" height="34" uuid="84e86106-f500-48bd-9cbd-c3ac6287927c"/>
+                <reportElement x="28" y="47" width="150" height="34" uuid="84e86106-f500-48bd-9cbd-c3ac6287927c"/>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descr1}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement x="28" y="205" width="53" height="18" uuid="d85a33d0-28d1-420a-a7ce-ecaa98d244a5"/>
+                <reportElement x="28" y="209" width="53" height="18" uuid="d85a33d0-28d1-420a-a7ce-ecaa98d244a5"/>
                 <textElement>
                     <font size="12.5"/>
                 </textElement>
                 <text><![CDATA[Almacen:]]></text>
             </staticText>
             <textField>
-                <reportElement x="81" y="205" width="90" height="18" uuid="3f6e5ff9-88ce-47fc-967b-901f54841239"/>
+                <reportElement x="83" y="209" width="90" height="18" uuid="3f6e5ff9-88ce-47fc-967b-901f54841239"/>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{almacen1}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="142" y="2" width="37" height="11" uuid="bfd30885-8e77-4709-92d4-98bba4574394"/>
+                <reportElement x="142" y="4" width="36" height="11" uuid="bfd30885-8e77-4709-92d4-98bba4574394"/>
                 <textElement>
                     <font size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{fecha1}]]></textFieldExpression>
             </textField>
             <line>
-                <reportElement positionType="FixRelativeToBottom" x="28" y="14" width="150" height="1" uuid="72a3f164-3f00-467a-ae65-39004d762445">
+                <reportElement positionType="FixRelativeToBottom" x="28" y="18" width="150" height="1" uuid="72a3f164-3f00-467a-ae65-39004d762445">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
             </line>
             <line direction="BottomUp">
-                <reportElement positionType="Float" x="141" y="0" width="1" height="14" uuid="e45c90d1-2d49-466e-9e26-a3f4793c891d">
+                <reportElement positionType="Float" x="141" y="0" width="1" height="18" uuid="e45c90d1-2d49-466e-9e26-a3f4793c891d">
                     <property name="com.jaspersoft.studio.unit.height" value="pixel"/>
                 </reportElement>
             </line>
@@ -222,7 +222,7 @@
                 </reportElement>
             </line>
             <image>
-                <reportElement x="50" y="80" width="106" height="100" uuid="81bc9149-c5dc-4645-983a-6b219f710d19"/>
+                <reportElement x="50" y="85" width="106" height="100" uuid="81bc9149-c5dc-4645-983a-6b219f710d19"/>
                 <imageExpression><![CDATA[$F{qrImage1}]]></imageExpression>
             </image>
             <image>

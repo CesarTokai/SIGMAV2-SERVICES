@@ -625,7 +625,19 @@ public class LabelsController {
      */
     private byte[] generarPDFConQR(List<MarbeteReportDTO> marbetes) {
         try {
-            log.debug("📄 Generando PDF con QR para {} marbetes", marbetes.size());
+            log.info("📄 Generando PDF con QR para {} marbetes", marbetes.size());
+            
+            if (marbetes == null || marbetes.isEmpty()) {
+                log.warn("⚠️ Lista de marbetes vacía o null");
+                return new byte[0];
+            }
+            
+            // Validación de datos
+            for (int i = 0; i < marbetes.size(); i++) {
+                MarbeteReportDTO dto = marbetes.get(i);
+                log.debug("Marbete grupo {}: nom1={}, clave1={}, qr1={}", 
+                    i, dto.getNomMarbete1(), dto.getClave1(), dto.getQrImage1() != null ? "✅" : "❌");
+            }
             
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             
@@ -637,6 +649,7 @@ public class LabelsController {
             try {
                 String reportDir = new ClassPathResource("reports/").getURL().toString();
                 params.put("REPORT_DIR", reportDir);
+                log.debug("REPORT_DIR configurado: {}", reportDir);
             } catch (Exception ex) {
                 log.warn("No se pudo resolver REPORT_DIR: {}", ex.getMessage());
                 params.put("REPORT_DIR", "");
@@ -650,22 +663,30 @@ public class LabelsController {
                 java.io.InputStream jasperStream = new ClassPathResource("reports/marbete_qr.jasper").getInputStream();
                 jasperReport = (net.sf.jasperreports.engine.JasperReport) 
                     net.sf.jasperreports.engine.util.JRLoader.loadObject(jasperStream);
-                log.debug("✅ Plantilla .jasper cargada");
+                log.info("✅ Plantilla .jasper cargada");
             } catch (java.io.FileNotFoundException e) {
                 // Si no existe .jasper, compilar .jrxml
-                log.debug("📋 Compilando JRXML on-the-fly...");
+                log.info("📋 Compilando JRXML on-the-fly...");
                 java.io.InputStream jrxmlStream = new ClassPathResource("reports/marbete_qr.jrxml").getInputStream();
                 jasperReport = net.sf.jasperreports.engine.JasperCompileManager.compileReport(jrxmlStream);
-                log.debug("✅ JRXML compilado exitosamente");
+                log.info("✅ JRXML compilado exitosamente");
+            }
+            
+            if (jasperReport == null) {
+                throw new RuntimeException("No se pudo cargar la plantilla de jasper");
             }
             
             // Data source
             net.sf.jasperreports.engine.data.JRBeanCollectionDataSource dataSource = 
                 new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource(marbetes);
             
+            log.info("📊 DataSource creado con {} registros", marbetes.size());
+            
             // Llenar reporte
             net.sf.jasperreports.engine.JasperPrint jasperPrint = 
                 net.sf.jasperreports.engine.JasperFillManager.fillReport(jasperReport, params, dataSource);
+            
+            log.info("📑 Reporte llenado: {} páginas", jasperPrint.getPages().size());
             
             // Exportar a PDF
             net.sf.jasperreports.engine.export.JRPdfExporter exporter = 
@@ -679,12 +700,19 @@ public class LabelsController {
             
             net.sf.jasperreports.export.SimplePdfExporterConfiguration config = 
                 new net.sf.jasperreports.export.SimplePdfExporterConfiguration();
-            config.setCompressed(true);
+            config.setCompressed(false); // ⚠️ Desactivar compresión para debugging
             exporter.setConfiguration(config);
             exporter.exportReport();
             
-            log.info("✅ PDF con QR generado exitosamente: {} bytes", baos.size());
-            return baos.toByteArray();
+            byte[] pdfBytes = baos.toByteArray();
+            log.info("✅ PDF con QR generado exitosamente: {} bytes", pdfBytes.length);
+            
+            if (pdfBytes.length == 0) {
+                log.error("❌ PDF generado pero está vacío (0 bytes)");
+                throw new RuntimeException("PDF generado pero está vacío");
+            }
+            
+            return pdfBytes;
             
         } catch (Exception e) {
             log.error("❌ Error generando PDF con QR: {}", e.getMessage(), e);
