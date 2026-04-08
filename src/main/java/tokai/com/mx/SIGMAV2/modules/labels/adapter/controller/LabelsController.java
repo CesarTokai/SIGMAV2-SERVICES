@@ -945,5 +945,43 @@ public class LabelsController {
             ));
         }
     }
+
+    /**
+     * Obtiene TODOS los conteos registrados de todos los almacenes
+     * Endpoint para ver el historial completo de conteos de toda la organización
+     * @param page Número de página (default: 0)
+     * @param size Tamaño de página (default: 20)
+     * @return Página con todos los conteos ordenados por fecha descendente (más recientes primero)
+     */
+    @GetMapping("/history/all")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR')")
+    public ResponseEntity<?> getAllCountsHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            var historial = countHistoryQueryService.getAllCounts(pageable);
+            log.info("Historial COMPLETO de todos los conteos obtenido: {} registros totales", historial.getTotalElements());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Historial completo de TODOS los conteos registrados en la organización",
+                "data", historial.getContent(),
+                "totalElements", historial.getTotalElements(),
+                "totalPages", historial.getTotalPages(),
+                "currentPage", historial.getNumber(),
+                "pageSize", size
+            ));
+        } catch (Exception e) {
+            log.error("Error al obtener historial completo de conteos", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error al obtener historial: " + e.getMessage()
+            ));
+        }
+    }
 }
 

@@ -106,5 +106,15 @@ public class CountHistoryQueryService {
     public Long countUserContosInPeriod(Long userId, Long periodId) {
         return countHistoryRepository.countByUserIdAndPeriodId(userId, periodId);
     }
-}
 
+    /**
+     * Obtiene TODOS los conteos registrados de todos los almacenes
+     * @param pageable Información de paginación
+     * @return Página con todos los conteos ordenados por fecha descendente
+     */
+    public Page<CountHistoryResponse> getAllCounts(Pageable pageable) {
+        log.debug("Consultando TODOS los conteos registrados");
+        return countHistoryRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .map(countHistoryMapper::toResponse);
+    }
+}

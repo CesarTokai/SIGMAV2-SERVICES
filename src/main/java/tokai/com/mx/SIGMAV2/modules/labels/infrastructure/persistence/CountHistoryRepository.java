@@ -29,5 +29,9 @@ public interface CountHistoryRepository extends JpaRepository<CountHistory, Long
     Long countByUserIdAndPeriodId(Long userId, Long periodId);
 
     CountHistory findTopByUserIdAndPeriodIdOrderByCreatedAtDesc(Long userId, Long periodId);
-}
 
+    /**
+     * Obtiene todos los conteos registrados ordenados por fecha descendente
+     */
+    Page<CountHistory> findAllByOrderByCreatedAtDesc(Pageable pageable);
+}

@@ -45,7 +45,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
+        Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
 
         if (persistence.hasCountNumber(dto.getFolio(), 1)) {
             throw new DuplicateCountException(
@@ -59,9 +59,9 @@ public class LabelCountService {
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR);
         LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
         
-        // Registrar en historial (el email se obtiene del contexto de seguridad en el controlador)
+        // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), userRole, dto.getWarehouseId(), dto.getPeriodId());
+        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
         
         return result;
     }
@@ -72,7 +72,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
+        Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
 
         if (!persistence.hasCountNumber(dto.getFolio(), 1)) {
             throw new CountSequenceException(
@@ -86,9 +86,9 @@ public class LabelCountService {
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
         LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
         
-        // Registrar en historial
+        // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, dto.getWarehouseId(), dto.getPeriodId());
+        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
         
         return result;
     }
