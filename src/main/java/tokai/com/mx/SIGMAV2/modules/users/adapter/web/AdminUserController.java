@@ -522,11 +522,19 @@ public class AdminUserController {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .status(user.isStatus())
+                .verified(user.isVerified())
+                .attempts(user.getAttempts())
                 .name(user.getName())
                 .firstLastName(user.getFirstLastName())
                 .secondLastName(user.getSecondLastName())
                 .phoneNumber(user.getPhoneNumber())
                 .comments(user.getComments())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .lastLoginAt(user.getLastLoginAt())
+                .lastActivityAt(user.getLastActivityAt())
+                .passwordChangedAt(user.getPasswordChangedAt())
+                .lastBlockedAt(user.getLastBlockedAt())
                 .build();
     }
 }
