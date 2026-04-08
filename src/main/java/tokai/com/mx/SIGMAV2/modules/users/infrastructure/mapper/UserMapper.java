@@ -27,10 +27,15 @@ public class UserMapper {
                 beanUser.getLastTryAt(),
                 beanUser.getVerificationCode(),
                 beanUser.getCreatedAt(),
-                beanUser.getUpdatedAt()
+                beanUser.getUpdatedAt(),
+                beanUser.getName(),
+                beanUser.getFirstLastName(),
+                beanUser.getSecondLastName(),
+                beanUser.getPhoneNumber(),
+                beanUser.getComments()
         );
 
-        // Agregar nuevos campos
+        // Agregar campos de auditoría
         user.setLastLoginAt(beanUser.getLastLoginAt());
         user.setLastActivityAt(beanUser.getLastActivityAt());
         user.setPasswordChangedAt(beanUser.getPasswordChangedAt());
@@ -61,6 +66,13 @@ public class UserMapper {
         beanUser.setLastActivityAt(user.getLastActivityAt());
         beanUser.setPasswordChangedAt(user.getPasswordChangedAt());
         beanUser.setLastBlockedAt(user.getLastBlockedAt());
+        
+        // Mapear campos de información personal consolidada
+        beanUser.setName(user.getName());
+        beanUser.setFirstLastName(user.getFirstLastName());
+        beanUser.setSecondLastName(user.getSecondLastName());
+        beanUser.setPhoneNumber(user.getPhoneNumber());
+        beanUser.setComments(user.getComments());
 
         return beanUser;
     }

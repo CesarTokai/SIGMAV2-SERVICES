@@ -23,4 +23,11 @@ public class UserDomainResponse {
     private LocalDateTime lastTryAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Información Personal Consolidada
+    private String name;
+    private String firstLastName;
+    private String secondLastName;
+    private String phoneNumber;
+    private String comments;
 }

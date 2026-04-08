@@ -24,7 +24,8 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryImpor
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventorySnapshotRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.ProductRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.input.PersonalInformationService;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -68,7 +69,7 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
     private final PeriodRepository               periodRepository;
     private final InventorySnapshotRepository    snapshotRepository;
     private final InventoryImportJobRepository   importJobRepository;
-    private final PersonalInformationService     personalInformationService;
+    private final JpaUserRepository              userRepository;
 
     /** Lock por período para evitar importaciones concurrentes (#8 race condition) */
     private static final Map<Long, Object> PERIOD_LOCKS = new ConcurrentHashMap<>();
@@ -618,26 +619,6 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
         }
     }
 
-    /**
-     * ✅ FIX: ya no pasa null al servicio de personal.
-     */
-    private String resolveFullName(String username) {
-        // NOTA: Se requiere el userId, no el username. Si solo tienes username, busca el usuario primero.
-        // Aquí se asume que username es el userId en formato String (ajusta según tu flujo real).
-        if (username == null || username.isBlank()) return "Desconocido";
-        try {
-            Long userId = Long.valueOf(username);
-            return personalInformationService.findByUserId(userId)
-                    .map(pi -> {
-                        String full = pi.getFullName();
-                        return (full != null && !full.isBlank()) ? full : username;
-                    })
-                    .orElse(username);
-        } catch (Exception e) {
-            log.debug("No se pudo resolver nombre completo para '{}': {}", username, e.getMessage());
-            return username;
-        }
-    }
 
     private Period mapPeriod(tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period source) {
         Period target = new Period();
@@ -697,6 +678,38 @@ public class InventoryImportApplicationService implements InventoryImportUseCase
 
     private String generateLogFileUrl(Long jobId) {
         return "/api/sigmav2/inventory/import/logs/" + jobId;
+    }
+
+    /**
+     * Resuelve nombre completo del usuario desde BeanUser (consolidado en users).
+     */
+    private String resolveFullName(String username) {
+        if (username == null || username.isBlank()) {
+            return "Desconocido";
+        }
+        try {
+            Optional<BeanUser> userOpt = userRepository.findByEmail(username);
+            if (userOpt.isPresent()) {
+                BeanUser user = userOpt.get();
+                StringBuilder fullName = new StringBuilder();
+                if (user.getName() != null) {
+                    fullName.append(user.getName());
+                }
+                if (user.getFirstLastName() != null) {
+                    if (fullName.length() > 0) fullName.append(" ");
+                    fullName.append(user.getFirstLastName());
+                }
+                if (user.getSecondLastName() != null) {
+                    if (fullName.length() > 0) fullName.append(" ");
+                    fullName.append(user.getSecondLastName());
+                }
+                String result = fullName.toString().trim();
+                return result.isEmpty() ? username : result;
+            }
+        } catch (Exception e) {
+            log.warn("Error al resolver nombre completo del usuario {}: {}", username, e.getMessage());
+        }
+        return username != null ? username : "Desconocido";
     }
 
     // ════════════════════════════════════════════════════════════════════════

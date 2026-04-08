@@ -181,7 +181,9 @@ public class UserController {
         return new UserDomainResponse(
                 user.getId(), user.getEmail(), user.getRole().name(),
                 user.isStatus(), user.isVerified(), user.getAttempts(),
-                user.getLastTryAt(), user.getCreatedAt(), user.getUpdatedAt()
+                user.getLastTryAt(), user.getCreatedAt(), user.getUpdatedAt(),
+                user.getName(), user.getFirstLastName(), user.getSecondLastName(),
+                user.getPhoneNumber(), user.getComments()
         );
     }
 }

@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
 
 @Getter
 @Setter
@@ -59,16 +58,30 @@ public class BeanUser {
     @Column(name = "last_blocked_at")
     private LocalDateTime lastBlockedAt;
 
-    // Relación con PersonalInformation - Eliminación en cascada
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private BeanPersonalInformation personalInformation;
+    // ═══ Información Personal (consolidada en users) ═══
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "first_last_name")
+    private String firstLastName;
+
+    @Column(name = "second_last_name")
+    private String secondLastName;
+
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "comments", columnDefinition = "LONGTEXT")
+    private String comments;
+
 
     @Override
     public String toString() {
         return "BeanUser [id=" + id + ", email=" + email + ", passwordHash=" + passwordHash + ", role=" + role
                 + ", status=" + status + ", isVerified=" + isVerified + ", attempts=" + attempts + ", lastTryAt="
                 + lastTryAt + ", verificationCode=" + verificationCode + ", createdAt=" + createdAt + ", updatedAt="
-                + updatedAt + "]";
+                + updatedAt + ", name=" + name + ", firstLastName=" + firstLastName + ", secondLastName=" 
+                + secondLastName + ", phoneNumber=" + phoneNumber + "]";
     }
 
     public BeanUser(Long id, String email, String passwordHash, ERole role, boolean status, boolean isVerified,

@@ -6,8 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.model.PersonalInformation;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.RegisterUserCommand;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
@@ -35,7 +33,6 @@ public class UserApplicationService implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
-    private final PersonalInformationRepository personalInformationRepository;
 
     // ── registro ──────────────────────────────────────────────────────────
 
@@ -69,8 +66,6 @@ public class UserApplicationService implements UserService {
 
             log.info("Usuario registrado exitosamente con ID: {}", savedUser.getId());
 
-            // Crear información personal asociada
-            createPersonalInformation(command, savedUser);
 
             // Enviar correo de verificación si el usuario no está pre-verificado
             if (!isPreVerified(command)) {
@@ -111,24 +106,12 @@ public class UserApplicationService implements UserService {
         return new User(null, normalizedEmail, encryptedPassword,
                 Role.valueOf(command.getRole().toUpperCase()),
                 status, preVerified, 0, null,
-                verificationCode, LocalDateTime.now(), LocalDateTime.now());
+                verificationCode, LocalDateTime.now(), LocalDateTime.now(),
+                command.getName(), command.getFirstLastName(), command.getSecondLastName(),
+                command.getPhoneNumber(), command.getComments());
     }
 
-    private void createPersonalInformation(RegisterUserCommand command, User savedUser) {
-        try {
-            PersonalInformation personalInfo = new PersonalInformation(
-                    null, savedUser.getId(),
-                    command.getName(), command.getFirstLastName(),
-                    command.getSecondLastName(), command.getPhoneNumber(),
-                    null, command.getComments(),
-                    LocalDateTime.now(), LocalDateTime.now());
-            personalInformationRepository.save(personalInfo);
-            log.info("Información personal creada para usuario ID: {}", savedUser.getId());
-        } catch (Exception e) {
-            log.error("Error al crear información personal para usuario {}: {}", savedUser.getId(), e.getMessage());
-            throw new CustomException("Error al crear información personal: " + e.getMessage());
-        }
-    }
+
 
     private boolean isPreVerified(RegisterUserCommand command) {
         return command.getPreVerified() != null && command.getPreVerified();

@@ -3,7 +3,6 @@ package tokai.com.mx.SIGMAV2.modules.users.infrastructure.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import tokai.com.mx.SIGMAV2.modules.personal_information.domain.port.output.PersonalInformationRepository;
 import tokai.com.mx.SIGMAV2.modules.users.application.service.UserApplicationService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
@@ -20,8 +19,7 @@ public class UserModuleConfig {
     public UserService userService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            MailSender mailSender,
-            PersonalInformationRepository personalInformationRepository) {
-        return new UserApplicationService(userRepository, passwordEncoder, mailSender, personalInformationRepository);
+            MailSender mailSender) {
+        return new UserApplicationService(userRepository, passwordEncoder, mailSender);
     }
 }

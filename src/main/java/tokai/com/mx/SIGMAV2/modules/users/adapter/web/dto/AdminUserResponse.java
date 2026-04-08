@@ -18,4 +18,11 @@ public class AdminUserResponse {
     private String email;
     private String role;
     private boolean status;
+    
+    // Información Personal Consolidada
+    private String name;
+    private String firstLastName;
+    private String secondLastName;
+    private String phoneNumber;
+    private String comments;
 }

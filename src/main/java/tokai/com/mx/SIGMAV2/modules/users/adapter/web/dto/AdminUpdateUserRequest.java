@@ -23,6 +23,13 @@ public class AdminUpdateUserRequest {
     private Boolean status;
     private Boolean verified;
     
+    // Información Personal Consolidada
+    private String name;
+    private String firstLastName;
+    private String secondLastName;
+    private String phoneNumber;
+    private String comments;
+    
     // Opciones administrativas
     private Boolean resetAttempts;
     private Boolean forcePasswordReset;

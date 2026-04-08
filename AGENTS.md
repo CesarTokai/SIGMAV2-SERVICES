@@ -348,12 +348,10 @@ Lee estos primero cuando explores nuevas áreas:
 
 ---
 
-## 📞 Contacto y Referencias
+## !!!!NOTA IMPORTANTE!!!!
 
-- **Desarrollado por:** Cesar Uriel Gonzalez Saldaña
-- **Empresa:** Tokai de México
-- **Versión:** 1.0.0 (2026-03-10)
-- **Estado:** Producción
+- **NO HAGAS ARCHIVOS ESCRITOS ESO INCLUYE ARCHIVOS MD , TXT, JAR, etc. SOLAMENTE DA EL RESUMEN EN LA CONVERSACION.**
+
 
 Para entender un módulo específico, sigue este orden:
 1. Lee `domain/port/input/*.java` (interfaces de casos de uso)

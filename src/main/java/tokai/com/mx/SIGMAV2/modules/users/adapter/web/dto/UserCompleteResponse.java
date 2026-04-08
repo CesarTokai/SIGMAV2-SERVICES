@@ -104,6 +104,9 @@ public class UserCompleteResponse {
         @JsonProperty("phoneNumber")
         private String phoneNumber;
 
+        @JsonProperty("comments")
+        private String comments;
+
         @JsonProperty("hasImage")
         private boolean hasImage;
 

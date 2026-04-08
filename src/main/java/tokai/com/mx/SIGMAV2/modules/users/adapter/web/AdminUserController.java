@@ -183,6 +183,23 @@ public class AdminUserController {
             user.setAttempts(0);
             user.setLastTryAt(null);
         }
+        
+        // Actualizar información personal
+        if (request.getName() != null) {
+            user.setName(request.getName());
+        }
+        if (request.getFirstLastName() != null) {
+            user.setFirstLastName(request.getFirstLastName());
+        }
+        if (request.getSecondLastName() != null) {
+            user.setSecondLastName(request.getSecondLastName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getComments() != null) {
+            user.setComments(request.getComments());
+        }
 
         User updatedUser = userService.update(user);
         AdminUserResponse userResponse = convertToAdminUserResponse(updatedUser);
@@ -505,6 +522,11 @@ public class AdminUserController {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .status(user.isStatus())
+                .name(user.getName())
+                .firstLastName(user.getFirstLastName())
+                .secondLastName(user.getSecondLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .comments(user.getComments())
                 .build();
     }
 }

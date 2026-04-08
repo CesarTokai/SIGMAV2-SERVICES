@@ -35,6 +35,13 @@ public class SecurityUserAdapter {
         beanUser.setLastActivityAt(domainUser.getLastActivityAt());
         beanUser.setPasswordChangedAt(domainUser.getPasswordChangedAt());
         beanUser.setLastBlockedAt(domainUser.getLastBlockedAt());
+        
+        // Mapear campos de información personal consolidada
+        beanUser.setName(domainUser.getName());
+        beanUser.setFirstLastName(domainUser.getFirstLastName());
+        beanUser.setSecondLastName(domainUser.getSecondLastName());
+        beanUser.setPhoneNumber(domainUser.getPhoneNumber());
+        beanUser.setComments(domainUser.getComments());
 
         return beanUser;
     }
@@ -56,10 +63,15 @@ public class SecurityUserAdapter {
                 beanUser.getLastTryAt(),
                 beanUser.getVerificationCode(),
                 beanUser.getCreatedAt(),
-                beanUser.getUpdatedAt()
+                beanUser.getUpdatedAt(),
+                beanUser.getName(),
+                beanUser.getFirstLastName(),
+                beanUser.getSecondLastName(),
+                beanUser.getPhoneNumber(),
+                beanUser.getComments()
         );
 
-        // Mapear campos adicionales que no están en el constructor
+        // Mapear campos adicionales de auditoría
         user.setLastLoginAt(beanUser.getLastLoginAt());
         user.setLastActivityAt(beanUser.getLastActivityAt());
         user.setPasswordChangedAt(beanUser.getPasswordChangedAt());

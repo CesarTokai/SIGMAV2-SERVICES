@@ -19,17 +19,22 @@ public class UserDomainMapper {
         if (entity == null) return null;
         
         User user = new User(
-                entity.getId(),
-                entity.getEmail(),
-                entity.getPasswordHash(),
-                mapRoleToDomain(entity.getRole()),
-                entity.isStatus(),
-                entity.isVerified(),
-                entity.getAttempts(),
-                entity.getLastTryAt(),
-                entity.getVerificationCode(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
+            entity.getId(),
+            entity.getEmail(),
+            entity.getPasswordHash(),
+            mapRoleToDomain(entity.getRole()),
+            entity.isStatus(),
+            entity.isVerified(),
+            entity.getAttempts(),
+            entity.getLastTryAt(),
+            entity.getVerificationCode(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt(),
+            entity.getName(),
+            entity.getFirstLastName(),
+            entity.getSecondLastName(),
+            entity.getPhoneNumber(),
+            entity.getComments()
         );
 
         // Mapear campos de auditoría
@@ -63,6 +68,13 @@ public class UserDomainMapper {
         entity.setLastActivityAt(domain.getLastActivityAt());
         entity.setPasswordChangedAt(domain.getPasswordChangedAt());
         entity.setLastBlockedAt(domain.getLastBlockedAt());
+        
+        // Mapear campos de información personal consolidada
+        entity.setName(domain.getName());
+        entity.setFirstLastName(domain.getFirstLastName());
+        entity.setSecondLastName(domain.getSecondLastName());
+        entity.setPhoneNumber(domain.getPhoneNumber());
+        entity.setComments(domain.getComments());
 
         return entity;
     }

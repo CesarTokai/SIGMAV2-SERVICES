@@ -17,8 +17,8 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryImportJob;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Period;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.JpaPersonalInformationRepository;
-import tokai.com.mx.SIGMAV2.modules.personal_information.infrastructure.persistence.BeanPersonalInformation;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 import java.util.*;
 import java.math.BigDecimal;
@@ -39,7 +39,7 @@ public class InventoryImportService implements InventoryImportUseCase {
     private final PeriodRepository periodRepository;
     private final InventorySnapshotRepository snapshotRepository;
     private final InventoryImportJobRepository importJobRepository;
-    private final JpaPersonalInformationRepository personalInformationRepository;
+    private final JpaUserRepository userRepository;
 
     @Autowired
     public InventoryImportService(
@@ -47,13 +47,13 @@ public class InventoryImportService implements InventoryImportUseCase {
             @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository,
             InventorySnapshotRepository snapshotRepository,
             @Qualifier("inventoryImportJobRepositoryAdapter") InventoryImportJobRepository importJobRepository,
-            JpaPersonalInformationRepository personalInformationRepository
+            JpaUserRepository userRepository
     ) {
         this.productRepository = productRepository;
         this.periodRepository = periodRepository;
         this.snapshotRepository = snapshotRepository;
         this.importJobRepository = importJobRepository;
-        this.personalInformationRepository = personalInformationRepository;
+        this.userRepository = userRepository;
     }
 
     // Método para mapear el modelo Period de periods a inventory
@@ -138,16 +138,10 @@ public class InventoryImportService implements InventoryImportUseCase {
             // 6. Registrar bitácora
             String nombreCompleto = "Desconocido";
             if (username != null) {
-                BeanPersonalInformation personalInfo = personalInformationRepository.findAll()
-                    .stream()
-                    .filter(pi -> pi.getUser().getEmail().equals(username))
-                    .findFirst()
-                    .orElse(null);
-                if (personalInfo != null) {
-                    nombreCompleto = personalInfo.getName();
-                    if (personalInfo.getFirstLastName() != null && !personalInfo.getFirstLastName().isEmpty()) {
-                        nombreCompleto += " " + personalInfo.getFirstLastName();
-                    }
+                Optional<BeanUser> userOpt = userRepository.findByEmail(username);
+                if (userOpt.isPresent()) {
+                    BeanUser user = userOpt.get();
+                    nombreCompleto = buildFullName(user);
                 }
             }
             InventoryImportJob job = new InventoryImportJob();
@@ -280,6 +274,25 @@ public class InventoryImportService implements InventoryImportUseCase {
 
     private String generateLogFileUrl(Long jobId) {
         return "/api/inventory/import/logs/" + jobId;
+    }
+
+    /**
+     * Construye nombre completo desde BeanUser
+     */
+    private String buildFullName(BeanUser user) {
+        StringBuilder fullName = new StringBuilder();
+        if (user.getName() != null) {
+            fullName.append(user.getName());
+        }
+        if (user.getFirstLastName() != null) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(user.getFirstLastName());
+        }
+        if (user.getSecondLastName() != null) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(user.getSecondLastName());
+        }
+        return fullName.toString().trim();
     }
 
 
