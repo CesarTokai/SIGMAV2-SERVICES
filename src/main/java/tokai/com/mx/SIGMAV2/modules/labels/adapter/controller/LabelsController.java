@@ -964,8 +964,7 @@ public class LabelsController {
                 org.springframework.data.domain.PageRequest.of(page, size);
             
             var historial = countHistoryQueryService.getAllCounts(pageable);
-            log.info("Historial COMPLETO de todos los conteos obtenido: {} registros totales", historial.getTotalElements());
-            
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Historial completo de TODOS los conteos registrados en la organización",

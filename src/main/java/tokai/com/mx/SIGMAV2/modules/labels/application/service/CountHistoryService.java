@@ -59,11 +59,9 @@ public class CountHistoryService {
                     .build();
             
             countHistoryRepository.save(history);
-            log.info("Historial de conteo registrado: Usuario={} ({}), Folio={}, Tipo=C{}, Valor={}", 
-                    userId, email, folio, countType, countValue);
-        } catch (Exception e) {
-            log.error("Error al registrar historial de conteo", e);
-            // No lanzamos la excepción para no afectar el flujo principal
+
+        } catch (Exception ignored) {
+
         }
     }
 

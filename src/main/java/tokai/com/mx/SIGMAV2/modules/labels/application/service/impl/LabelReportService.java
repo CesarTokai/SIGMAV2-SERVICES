@@ -468,8 +468,7 @@ public class LabelReportService {
      */
     @Transactional(readOnly = true)
     public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
-        log.info("Reporte producto-detalle: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
+
         // Se traen TODOS los marbetes (incluidos cancelados) para mostrar inventario completo
         // Si no se especifica almacén, se filtran por los almacenes accesibles al usuario
         List<Label> labels;
