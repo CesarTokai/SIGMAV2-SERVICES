@@ -130,6 +130,33 @@ public interface LabelService {
      */
     org.springframework.data.domain.Page<LabelFullDetailDTO> getLabelFullDetailList(
             LabelListFilterDTO filter, Long userId, String userRole);
+
+    /**
+     * 📋 GET /labels/selected-info
+     * Consulta la información de marbetes específicos (por folios)
+     * Útil para que el usuario vea los datos antes de imprimir
+     * 
+     * @param folios Lista de folios a consultar
+     * @param periodId Período de los marbetes
+     * @param warehouseId Almacén de los marbetes
+     * @param userId ID del usuario
+     * @param userRole Rol del usuario
+     * @return Lista con información de los marbetes seleccionados
+     */
+    java.util.List<LabelDetailForPrintDTO> getSelectedLabelsInfo(
+            java.util.List<Long> folios, Long periodId, Long warehouseId, Long userId, String userRole);
+
+    /**
+     * 🖨️ POST /labels/print-selected
+     * Imprime marbetes específicos con su información completa
+     * El usuario proporciona los folios y se genera PDF con su información
+     * 
+     * @param request DTO con folios a imprimir
+     * @param userId ID del usuario
+     * @param userRole Rol del usuario
+     * @return byte[] PDF con los marbetes y su información
+     */
+    byte[] printSelectedLabelsWithInfo(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
 }
 
 

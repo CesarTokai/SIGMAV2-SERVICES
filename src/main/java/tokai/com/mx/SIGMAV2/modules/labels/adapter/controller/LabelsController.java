@@ -1109,6 +1109,126 @@ public class LabelsController {
     }
 
     /**
+     * 📋 GET /labels/selected-info
+     * Consulta información de marbetes específicos (por folios)
+     * El usuario proporciona los folios y recibe la información de cada uno
+     * 
+     * Query Parameters:
+     *   - folios: Lista de folios separados por coma (ej: 1,2,3)
+     *   - periodId: ID del período
+     *   - warehouseId: ID del almacén
+     * 
+     * Response: [
+     *   {
+     *     "folio": 1,
+     *     "claveProducto": "PROD-001",
+     *     "nombreProducto": "Producto 1",
+     *     "claveAlmacen": "ALM-01",
+     *     "nombreAlmacen": "Almacén 1",
+     *     "conteo1Valor": 100,
+     *     "conteo2Valor": 105,
+     *     "diferencia": 5,
+     *     "statusConteo": "COMPLETO",
+     *     "mensaje": "Marbete 1 de 3"
+     *   },
+     *   ...
+     * ]
+     */
+    @GetMapping("/selected-info")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getSelectedLabelsInfo(
+            @RequestParam String folios,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId) {
+        
+        Long userId = getUserIdFromToken();
+        log.info("📋 /labels/selected-info: Consultando información - usuario={}, folios={}", userId, folios);
+        
+        try {
+            // Parsear folios (pueden venir como "1,2,3")
+            java.util.List<Long> folioList = java.util.Arrays.stream(folios.split(","))
+                    .map(String::trim)
+                    .map(Long::parseLong)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            java.util.List<LabelDetailForPrintDTO> results = labelService.getSelectedLabelsInfo(
+                    folioList, periodId, warehouseId, userId, getUserRoleFromToken());
+            
+            log.info("✅ Información consultada: {} marbetes", results.size());
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Información de marbetes consultada",
+                    "data", results,
+                    "total", results.size(),
+                    "timestamp", LocalDateTime.now()
+            ));
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("❌ Error en parámetros: {}", e.getMessage());
+            return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "error", "Parámetros inválidos",
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Error al consultar información: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "error", "Error interno del servidor",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 🖨️ POST /labels/print-selected
+     * Imprime marbetes específicos con su información completa
+     * 
+     * Request: {
+     *   "folios": [1, 2, 3],
+     *   "periodId": 1,
+     *   "warehouseId": 5,
+     *   "infoType": "BASICA"
+     * }
+     * 
+     * Response: PDF binario con los marbetes imprimidos
+     */
+    @PostMapping("/print-selected")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<byte[]> printSelectedLabels(
+            @RequestBody PrintSelectedLabelsRequestDTO request) {
+        
+        Long userId = getUserIdFromToken();
+        log.info("🖨️ /labels/print-selected: Imprimiendo {} marbetes - usuario={}", 
+                request.getFolios().size(), userId);
+        
+        try {
+            byte[] pdfBytes = labelService.printSelectedLabelsWithInfo(request, userId, getUserRoleFromToken());
+            
+            String filename = String.format("marbetes_seleccionados_%d.pdf", System.currentTimeMillis());
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename).build());
+            headers.setContentLength(pdfBytes.length);
+            
+            log.info("✅ Impresión completada: {} marbetes, {} KB", 
+                    request.getFolios().size(), pdfBytes.length / 1024);
+            
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("❌ Error en solicitud: {}", e.getMessage());
+            return ResponseEntity.status(400).build();
+        } catch (Exception e) {
+            log.error("❌ Error al imprimir: {}", e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    /**
      * 📊 GET /labels/full-list
      * Obtiene la lista COMPLETA de TODOS los marbetes con información detallada
      * Soporta paginación, filtros, búsqueda y ordenamiento mediante query parameters

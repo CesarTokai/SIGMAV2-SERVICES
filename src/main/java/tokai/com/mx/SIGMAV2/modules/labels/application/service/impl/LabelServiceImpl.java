@@ -1697,4 +1697,182 @@ public class LabelServiceImpl implements LabelService {
             default -> Comparator.comparing(LabelFullDetailDTO::getFolio);
         };
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<LabelDetailForPrintDTO> getSelectedLabelsInfo(
+            java.util.List<Long> folios, Long periodId, Long warehouseId, Long userId, String userRole) {
+        
+        log.info("📋 Consultando información de {} marbetes seleccionados - usuario={}", folios.size(), userId);
+
+        if (folios == null || folios.isEmpty()) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un folio");
+        }
+
+        if (folios.size() > 500) {
+            throw new IllegalArgumentException("Máximo 500 marbetes por consulta");
+        }
+
+        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+
+        java.util.List<LabelDetailForPrintDTO> results = new ArrayList<>();
+
+        for (int i = 0; i < folios.size(); i++) {
+            Long folio = folios.get(i);
+            try {
+                Label label = jpaLabelRepository.findById(folio)
+                        .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
+
+                // Validar que el folio pertenece al período y almacén indicados
+                if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
+                    log.warn("Folio {} no pertenece al período {} o almacén {}", folio, periodId, warehouseId);
+                    continue;
+                }
+
+                LabelDetailForPrintDTO.LabelDetailForPrintDTOBuilder builder = LabelDetailForPrintDTO.builder();
+
+                builder.folio(folio)
+                        .estado(label.getEstado() != null ? label.getEstado().name() : null)
+                        .periodId(periodId)
+                        .warehouseId(warehouseId);
+
+                // Producto
+                try {
+                    var productOpt = productRepository.findById(label.getProductId());
+                    if (productOpt.isPresent()) {
+                        ProductEntity product = productOpt.get();
+                        builder.productId(product.getIdProduct())
+                                .claveProducto(product.getCveArt())
+                                .nombreProducto(product.getDescr())
+                                .unidadMedida(product.getUniMed());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener producto para folio {}", folio);
+                }
+
+                // Almacén
+                try {
+                    var warehouseOpt = warehouseRepository.findById(warehouseId);
+                    if (warehouseOpt.isPresent()) {
+                        WarehouseEntity warehouse = warehouseOpt.get();
+                        builder.claveAlmacen(warehouse.getWarehouseKey())
+                                .nombreAlmacen(warehouse.getNameWarehouse());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener almacén para folio {}", folio);
+                }
+
+                // Período
+                try {
+                    var periodOpt = jpaPeriodRepository.findById(periodId);
+                    if (periodOpt.isPresent()) {
+                        builder.periodDate(periodOpt.get().getDate());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener período para folio {}", folio);
+                }
+
+                // Existencias
+                try {
+                    var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                            label.getProductId(), warehouseId, periodId);
+                    if (stockOpt.isPresent()) {
+                        builder.existenciasTeoricas(stockOpt.get().getExistQty());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener existencias para folio {}", folio);
+                }
+
+                // Conteos
+                List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+                java.math.BigDecimal c1 = null, c2 = null;
+
+                for (LabelCountEvent event : countEvents) {
+                    if (event.getCountNumber() == 1) c1 = event.getCountedValue();
+                    if (event.getCountNumber() == 2) c2 = event.getCountedValue();
+                }
+
+                builder.conteo1Valor(c1).conteo2Valor(c2);
+
+                if (c1 != null && c2 != null) {
+                    builder.diferencia(c2.subtract(c1)).statusConteo("COMPLETO");
+                } else if (c1 != null) {
+                    builder.statusConteo("PENDIENTE C2");
+                } else if (c2 != null) {
+                    builder.statusConteo("PENDIENTE C1");
+                } else {
+                    builder.statusConteo("PENDIENTE");
+                }
+
+                // Usuario creador
+                try {
+                    var userOpt = userRepository.findById(label.getCreatedBy());
+                    if (userOpt.isPresent()) {
+                        builder.createdByEmail(userOpt.get().getEmail())
+                                .createdByFullName(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener usuario creador para folio {}", folio);
+                }
+
+                builder.resumenEstado(label.getEstado() != null ? label.getEstado().name() : null)
+                        .mensaje(String.format("Marbete %d de %d", i + 1, folios.size()));
+
+                results.add(builder.build());
+
+            } catch (Exception e) {
+                log.warn("Error procesando folio {}: {}", folio, e.getMessage());
+            }
+        }
+
+        log.info("✅ Se consultaron {} marbetes", results.size());
+        return results;
+    }
+
+    @Override
+    @Transactional
+    public byte[] printSelectedLabelsWithInfo(PrintSelectedLabelsRequestDTO request, Long userId, String userRole) {
+        log.info("🖨️ Imprimiendo {} marbetes seleccionados - usuario={}", request.getFolios().size(), userId);
+
+        if (request.getFolios() == null || request.getFolios().isEmpty()) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un folio");
+        }
+
+        if (request.getFolios().size() > 500) {
+            throw new IllegalArgumentException("Máximo 500 marbetes por impresión");
+        }
+
+        warehouseAccessService.validateWarehouseAccess(userId, request.getWarehouseId(), userRole);
+
+        // Obtener los labels y validar que existen
+        java.util.List<Label> labels = new ArrayList<>();
+        for (Long folio : request.getFolios()) {
+            Label label = jpaLabelRepository.findById(folio)
+                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
+
+            if (!label.getPeriodId().equals(request.getPeriodId()) || 
+                !label.getWarehouseId().equals(request.getWarehouseId())) {
+                throw new IllegalArgumentException("Folio " + folio + " no pertenece al período/almacén especificado");
+            }
+
+            labels.add(label);
+        }
+
+        labels.sort(Comparator.comparing(Label::getFolio));
+
+        // Generar PDF con Jasper
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF");
+        }
+
+        // Registrar impresión (solo actualizar timestamp de última impresión)
+        Long minFolio = labels.getFirst().getFolio();
+        Long maxFolio = labels.getLast().getFolio();
+        persistence.printLabelsRange(request.getPeriodId(), request.getWarehouseId(), minFolio, maxFolio, userId, false);
+
+        log.info("✅ Impresión completada: {} marbetes, {} KB", labels.size(), pdfBytes.length / 1024);
+        return pdfBytes;
+    }
 }
