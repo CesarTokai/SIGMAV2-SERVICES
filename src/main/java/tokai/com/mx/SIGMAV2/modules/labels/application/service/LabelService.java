@@ -1,15 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.service;
 
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchResponseDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateBatchListDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.PrintRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryRequestDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelSummaryResponseDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CancelLabelRequestDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import java.util.List;
 
@@ -113,6 +105,31 @@ public interface LabelService {
      * @return byte[] con el PDF reimprimido
      */
     byte[] reprintSimple(Long folio, Long userId, String userRole);
+
+    /**
+     * 📋 GET /labels/{folio}/full-info
+     * Obtiene TODA la información de un marbete en un solo lugar
+     * Incluye: datos del marbete, usuario que lo registró, conteos,
+     * impresiones, cancelaciones, historial completo, existencias, etc.
+     * 
+     * @param folio ID del folio del marbete
+     * @param userId ID del usuario consultando
+     * @param userRole Rol del usuario
+     * @return DTO con toda la información del marbete
+     */
+    LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole);
+
+    /**
+     * 📊 GET /labels/full-list
+     * Obtiene la lista COMPLETA de todos los marbetes con información detallada
+     * Soporta paginación, filtros y búsqueda
+     * @param filter DTO con filtros, búsqueda, paginación y ordenamiento
+     * @param userId ID del usuario consultando
+     * @param userRole Rol del usuario
+     * @return Página con lista de marbetes con información completa
+     */
+    org.springframework.data.domain.Page<LabelFullDetailDTO> getLabelFullDetailList(
+            LabelListFilterDTO filter, Long userId, String userRole);
 }
 
 

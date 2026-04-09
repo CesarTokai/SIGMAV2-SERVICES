@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
+import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.AuthenticatedUserService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperReportPdfService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
@@ -1055,6 +1056,168 @@ public class LabelsController {
         } catch (Exception e) {
             log.error("❌ Error al reimprimir folio {}: {}", folio, e.getMessage());
             return ResponseEntity.status(400).build();
+        }
+    }
+
+    /**
+     * 📋 GET /labels/{folio}/full-info
+     * Obtiene TODA la información de un marbete en un solo endpoint
+     * Incluye: datos del marbete, usuario creador, producto, almacén, período,
+     * existencias, conteos (C1 y C2), historial de conteos, impresiones,
+     * reimpresiones, cancelaciones, reactivaciones, solicitud de folios, etc.
+     * 
+     * @param folio ID del folio del marbete
+     * @return DTO con TODA la información del marbete
+     */
+    @GetMapping("/{folio}/full-info")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getLabelFullInfo(@PathVariable Long folio) {
+        Long userId = getUserIdFromToken();
+        log.info("📋 /labels/{folio}/full-info: Obteniendo información completa - folio={}, usuario={}", folio, userId);
+        
+        try {
+            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetail(folio, userId, getUserRoleFromToken());
+            
+            log.info("✅ Información completa obtenida: folio={}, estado={}, conteos={}/{}", 
+                    folio, fullDetail.getEstado(),
+                    fullDetail.getConteo1Valor() != null ? "C1" : "",
+                    fullDetail.getConteo2Valor() != null ? "C2" : "");
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Información completa del marbete folio " + folio,
+                    "data", fullDetail,
+                    "timestamp", LocalDateTime.now()
+            ));
+            
+        } catch (LabelNotFoundException e) {
+            log.warn("❌ Marbete no encontrado: folio={}", folio);
+            return ResponseEntity.status(404).body(Map.of(
+                    "success", false,
+                    "error", "Marbete no encontrado",
+                    "message", e.getMessage(),
+                    "folio", folio
+            ));
+        } catch (Exception e) {
+            log.error("❌ Error al obtener información completa del folio {}: {}", folio, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "error", "Error interno del servidor",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 📊 GET /labels/full-list
+     * Obtiene la lista COMPLETA de TODOS los marbetes con información detallada
+     * Soporta paginación, filtros, búsqueda y ordenamiento mediante query parameters
+     * 
+     * Query Parameters (todos opcionales):
+     *   - periodId: ID del período
+     *   - warehouseId: ID del almacén
+     *   - productId: ID del producto
+     *   - estado: GENERADO, IMPRESO, CANCELADO
+     *   - impreso: true/false
+     *   - conteoCompleto: true/false
+     *   - cancelado: true/false
+     *   - searchText: texto a buscar (folio, producto, almacén)
+     *   - page: número de página (default: 0)
+     *   - size: tamaño de página (default: 20, max: 100)
+     *   - sortBy: folio, createdat, estado, producto, almacen (default: folio)
+     *   - sortDirection: ASC, DESC (default: ASC)
+     * 
+     * Ejemplos:
+     *   GET /labels/full-list
+     *   GET /labels/full-list?periodId=1&warehouseId=5
+     *   GET /labels/full-list?estado=IMPRESO&conteoCompleto=false&page=0&size=20
+     *   GET /labels/full-list?searchText=PROD-001&sortBy=folio&sortDirection=DESC
+     * 
+     * Response: {
+     *   "success": true,
+     *   "message": "Lista de marbetes con información completa",
+     *   "data": [ { LabelFullDetailDTO }, ... ],
+     *   "pagination": {
+     *     "totalElements": 150,
+     *     "totalPages": 8,
+     *     "currentPage": 0,
+     *     "pageSize": 20,
+     *     "hasNext": true,
+     *     "hasPrevious": false
+     *   }
+     * }
+     */
+    @GetMapping("/full-list")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getLabelFullList(
+            @RequestParam(required = false) Long periodId,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Boolean impreso,
+            @RequestParam(required = false) Boolean conteoCompleto,
+            @RequestParam(required = false) Boolean cancelado,
+            @RequestParam(required = false) String searchText,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "folio") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDirection
+    ) {
+        Long userId = getUserIdFromToken();
+        log.info("📊 /labels/full-list: Obteniendo lista completa - usuario={}, filtros: periodo={}, almacen={}, estado={}", 
+                userId, periodId, warehouseId, estado);
+        
+        try {
+            // Construir DTO con los parámetros
+            LabelListFilterDTO filter = LabelListFilterDTO.builder()
+                    .periodId(periodId)
+                    .warehouseId(warehouseId)
+                    .productId(productId)
+                    .estado(estado)
+                    .impreso(impreso)
+                    .conteoCompleto(conteoCompleto)
+                    .cancelado(cancelado)
+                    .searchText(searchText)
+                    .page(page)
+                    .size(size)
+                    .sortBy(sortBy)
+                    .sortDirection(sortDirection)
+                    .build();
+            
+            // Validar parámetros de paginación
+            if (filter.getPage() < 0) filter.setPage(0);
+            if (filter.getSize() <= 0) filter.setSize(20);
+            if (filter.getSize() > 100) filter.setSize(100); // Máximo 100 por página
+            
+            org.springframework.data.domain.Page<LabelFullDetailDTO> result = 
+                    labelService.getLabelFullDetailList(filter, userId, getUserRoleFromToken());
+            
+            log.info("✅ Lista obtenida: {} totales, {} en página {}/{}", 
+                    result.getTotalElements(), result.getContent().size(), 
+                    filter.getPage() + 1, result.getTotalPages());
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Lista de marbetes con información completa",
+                    "data", result.getContent(),
+                    "pagination", Map.of(
+                            "totalElements", result.getTotalElements(),
+                            "totalPages", result.getTotalPages(),
+                            "currentPage", result.getNumber(),
+                            "pageSize", result.getSize(),
+                            "hasNext", result.hasNext(),
+                            "hasPrevious", result.hasPrevious()
+                    ),
+                    "timestamp", LocalDateTime.now()
+            ));
+            
+        } catch (Exception e) {
+            log.error("❌ Error al obtener lista de marbetes: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "error", "Error interno del servidor",
+                    "message", e.getMessage()
+            ));
         }
     }
 }

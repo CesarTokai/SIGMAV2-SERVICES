@@ -876,4 +876,825 @@ public class LabelServiceImpl implements LabelService {
 
         return pdfBytes;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole) {
+        log.info("📋 Obteniendo información COMPLETA del marbete folio={}", folio);
+
+        Label label = jpaLabelRepository.findById(folio)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+        LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DEL MARBETE
+        // ═══════════════════════════════════════════════════════════════
+        builder.folio(folio)
+                .estado(label.getEstado() != null ? label.getEstado().name() : "DESCONOCIDO")
+                .createdAt(label.getCreatedAt())
+                .impresoAt(label.getImpresoAt());
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DEL USUARIO QUE REGISTRÓ EL MARBETE
+        // ═══════════════════════════════════════════════════════════════
+        builder.createdByUserId(label.getCreatedBy());
+        try {
+            var userOpt = userRepository.findById(label.getCreatedBy());
+            if (userOpt.isPresent()) {
+                builder.createdByEmail(userOpt.get().getEmail())
+                        .createdByFullName(userOpt.get().getName() + " " + userOpt.get().getFirstLastName())
+                        .createdByRole(userOpt.get().getRole() != null ? userOpt.get().getRole().name() : null);
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info del usuario creador: {}", e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DEL PRODUCTO
+        // ═══════════════════════════════════════════════════════════════
+        try {
+            var productOpt = productRepository.findById(label.getProductId());
+            if (productOpt.isPresent()) {
+                ProductEntity product = productOpt.get();
+                builder.productId(product.getIdProduct())
+                        .claveProducto(product.getCveArt())
+                        .nombreProducto(product.getDescr())
+                        .unidadMedida(product.getUniMed())
+                        .descripcionProducto(product.getDescr());
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info del producto: {}", e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DEL ALMACÉN
+        // ═══════════════════════════════════════════════════════════════
+        try {
+            var warehouseOpt = warehouseRepository.findById(label.getWarehouseId());
+            if (warehouseOpt.isPresent()) {
+                WarehouseEntity warehouse = warehouseOpt.get();
+                builder.warehouseId(warehouse.getIdWarehouse())
+                        .claveAlmacen(warehouse.getWarehouseKey())
+                        .nombreAlmacen(warehouse.getNameWarehouse());
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info del almacén: {}", e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DEL PERÍODO
+        // ═══════════════════════════════════════════════════════════════
+        builder.periodId(label.getPeriodId());
+        try {
+            var periodOpt = jpaPeriodRepository.findById(label.getPeriodId());
+            if (periodOpt.isPresent()) {
+                var period = periodOpt.get();
+                builder.periodDate(period.getDate());
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info del período: {}", e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DE EXISTENCIAS
+        // ═══════════════════════════════════════════════════════════════
+        try {
+            var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            if (stockOpt.isPresent()) {
+                InventoryStockEntity stock = stockOpt.get();
+                builder.existenciasTeoricas(stock.getExistQty())
+                        .statusExistencias(stock.getStatus() != null ? stock.getStatus().name() : "ACTIVO");
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener existencias: {}", e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DE CONTEOS
+        // ═══════════════════════════════════════════════════════════════
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+        List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
+
+        java.math.BigDecimal c1 = null;
+        java.math.BigDecimal c2 = null;
+        LocalDateTime c1Fecha = null;
+        LocalDateTime c2Fecha = null;
+        Long c1UserId = null;
+        Long c2UserId = null;
+        Integer c1Intentos = 0;
+        Integer c2Intentos = 0;
+
+        for (LabelCountEvent event : countEvents) {
+            if (event.getCountNumber() == 1) {
+                c1 = event.getCountedValue();
+                c1Fecha = event.getCreatedAt();
+                c1UserId = event.getUserId();
+                c1Intentos++;
+            } else if (event.getCountNumber() == 2) {
+                c2 = event.getCountedValue();
+                c2Fecha = event.getCreatedAt();
+                c2UserId = event.getUserId();
+                c2Intentos++;
+            }
+
+            // Agregar al historial
+            try {
+                String userEmail = "DESCONOCIDO";
+                String userName = "DESCONOCIDO";
+                var userOpt = userRepository.findById(event.getUserId());
+                if (userOpt.isPresent()) {
+                    userEmail = userOpt.get().getEmail();
+                    userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
+                }
+
+                countHistory.add(LabelFullDetailDTO.CountEventHistoryDTO.builder()
+                        .countNumber(event.getCountNumber())
+                        .value(event.getCountedValue())
+                        .recordedAt(event.getCreatedAt())
+                        .recordedByUserId(event.getUserId())
+                        .recordedByEmail(userEmail)
+                        .recordedByNombre(userName)
+                        .action(event.getUpdatedAt() != null ? "UPDATED" : "CREATED")
+                        .description("Conteo C" + event.getCountNumber() + ": " + event.getCountedValue())
+                        .build());
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario de conteo: {}", e.getMessage());
+            }
+        }
+
+        builder.conteo1Valor(c1).conteo1Fecha(c1Fecha).conteo1UsuarioId(c1UserId).conteo1Intentos(c1Intentos);
+        builder.conteo2Valor(c2).conteo2Fecha(c2Fecha).conteo2UsuarioId(c2UserId).conteo2Intentos(c2Intentos);
+
+        // Obtener info de usuarios de conteos
+        if (c1UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c1UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo1UsuarioEmail(userOpt.get().getEmail())
+                            .conteo1UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario C1: {}", e.getMessage());
+            }
+        }
+
+        if (c2UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c2UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo2UsuarioEmail(userOpt.get().getEmail())
+                            .conteo2UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario C2: {}", e.getMessage());
+            }
+        }
+
+        builder.countHistory(countHistory);
+
+        // Calcular diferencia y estado de conteo
+        if (c1 != null && c2 != null) {
+            java.math.BigDecimal diff = c2.subtract(c1);
+            builder.diferencia(diff);
+            builder.conteoCompleto(true);
+            builder.statusConteo("COMPLETO");
+            
+            if (c1.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                double porcentaje = (diff.doubleValue() / c1.doubleValue()) * 100;
+                builder.diferenciaPorcentaje(String.format("%.2f%%", porcentaje));
+            }
+        } else if (c1 != null) {
+            builder.conteoCompleto(false);
+            builder.statusConteo("PENDIENTE C2");
+        } else {
+            builder.conteoCompleto(false);
+            builder.statusConteo("PENDIENTE C1");
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DE IMPRESIÓN
+        // ═══════════════════════════════════════════════════════════════
+        List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(
+                label.getProductId(), label.getPeriodId(), label.getWarehouseId());
+        
+        List<LabelFullDetailDTO.PrintEventDTO> printHistory = new ArrayList<>();
+        Boolean impreso = !prints.isEmpty();
+        LocalDateTime primeraImpresion = null;
+        Long primeraImpresionUserId = null;
+        LocalDateTime ultimaReimpresion = null;
+        Long ultimaReimpresionUserId = null;
+        Integer totalReimpresiones = 0;
+
+        if (!prints.isEmpty()) {
+            primeraImpresion = prints.get(0).getPrintedAt();
+            primeraImpresionUserId = prints.get(0).getPrintedBy();
+            ultimaReimpresion = prints.get(prints.size() - 1).getPrintedAt();
+            ultimaReimpresionUserId = prints.get(prints.size() - 1).getPrintedBy();
+            totalReimpresiones = prints.size() - 1;
+
+            for (int i = 0; i < prints.size(); i++) {
+                LabelPrint print = prints.get(i);
+                try {
+                    String userEmail = "DESCONOCIDO";
+                    String userName = "DESCONOCIDO";
+                    var userOpt = userRepository.findById(print.getPrintedBy());
+                    if (userOpt.isPresent()) {
+                        userEmail = userOpt.get().getEmail();
+                        userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
+                    }
+
+                    printHistory.add(LabelFullDetailDTO.PrintEventDTO.builder()
+                            .printedAt(print.getPrintedAt())
+                            .printedByUserId(print.getPrintedBy())
+                            .printedByEmail(userEmail)
+                            .printedByNombre(userName)
+                            .isExtraordinary(i > 0)
+                            .description((i == 0 ? "Primera impresión" : "Reimpresión #" + i))
+                            .build());
+                } catch (Exception e) {
+                    log.warn("No se pudo obtener info de impresión: {}", e.getMessage());
+                }
+            }
+        }
+
+        builder.impreso(impreso)
+                .primeraImpresionAt(primeraImpresion)
+                .primeraImpresionPorUserId(primeraImpresionUserId)
+                .ultimaReimpresionAt(ultimaReimpresion)
+                .ultimaReimpresionPorUserId(ultimaReimpresionUserId)
+                .totalReimpresiones(totalReimpresiones)
+                .printHistory(printHistory);
+
+        // Obtener info de usuarios de impresión
+        if (primeraImpresionUserId != null) {
+            try {
+                var userOpt = userRepository.findById(primeraImpresionUserId);
+                if (userOpt.isPresent()) {
+                    builder.primeraImpresionPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario de impresión: {}", e.getMessage());
+            }
+        }
+
+        if (ultimaReimpresionUserId != null) {
+            try {
+                var userOpt = userRepository.findById(ultimaReimpresionUserId);
+                if (userOpt.isPresent()) {
+                    builder.ultimaReimpresionPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario de reimpresión: {}", e.getMessage());
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DE CANCELACIÓN
+        // ═══════════════════════════════════════════════════════════════
+        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(folio);
+        if (cancelledOpt.isPresent()) {
+            LabelCancelled cancelled = cancelledOpt.get();
+            builder.cancelado(true)
+                    .canceladoAt(cancelled.getCanceladoAt())
+                    .canceladoPorUserId(cancelled.getCanceladoBy())
+                    .motivoCancelacion(cancelled.getMotivoCancelacion())
+                    .existenciasAlCancelar(java.math.BigDecimal.valueOf(cancelled.getExistenciasAlCancelar() != null ? cancelled.getExistenciasAlCancelar() : 0))
+                    .existenciasActualesAlCancelar(java.math.BigDecimal.valueOf(cancelled.getExistenciasActuales() != null ? cancelled.getExistenciasActuales() : 0))
+                    .reactivado(cancelled.getReactivado())
+                    .reactivadoAt(cancelled.getReactivadoAt())
+                    .reactivadoPorUserId(cancelled.getReactivadoBy())
+                    .notas(cancelled.getNotas());
+
+            try {
+                var userOpt = userRepository.findById(cancelled.getCanceladoBy());
+                if (userOpt.isPresent()) {
+                    builder.canceladoPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info del usuario que canceló: {}", e.getMessage());
+            }
+
+            if (cancelled.getReactivado() && cancelled.getReactivadoBy() != null) {
+                try {
+                    var userOpt = userRepository.findById(cancelled.getReactivadoBy());
+                    if (userOpt.isPresent()) {
+                        builder.reactivadoPorEmail(userOpt.get().getEmail());
+                    }
+                } catch (Exception e) {
+                    log.warn("No se pudo obtener info del usuario que reactivó: {}", e.getMessage());
+                }
+            }
+        } else {
+            builder.cancelado(false);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFORMACIÓN DE SOLICITUD DE FOLIOS
+        // ═══════════════════════════════════════════════════════════════
+        if (label.getLabelRequestId() != null) {
+            try {
+                var requestOpt = labelRequestRepository.findById(label.getLabelRequestId());
+                if (requestOpt.isPresent()) {
+                    LabelRequest request = requestOpt.get();
+                    builder.labelRequestId(request.getIdLabelRequest())
+                            .foliosSolicitados(request.getRequestedLabels())
+                            .folioSolicitadoAt(request.getCreatedAt());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo obtener info de solicitud de folios: {}", e.getMessage());
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RESUMEN Y RECOMENDACIONES
+        // ═══════════════════════════════════════════════════════════════
+        List<String> warnings = new ArrayList<>();
+        String resumen = "";
+        String proximoAccion = "";
+
+        if (cancelledOpt.isPresent() && !cancelledOpt.get().getReactivado()) {
+            resumen = "MARBETE CANCELADO";
+            warnings.add("Este marbete está en estado CANCELADO");
+            proximoAccion = "Revisar razón de cancelación: " + cancelledOpt.get().getMotivoCancelacion();
+        } else if (label.getEstado() == Label.State.IMPRESO && !impreso) {
+            resumen = "ERROR: Estado IMPRESO pero sin registros de impresión";
+            warnings.add("Inconsistencia en base de datos detectada");
+            proximoAccion = "Contactar administrador";
+        } else if (label.getEstado() == Label.State.IMPRESO && (c1 == null || c2 == null)) {
+            resumen = "IMPRESO - CONTEO PENDIENTE";
+            if (c1 == null) warnings.add("Conteo C1 no registrado");
+            if (c2 == null) warnings.add("Conteo C2 no registrado");
+            proximoAccion = "Proceder con registros de conteo";
+        } else if (label.getEstado() == Label.State.IMPRESO && c1 != null && c2 != null) {
+            resumen = "CONTEO COMPLETO";
+            if (c1.equals(c2)) {
+                warnings.add("Conteos C1 y C2 coinciden (sin diferencia)");
+            } else if (Math.abs(c2.subtract(c1).doubleValue()) > c1.doubleValue() * 0.1) {
+                warnings.add("Diferencia significativa detectada (>10%)");
+            }
+            proximoAccion = "Marbete completamente procesado - disponible para reportes";
+        } else {
+            resumen = label.getEstado().name();
+            proximoAccion = "Pendiente de impresión";
+        }
+
+        builder.resumenEstado(resumen)
+                .proximoAccion(proximoAccion)
+                .warnings(warnings);
+
+        log.info("✅ Información completa obtenida para folio {}", folio);
+        return builder.build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<LabelFullDetailDTO> getLabelFullDetailList(
+            LabelListFilterDTO filter, Long userId, String userRole) {
+        
+        log.info("📊 Obteniendo lista completa de marbetes - usuario={}, filtros: periodo={}, almacen={}, estado={}", 
+                userId, filter.getPeriodId(), filter.getWarehouseId(), filter.getEstado());
+
+        // Determinar período y almacén a usar
+        Long periodId = filter.getPeriodId();
+        Long warehouseId = filter.getWarehouseId();
+
+        // Obtener todos los marbetes según los filtros
+        List<Label> allLabels = new ArrayList<>();
+        
+        if (periodId != null && warehouseId != null) {
+            allLabels = jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId);
+        } else if (periodId != null) {
+            allLabels = jpaLabelRepository.findByPeriodId(periodId);
+        } else {
+            allLabels = jpaLabelRepository.findAll();
+        }
+
+        // Construir lista de DTOs completos
+        List<LabelFullDetailDTO> results = new ArrayList<>();
+        for (Label label : allLabels) {
+            try {
+                // Validar acceso
+                warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+                
+                // Construir DTO completo para este marbete
+                LabelFullDetailDTO fullDetail = buildLabelFullDetailDTO(label, userId);
+                
+                // Aplicar filtros
+                if (shouldIncludeLabel(fullDetail, filter)) {
+                    results.add(fullDetail);
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo procesar marbete folio {}: {}", label.getFolio(), e.getMessage());
+            }
+        }
+
+        // Aplicar búsqueda de texto si existe
+        if (filter.getSearchText() != null && !filter.getSearchText().isBlank()) {
+            String searchLower = filter.getSearchText().toLowerCase();
+            results = results.stream()
+                    .filter(label -> matchesSearch(label, searchLower))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
+
+        // Aplicar ordenamiento
+        Comparator<LabelFullDetailDTO> comparator = getComparatorForLabels(filter.getSortBy());
+        if ("DESC".equalsIgnoreCase(filter.getSortDirection())) {
+            comparator = comparator.reversed();
+        }
+        results.sort(comparator);
+
+        // Aplicar paginación
+        int page = filter.getPage();
+        int size = filter.getSize();
+        int start = page * size;
+        int end = Math.min(start + size, results.size());
+
+        List<LabelFullDetailDTO> pageContent = start < results.size() 
+                ? results.subList(start, end) 
+                : new ArrayList<>();
+
+        org.springframework.data.domain.PageImpl<LabelFullDetailDTO> pageResult = 
+                new org.springframework.data.domain.PageImpl<>(pageContent, 
+                        org.springframework.data.domain.PageRequest.of(page, size), 
+                        results.size());
+
+        log.info("✅ Lista completa obtenida: {} marbetes totales, página {}/{}", 
+                results.size(), page + 1, (results.size() + size - 1) / size);
+        
+        return pageResult;
+    }
+
+    private LabelFullDetailDTO buildLabelFullDetailDTO(Label label, Long userId) {
+        LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
+
+        builder.folio(label.getFolio())
+                .estado(label.getEstado() != null ? label.getEstado().name() : null)
+                .createdAt(label.getCreatedAt())
+                .impresoAt(label.getImpresoAt());
+
+        builder.createdByUserId(label.getCreatedBy());
+        try {
+            var userOpt = userRepository.findById(label.getCreatedBy());
+            if (userOpt.isPresent()) {
+                builder.createdByEmail(userOpt.get().getEmail())
+                        .createdByFullName(userOpt.get().getName() + " " + userOpt.get().getFirstLastName())
+                        .createdByRole(userOpt.get().getRole() != null ? userOpt.get().getRole().name() : null);
+            }
+        } catch (Exception e) {
+            log.debug("No se pudo obtener info del usuario creador para folio {}", label.getFolio());
+        }
+
+        // Información del producto
+        try {
+            var productOpt = productRepository.findById(label.getProductId());
+            if (productOpt.isPresent()) {
+                ProductEntity product = productOpt.get();
+                builder.productId(product.getIdProduct())
+                        .claveProducto(product.getCveArt())
+                        .nombreProducto(product.getDescr())
+                        .unidadMedida(product.getUniMed())
+                        .descripcionProducto(product.getDescr());
+            }
+        } catch (Exception e) {
+            log.debug("No se pudo obtener info del producto para folio {}", label.getFolio());
+        }
+
+        // Información del almacén
+        try {
+            var warehouseOpt = warehouseRepository.findById(label.getWarehouseId());
+            if (warehouseOpt.isPresent()) {
+                WarehouseEntity warehouse = warehouseOpt.get();
+                builder.warehouseId(warehouse.getIdWarehouse())
+                        .claveAlmacen(warehouse.getWarehouseKey())
+                        .nombreAlmacen(warehouse.getNameWarehouse());
+            }
+        } catch (Exception e) {
+            log.debug("No se pudo obtener info del almacén para folio {}", label.getFolio());
+        }
+
+        // Información del período
+        builder.periodId(label.getPeriodId());
+        try {
+            var periodOpt = jpaPeriodRepository.findById(label.getPeriodId());
+            if (periodOpt.isPresent()) {
+                var period = periodOpt.get();
+                builder.periodDate(period.getDate());
+            }
+        } catch (Exception e) {
+            log.debug("No se pudo obtener info del período para folio {}", label.getFolio());
+        }
+
+        // Existencias
+        try {
+            var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                    label.getProductId(), label.getWarehouseId(), label.getPeriodId());
+            if (stockOpt.isPresent()) {
+                builder.existenciasTeoricas(stockOpt.get().getExistQty())
+                        .statusExistencias(stockOpt.get().getStatus() != null ? stockOpt.get().getStatus().name() : null);
+            }
+        } catch (Exception e) {
+            log.debug("No se pudo obtener existencias para folio {}", label.getFolio());
+        }
+
+        // Información de conteos - COMPLETO
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+        List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
+        
+        java.math.BigDecimal c1 = null, c2 = null;
+        LocalDateTime c1Fecha = null;
+        LocalDateTime c2Fecha = null;
+        Long c1UserId = null;
+        Long c2UserId = null;
+        Integer c1Intentos = 0;
+        Integer c2Intentos = 0;
+
+        for (LabelCountEvent event : countEvents) {
+            if (event.getCountNumber() == 1) {
+                c1 = event.getCountedValue();
+                c1Fecha = event.getCreatedAt();
+                c1UserId = event.getUserId();
+                c1Intentos++;
+            } else if (event.getCountNumber() == 2) {
+                c2 = event.getCountedValue();
+                c2Fecha = event.getCreatedAt();
+                c2UserId = event.getUserId();
+                c2Intentos++;
+            }
+
+            try {
+                String userEmail = "DESCONOCIDO";
+                String userName = "DESCONOCIDO";
+                var userOpt = userRepository.findById(event.getUserId());
+                if (userOpt.isPresent()) {
+                    userEmail = userOpt.get().getEmail();
+                    userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
+                }
+
+                countHistory.add(LabelFullDetailDTO.CountEventHistoryDTO.builder()
+                        .countNumber(event.getCountNumber())
+                        .value(event.getCountedValue())
+                        .recordedAt(event.getCreatedAt())
+                        .recordedByUserId(event.getUserId())
+                        .recordedByEmail(userEmail)
+                        .recordedByNombre(userName)
+                        .action(event.getUpdatedAt() != null ? "UPDATED" : "CREATED")
+                        .description("Conteo C" + event.getCountNumber() + ": " + event.getCountedValue())
+                        .build());
+            } catch (Exception e) {
+                log.debug("No se pudo obtener info del conteo para folio {}", label.getFolio());
+            }
+        }
+
+        builder.conteo1Valor(c1)
+                .conteo1Fecha(c1Fecha)
+                .conteo1UsuarioId(c1UserId)
+                .conteo1Intentos(c1Intentos > 0 ? c1Intentos : null);
+        
+        builder.conteo2Valor(c2)
+                .conteo2Fecha(c2Fecha)
+                .conteo2UsuarioId(c2UserId)
+                .conteo2Intentos(c2Intentos > 0 ? c2Intentos : null);
+
+        // Obtener nombres de usuarios de conteos
+        if (c1UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c1UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo1UsuarioEmail(userOpt.get().getEmail())
+                            .conteo1UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario C1 para folio {}", label.getFolio());
+            }
+        }
+
+        if (c2UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c2UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo2UsuarioEmail(userOpt.get().getEmail())
+                            .conteo2UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario C2 para folio {}", label.getFolio());
+            }
+        }
+
+        builder.countHistory(countHistory.isEmpty() ? null : countHistory);
+
+        // Calcular diferencia y estado
+        if (c1 != null && c2 != null) {
+            java.math.BigDecimal diff = c2.subtract(c1);
+            builder.diferencia(diff)
+                    .conteoCompleto(true)
+                    .statusConteo("COMPLETO");
+            
+            if (c1.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                double porcentaje = (diff.doubleValue() / c1.doubleValue()) * 100;
+                builder.diferenciaPorcentaje(String.format("%.2f%%", porcentaje));
+            }
+        } else if (c1 != null) {
+            builder.conteoCompleto(false).statusConteo("PENDIENTE C2");
+        } else if (c2 != null) {
+            builder.conteoCompleto(false).statusConteo("PENDIENTE C1");
+        } else {
+            builder.conteoCompleto(false).statusConteo("PENDIENTE");
+        }
+
+        // Información de impresión - COMPLETO
+        List<LabelPrint> prints = persistence.findLabelPrintsByProductPeriodWarehouse(
+                label.getProductId(), label.getPeriodId(), label.getWarehouseId());
+        
+        List<LabelFullDetailDTO.PrintEventDTO> printHistory = new ArrayList<>();
+        Boolean impreso = !prints.isEmpty();
+        LocalDateTime primeraImpresion = null;
+        Long primeraImpresionUserId = null;
+        LocalDateTime ultimaReimpresion = null;
+        Long ultimaReimpresionUserId = null;
+        int totalReimpresiones = 0;
+
+        if (!prints.isEmpty()) {
+            primeraImpresion = prints.getFirst().getPrintedAt();
+            primeraImpresionUserId = prints.getFirst().getPrintedBy();
+            ultimaReimpresion = prints.getLast().getPrintedAt();
+            ultimaReimpresionUserId = prints.getLast().getPrintedBy();
+            totalReimpresiones = prints.size() - 1;
+
+            for (int i = 0; i < prints.size(); i++) {
+                LabelPrint print = prints.get(i);
+                try {
+                    String userEmail = "DESCONOCIDO";
+                    String userName = "DESCONOCIDO";
+                    var userOpt = userRepository.findById(print.getPrintedBy());
+                    if (userOpt.isPresent()) {
+                        userEmail = userOpt.get().getEmail();
+                        userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
+                    }
+
+                    printHistory.add(LabelFullDetailDTO.PrintEventDTO.builder()
+                            .printedAt(print.getPrintedAt())
+                            .printedByUserId(print.getPrintedBy())
+                            .printedByEmail(userEmail)
+                            .printedByNombre(userName)
+                            .isExtraordinary(i > 0)
+                            .description((i == 0 ? "Primera impresión" : "Reimpresión #" + i))
+                            .build());
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener info impresion para folio {}", label.getFolio());
+                }
+            }
+        }
+
+        builder.impreso(impreso)
+                .primeraImpresionAt(primeraImpresion)
+                .primeraImpresionPorUserId(primeraImpresionUserId)
+                .ultimaReimpresionAt(ultimaReimpresion)
+                .ultimaReimpresionPorUserId(ultimaReimpresionUserId)
+                .totalReimpresiones(totalReimpresiones > 0 ? totalReimpresiones : null)
+                .printHistory(printHistory.isEmpty() ? null : printHistory);
+
+        if (primeraImpresionUserId != null) {
+            try {
+                var userOpt = userRepository.findById(primeraImpresionUserId);
+                if (userOpt.isPresent()) {
+                    builder.primeraImpresionPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario impresion para folio {}", label.getFolio());
+            }
+        }
+
+        if (ultimaReimpresionUserId != null) {
+            try {
+                var userOpt = userRepository.findById(ultimaReimpresionUserId);
+                if (userOpt.isPresent()) {
+                    builder.ultimaReimpresionPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario reimpresion para folio {}", label.getFolio());
+            }
+        }
+
+        // Información de cancelación
+        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(label.getFolio());
+        if (cancelledOpt.isPresent()) {
+            LabelCancelled cancelled = cancelledOpt.get();
+            builder.cancelado(true)
+                    .canceladoAt(cancelled.getCanceladoAt())
+                    .canceladoPorUserId(cancelled.getCanceladoBy())
+                    .motivoCancelacion(cancelled.getMotivoCancelacion())
+                    .existenciasAlCancelar(java.math.BigDecimal.valueOf(cancelled.getExistenciasAlCancelar() != null ? cancelled.getExistenciasAlCancelar() : 0))
+                    .existenciasActualesAlCancelar(java.math.BigDecimal.valueOf(cancelled.getExistenciasActuales() != null ? cancelled.getExistenciasActuales() : 0))
+                    .reactivado(cancelled.getReactivado())
+                    .reactivadoAt(cancelled.getReactivadoAt())
+                    .reactivadoPorUserId(cancelled.getReactivadoBy())
+                    .notas(cancelled.getNotas());
+
+            try {
+                var userOpt = userRepository.findById(cancelled.getCanceladoBy());
+                if (userOpt.isPresent()) {
+                    builder.canceladoPorEmail(userOpt.get().getEmail());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario cancelacion para folio {}", label.getFolio());
+            }
+
+            if (cancelled.getReactivado() && cancelled.getReactivadoBy() != null) {
+                try {
+                    var userOpt = userRepository.findById(cancelled.getReactivadoBy());
+                    if (userOpt.isPresent()) {
+                        builder.reactivadoPorEmail(userOpt.get().getEmail());
+                    }
+                } catch (Exception e) {
+                    log.debug("No se pudo obtener usuario reactivacion para folio {}", label.getFolio());
+                }
+            }
+        } else {
+            builder.cancelado(false);
+        }
+
+        // Información de solicitud de folios
+        if (label.getLabelRequestId() != null) {
+            try {
+                var requestOpt = labelRequestRepository.findById(label.getLabelRequestId());
+                if (requestOpt.isPresent()) {
+                    LabelRequest request = requestOpt.get();
+                    builder.labelRequestId(request.getIdLabelRequest())
+                            .foliosSolicitados(request.getRequestedLabels())
+                            .folioSolicitadoAt(request.getCreatedAt());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener solicitud folios para folio {}", label.getFolio());
+            }
+        }
+
+        builder.resumenEstado(label.getEstado() != null ? label.getEstado().name() : null);
+
+        return builder.build();
+    }
+
+    private boolean shouldIncludeLabel(LabelFullDetailDTO label, LabelListFilterDTO filter) {
+        // Filtro por estado
+        if (filter.getEstado() != null && !label.getEstado().equals(filter.getEstado())) {
+            return false;
+        }
+
+        // Filtro por impreso
+        if (filter.getImpreso() != null && filter.getImpreso() != label.getImpreso()) {
+            return false;
+        }
+
+        // Filtro por conteo completo
+        if (filter.getConteoCompleto() != null && filter.getConteoCompleto() != label.getConteoCompleto()) {
+            return false;
+        }
+
+        // Filtro por cancelado
+        if (filter.getCancelado() != null && filter.getCancelado() != label.getCancelado()) {
+            return false;
+        }
+
+        // Filtro por producto
+        if (filter.getProductId() != null && !filter.getProductId().equals(label.getProductId())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean matchesSearch(LabelFullDetailDTO label, String searchLower) {
+        if (label.getFolio() != null && String.valueOf(label.getFolio()).contains(searchLower)) {
+            return true;
+        }
+        if (label.getClaveProducto() != null && label.getClaveProducto().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        if (label.getNombreProducto() != null && label.getNombreProducto().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        if (label.getClaveAlmacen() != null && label.getClaveAlmacen().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        if (label.getNombreAlmacen() != null && label.getNombreAlmacen().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        return false;
+    }
+
+    private Comparator<LabelFullDetailDTO> getComparatorForLabels(String sortBy) {
+        if (sortBy == null) sortBy = "folio";
+        return switch (sortBy.toLowerCase()) {
+            case "createdat" -> Comparator.comparing(LabelFullDetailDTO::getCreatedAt);
+            case "estado" -> Comparator.comparing(LabelFullDetailDTO::getEstado);
+            case "producto", "nombreproducto" -> Comparator.comparing(LabelFullDetailDTO::getNombreProducto, 
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case "almacen", "nombrealmacen" -> Comparator.comparing(LabelFullDetailDTO::getNombreAlmacen, 
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            default -> Comparator.comparing(LabelFullDetailDTO::getFolio);
+        };
+    }
 }
