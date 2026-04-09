@@ -982,5 +982,80 @@ public class LabelsController {
             ));
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // NUEVOS ENDPOINTS: CONSULTAR Y REIMPRIMIR SIMPLE MARBETES IMPRESOS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🔍 GET /labels/{folio}/pdf
+     * Obtiene el PDF de un marbete ya impreso para visualizar/descargar
+     * Solo muestra PDF sin cambiar estados
+     * 
+     * @param folio ID del folio del marbete
+     * @return PDF del marbete
+     */
+    @GetMapping("/{folio}/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<byte[]> getPrintedLabelPdf(@PathVariable Long folio) {
+        Long userId = getUserIdFromToken();
+        log.info("📄 /labels/{folio}/pdf: Obteniendo PDF - folio={}, usuario={}", folio, userId);
+        
+        try {
+            byte[] pdfBytes = labelService.getPrintedLabelPdf(folio, userId, getUserRoleFromToken());
+            
+            String filename = String.format("marbete_folio_%d.pdf", folio);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename).build());
+            headers.setContentLength(pdfBytes.length);
+            
+            log.info("✅ PDF obtenido exitosamente: folio={}, tamaño={} bytes", folio, pdfBytes.length);
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+            
+        } catch (Exception e) {
+            log.error("❌ Error al obtener PDF del folio {}: {}", folio, e.getMessage());
+            return ResponseEntity.status(404).build();
+        }
+    }
+
+    /**
+     * 🔄 POST /labels/{folio}/reprint-simple
+     * Reimprimir un marbete que ya está impreso
+     * SOLO actualiza timestamp de reimpresión, NO cambia estado
+     * 
+     * Request: (sin body)
+     * Response: PDF reimprimido
+     * 
+     * @param folio ID del folio del marbete
+     * @return PDF reimprimido
+     */
+    @PostMapping("/{folio}/reprint-simple")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<byte[]> reprintSimple(@PathVariable Long folio) {
+        Long userId = getUserIdFromToken();
+        log.info("🔄 /labels/{folio}/reprint-simple: Reimprimiendo - folio={}, usuario={}", folio, userId);
+        
+        try {
+            byte[] pdfBytes = labelService.reprintSimple(folio, userId, getUserRoleFromToken());
+            
+            String filename = String.format("marbete_folio_%d_REIMPRESION_%d.pdf", folio, System.currentTimeMillis());
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename).build());
+            headers.setContentLength(pdfBytes.length);
+            
+            log.info("✅ Reimpresión completada: folio={}, tamaño={} bytes", folio, pdfBytes.length);
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+            
+        } catch (Exception e) {
+            log.error("❌ Error al reimprimir folio {}: {}", folio, e.getMessage());
+            return ResponseEntity.status(400).build();
+        }
+    }
 }
 

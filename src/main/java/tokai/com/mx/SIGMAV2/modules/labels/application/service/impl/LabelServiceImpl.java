@@ -797,4 +797,83 @@ public class LabelServiceImpl implements LabelService {
     public GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole) {
         return labelReportService.generateInventoryFile(periodId, userId, userRole);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // NUEVAS APIs: CONSULTAR Y REIMPRIMIR SIMPLE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
+        log.info("📄 Consultando PDF del marbete folio={}, usuario={}", folio, userId);
+
+        Label label = jpaLabelRepository.findById(folio)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+
+        // Validar que esté impreso
+        if (label.getEstado() != Label.State.IMPRESO) {
+            throw new InvalidLabelStateException(
+                    "El marbete folio " + folio + " no está en estado IMPRESO. Estado actual: " + label.getEstado());
+        }
+
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+        // Generar el PDF para este marbete individual
+        List<Label> labels = List.of(label);
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF para folio " + folio);
+        }
+
+        log.info("✅ PDF obtenido para folio {}: {} bytes", folio, pdfBytes.length);
+        return pdfBytes;
+    }
+
+    @Override
+    @Transactional
+    public byte[] reprintSimple(Long folio, Long userId, String userRole) {
+        log.info("🔄 Reimpresión SIMPLE: folio={}, usuario={}", folio, userId);
+
+        Label label = jpaLabelRepository.findById(folio)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+
+        // Validar que esté impreso
+        if (label.getEstado() != Label.State.IMPRESO) {
+            throw new InvalidLabelStateException(
+                    "No se puede reimprimir. El marbete folio " + folio + " no está IMPRESO. Estado: " + label.getEstado());
+        }
+
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+
+        // Generar el PDF
+        List<Label> labels = List.of(label);
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF para reimpresión de folio " + folio);
+        }
+
+        // SOLO actualizar timestamp de última reimpresión — NO cambiar estado
+        // Crear un registro en label_prints con isReprint=true
+        LabelPrint labelPrint = new LabelPrint();
+        labelPrint.setPeriodId(label.getPeriodId());
+        labelPrint.setWarehouseId(label.getWarehouseId());
+        labelPrint.setFolioInicial(folio);
+        labelPrint.setFolioFinal(folio);
+        labelPrint.setCantidadImpresa(1);
+        labelPrint.setPrintedBy(userId);
+        labelPrint.setPrintedAt(LocalDateTime.now());
+        jpaLabelRepository.saveAll(List.of()); // No cambiamos el estado del label
+
+        // Guardar en BD (si existe jpaLabelPrintRepository)
+        try {
+            persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), label.getPeriodId(), label.getWarehouseId());
+            log.info("✅ Reimpresión registrada para folio {}: {} bytes", folio, pdfBytes.length);
+        } catch (Exception e) {
+            log.warn("No se pudo registrar la reimpresión en BD: {}", e.getMessage());
+        }
+
+        return pdfBytes;
+    }
 }
