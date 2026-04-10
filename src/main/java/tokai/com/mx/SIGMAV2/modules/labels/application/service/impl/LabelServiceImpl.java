@@ -667,7 +667,11 @@ public class LabelServiceImpl implements LabelService {
     public LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         Label label = jpaLabelRepository.findById(folio)
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
-        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        
+        // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
+        if (!userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO")) {
+            warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        }
 
         ProductEntity product = productRepository.findById(label.getProductId())
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
@@ -701,7 +705,7 @@ public class LabelServiceImpl implements LabelService {
                 .unidadMedida(product.getUniMed()).cancelado(cancelado)
                 .conteo1(c1).conteo2(c2).diferencia(diferencia)
                 .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
-                .impreso(!persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, warehouseId).isEmpty())
+                .impreso(!persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, label.getWarehouseId()).isEmpty())
                 .mensaje(mensaje).existQty(existQty).existQtyUnidad(product.getUniMed())
                 .build();
     }
@@ -709,11 +713,39 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public List<LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole) {
-        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-        WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+        // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
+        String roleUpper = userRole != null ? userRole.toUpperCase() : "";
+        
+        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
+            // Para otros roles, warehouseId es requerido y se valida
+            if (warehouseId == null) {
+                throw new IllegalArgumentException("El almacén es obligatorio para este rol");
+            }
+            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        } else {
+            // Para AUXILIAR_DE_CONTEO, si no se proporciona warehouseId, se retornan todos los almacenes
+            // (Este caso se maneja después)
+        }
 
-        List<Label> labels = jpaLabelRepository.findImpresosForCountList(periodId, warehouseId);
+        List<Label> labels;
+        Map<Long, WarehouseEntity> warehouseMap = new HashMap<>();
+
+        if (warehouseId != null) {
+            // Búsqueda por almacén específico
+            WarehouseEntity warehouse = warehouseRepository.findById(warehouseId)
+                    .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+            warehouseMap.put(warehouseId, warehouse);
+            labels = jpaLabelRepository.findImpresosForCountList(periodId, warehouseId);
+        } else {
+            // AUXILIAR_DE_CONTEO sin warehouseId especificado: obtener marbetes de todos los almacenes
+            labels = jpaLabelRepository.findImpresosForCountByPeriod(periodId);
+            // Batch load de almacenes
+            Set<Long> warehouseIds = labels.stream().map(Label::getWarehouseId).collect(Collectors.toSet());
+            for (Long wId : warehouseIds) {
+                warehouseRepository.findById(wId).ifPresent(w -> warehouseMap.put(wId, w));
+            }
+        }
+
         if (labels.isEmpty()) return new ArrayList<>();
 
         List<Long> folios = labels.stream().map(Label::getFolio).toList();
@@ -721,15 +753,17 @@ public class LabelServiceImpl implements LabelService {
                 .findByFolioInOrderByFolioAscCountNumberAsc(folios).stream()
                 .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
 
-        // Batch load de stock para evitar N+1 queries — MEJORA M6
+        // Batch load de stock para evitar N+1 queries
         Set<Long> productIds = labels.stream().map(Label::getProductId).collect(Collectors.toSet());
         Map<Long, java.math.BigDecimal> stockByProduct = new HashMap<>();
-        for (Long productId : productIds) {
-            try {
-                inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                        productId, warehouseId, periodId)
-                        .ifPresent(s -> stockByProduct.put(productId, s.getExistQty()));
-            } catch (Exception e) { log.debug("Sin stock para producto {}: {}", productId, e.getMessage()); }
+        if (warehouseId != null) {
+            for (Long productId : productIds) {
+                try {
+                    inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
+                            productId, warehouseId, periodId)
+                            .ifPresent(s -> stockByProduct.put(productId, s.getExistQty()));
+                } catch (Exception e) { log.debug("Sin stock para producto {}: {}", productId, e.getMessage()); }
+            }
         }
 
         List<LabelForCountDTO> result = new ArrayList<>();
@@ -737,6 +771,13 @@ public class LabelServiceImpl implements LabelService {
             try {
                 ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
                 if (product == null) continue;
+
+                WarehouseEntity warehouse = warehouseMap.get(label.getWarehouseId());
+                if (warehouse == null) {
+                    warehouse = warehouseRepository.findById(label.getWarehouseId())
+                            .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+                    warehouseMap.put(label.getWarehouseId(), warehouse);
+                }
 
                 List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
                 java.math.BigDecimal c1 = null, c2 = null;

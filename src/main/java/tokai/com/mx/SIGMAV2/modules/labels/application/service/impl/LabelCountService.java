@@ -204,7 +204,10 @@ public class LabelCountService {
                     "El folio %d pertenece al periodo '%s' (ID: %d), pero está consultando el periodo ID: %d.",
                     folio, getPeriodName(label.getPeriodId()), label.getPeriodId(), periodId));
         }
-        if (warehouseId != null && !label.getWarehouseId().equals(warehouseId)) {
+        
+        // AUXILIAR_DE_CONTEO puede acceder a cualquier almacén sin restricción
+        // Por lo tanto, solo validamos warehouseId si NO es AUXILIAR_DE_CONTEO
+        if (warehouseId != null && !roleUpper.equals("AUXILIAR_DE_CONTEO") && !label.getWarehouseId().equals(warehouseId)) {
             throw new InvalidLabelStateException(String.format(
                     "El folio %d pertenece al almacén '%s' (ID: %d), pero está consultando almacén ID: %d.",
                     folio, getWarehouseName(label.getWarehouseId()), label.getWarehouseId(), warehouseId));
@@ -232,6 +235,7 @@ public class LabelCountService {
         }
         Label label = optLabel.get();
 
+        // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
         if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
             warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), roleUpper);
         }

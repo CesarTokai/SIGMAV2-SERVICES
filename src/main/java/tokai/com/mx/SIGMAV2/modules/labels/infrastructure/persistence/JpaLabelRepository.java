@@ -62,6 +62,14 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
                                          @Param("warehouseId") Long warehouseId);
 
     /**
+     * Marbetes en estado IMPRESO de un período (todos los almacenes).
+     * Usado por AUXILIAR_DE_CONTEO que tiene acceso a todos los almacenes.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId " +
+           "AND l.estado = 'IMPRESO' ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findImpresosForCountByPeriod(@Param("periodId") Long periodId);
+
+    /**
      * Marbetes no cancelados de un periodo y almacén — filtrado en BD.
      * Reemplaza: findAll().stream().filter(estado != CANCELADO) en memoria.
      */
