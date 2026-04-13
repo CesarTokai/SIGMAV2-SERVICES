@@ -197,19 +197,20 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
         // Los folios son una secuencia GLOBAL compartida entre almacenes.
         // Un mismo almacén puede tener bloques no consecutivos, por eso solo filtramos
-        // por warehouse/periodo y por el estado esperado (GENERADO o IMPRESO).
-        Label.State estadoEsperado = isReprint ? Label.State.IMPRESO : Label.State.GENERADO;
+        // por warehouse/periodo.
+        // CAMBIO: Se permite reimprimir cualquier marbete (no solo GENERADO)
+        // Los marbetes cancelados sí se excluyen por validación abajo
 
         List<Label> filteredLabels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio)
             .stream()
             .filter(l -> l.getPeriodId().equals(periodId) && l.getWarehouseId().equals(warehouseId))
-            .filter(l -> l.getEstado() == estadoEsperado)
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)  // Excluir solo cancelados
             .collect(Collectors.toList());
 
         if (filteredLabels.isEmpty()) {
             throw new IllegalStateException(
-                String.format("No se encontraron marbetes en estado %s para imprimir en periodo=%d, almacén=%d, rango %d-%d",
-                    estadoEsperado, periodId, warehouseId, startFolio, endFolio));
+                String.format("No se encontraron marbetes disponibles para imprimir en periodo=%d, almacén=%d, rango %d-%d (excluidos cancelados)",
+                    periodId, warehouseId, startFolio, endFolio));
         }
 
         // Validar que no estén cancelados y pertenezcan al periodo/almacén correcto
@@ -219,15 +220,16 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
                 String.format("No es posible imprimir los marbetes. Errores: %s", String.join("; ", errores)));
         }
 
-        // Actualizar estado a IMPRESO
+        // Actualizar fecha de impresión a AHORA (sin cambiar estado, siempre será IMPRESO)
         LocalDateTime now = LocalDateTime.now();
-        log.debug("Actualizando {} marbetes ({}) a IMPRESO", filteredLabels.size(), estadoEsperado);
+        String operacion = isReprint ? "reimpresión" : "impresión";
+        log.debug("Actualizando {} marbetes ({}) - fecha de impresión", filteredLabels.size(), operacion);
         for (Label l : filteredLabels) {
             l.setEstado(Label.State.IMPRESO);
-            l.setImpresoAt(now);
+            l.setImpresoAt(now);  // Actualizar timestamp de última impresión
         }
         jpaLabelRepository.saveAll(filteredLabels);
-        log.info("Estados actualizados exitosamente para {} marbetes", filteredLabels.size());
+        log.info("Marbetes actualizados exitosamente para {} - {} marbetes procesados", operacion, filteredLabels.size());
 
         // Registro de auditoría con el rango y cantidad real de marbetes impresos
         long actualMin = filteredLabels.stream().mapToLong(Label::getFolio).min().orElse(startFolio);

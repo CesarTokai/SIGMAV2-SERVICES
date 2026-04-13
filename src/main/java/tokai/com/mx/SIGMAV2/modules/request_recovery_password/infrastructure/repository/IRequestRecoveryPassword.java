@@ -83,4 +83,7 @@ public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecov
     long countByStatus(BeanRequestStatus status);
 
     long countByUserRoleAndStatus(ERole role, BeanRequestStatus status);
+    
+    // Métodos para eliminar registros relacionados
+    void deleteByUser(BeanUser user);
 }

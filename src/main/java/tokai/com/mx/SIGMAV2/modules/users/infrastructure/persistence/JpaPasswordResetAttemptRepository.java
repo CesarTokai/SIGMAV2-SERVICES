@@ -32,5 +32,10 @@ public interface JpaPasswordResetAttemptRepository extends JpaRepository<BeanPas
      * Limpiar intentos más antiguos que una fecha
      */
     long deleteByAttemptAtBefore(LocalDateTime cutoffDate);
+
+    /**
+     * Elimina todos los intentos de contraseña de un usuario
+     */
+    void deleteByUser(BeanUser user);
 }
 

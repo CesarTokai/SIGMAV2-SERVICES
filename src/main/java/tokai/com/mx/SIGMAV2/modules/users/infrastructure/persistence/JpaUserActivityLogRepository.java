@@ -42,5 +42,15 @@ public interface JpaUserActivityLogRepository extends JpaRepository<BeanUserActi
      */
     Page<BeanUserActivityLog> findByUserAndTimestampBetweenOrderByTimestampDesc(
         BeanUser user, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    /**
+     * Elimina todos los registros de actividad de un usuario
+     */
+    void deleteByUser(BeanUser user);
+
+    /**
+     * Elimina todos los registros de actividad por ID de usuario
+     */
+    void deleteByUserId(Long userId);
 }
 

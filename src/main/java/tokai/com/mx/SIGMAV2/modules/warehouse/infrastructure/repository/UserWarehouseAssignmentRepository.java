@@ -191,6 +191,13 @@ public interface UserWarehouseAssignmentRepository extends JpaRepository<UserWar
            nativeQuery = true)
     Page<UserWarehouseFoliosResponse> findMyWarehousesWithFolios(@Param("email") String email, Pageable pageable);
 
+    /**
+     * Elimina todas las asignaciones de un usuario (para cascada al eliminar usuario)
+     * @param userId ID del usuario a eliminar sus asignaciones
+     */
+    @Query("DELETE FROM UserWarehouseAssignment u WHERE u.userId = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
+
     interface UserWarehouseCountProjection {
         Long getUserId();
         Long getWarehousesCount();

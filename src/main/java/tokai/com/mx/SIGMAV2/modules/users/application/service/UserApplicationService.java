@@ -12,8 +12,14 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.MailSender;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaPasswordResetAttemptRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserActivityLogRepository;
 import tokai.com.mx.SIGMAV2.shared.exception.*;
 import tokai.com.mx.SIGMAV2.shared.validation.ValidationUtils;
+
+import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.UserWarehouseRepository;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -33,6 +39,11 @@ public class UserApplicationService implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
+    private final JpaUserRepository jpaUserRepository;
+    private final IRequestRecoveryPassword requestRecoveryPasswordRepository;
+    private final UserWarehouseRepository userWarehouseRepository;
+    private final JpaUserActivityLogRepository userActivityLogRepository;
+    private final JpaPasswordResetAttemptRepository passwordResetAttemptRepository;
 
     // ── registro ──────────────────────────────────────────────────────────
 
@@ -168,7 +179,7 @@ public class UserApplicationService implements UserService {
     }
 
     /**
-     * Eliminar un usuario por email
+     * Eliminar un usuario por email (con cascada de registros dependientes)
      */
     @Override
     @Transactional
@@ -176,10 +187,37 @@ public class UserApplicationService implements UserService {
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
         
-        if (!userRepository.existsByEmail(normalizedEmail))
-            throw new UserNotFoundException("Usuario no encontrado: " + email);
+        tokai.com.mx.SIGMAV2.modules.users.model.BeanUser user = jpaUserRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
 
-        userRepository.deleteByEmail(normalizedEmail);
+        try {
+            log.info("Iniciando eliminación en cascada del usuario: {}", normalizedEmail);
+
+            // 1. Eliminar registros de actividad del usuario
+            log.debug("Eliminando registros de actividad del usuario...");
+            userActivityLogRepository.deleteByUser(user);
+
+            // 2. Eliminar intentos de reset de contraseña
+            log.debug("Eliminando intentos de reset de contraseña del usuario...");
+            passwordResetAttemptRepository.deleteByUser(user);
+
+            // 3. Eliminar solicitudes de recuperación de contraseña
+            log.debug("Eliminando solicitudes de recuperación de contraseña del usuario...");
+            requestRecoveryPasswordRepository.deleteByUser(user);
+
+            // 4. Eliminar asignaciones de almacenes
+            log.debug("Eliminando asignaciones de almacenes del usuario...");
+            userWarehouseRepository.deleteByUserId(user.getId());
+
+            // 5. Finalmente, eliminar el usuario
+            log.debug("Eliminando usuario de la base de datos...");
+            userRepository.deleteByEmail(normalizedEmail);
+
+            log.info("Usuario {} eliminado exitosamente con cascada completa", normalizedEmail);
+        } catch (Exception e) {
+            log.error("Error al eliminar usuario en cascada {}: {}", normalizedEmail, e.getMessage(), e);
+            throw new CustomException("Error al eliminar usuario: " + e.getMessage());
+        }
     }
 
     // ── verificación ──────────────────────────────────────────────────────

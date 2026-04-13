@@ -54,6 +54,12 @@ public interface UserWarehouseRepository extends JpaRepository<UserWarehouseEnti
            countQuery = "SELECT COUNT(DISTINCT uw.userId) FROM UserWarehouseEntity uw")
     Page<UserWarehouseCountProjection> findUsersWithWarehouses(Pageable pageable);
 
+    /**
+     * Elimina todas las asignaciones de un usuario (para cascada al eliminar usuario)
+     * @param userId ID del usuario cuyas asignaciones se eliminarán
+     */
+    void deleteByUserId(Long userId);
+
     interface UserWarehouseCountProjection {
         Long getUserId();
         Long getWarehousesCount();
