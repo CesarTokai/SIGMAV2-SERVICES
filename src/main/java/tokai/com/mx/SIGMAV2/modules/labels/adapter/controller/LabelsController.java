@@ -1196,7 +1196,7 @@ public class LabelsController {
      */
     @PostMapping("/print-selected")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> printSelectedLabels(
+    public ResponseEntity<?> printSelectedLabels(
             @RequestBody PrintSelectedLabelsRequestDTO request) {
         
         Long userId = getUserIdFromToken();
@@ -1220,11 +1220,17 @@ public class LabelsController {
             return ResponseEntity.ok().headers(headers).body(pdfBytes);
             
         } catch (IllegalArgumentException e) {
-            log.warn("❌ Error en solicitud: {}", e.getMessage());
-            return ResponseEntity.status(400).build();
+            log.warn("❌ Error de validación en solicitud: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "VALIDATION_ERROR", "message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            log.warn("❌ Error de estado: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "INVALID_STATE", "message", e.getMessage()));
         } catch (Exception e) {
-            log.error("❌ Error al imprimir: {}", e.getMessage());
-            return ResponseEntity.status(500).build();
+            log.error("❌ Error al imprimir: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "INTERNAL_ERROR", "message", "Error interno al procesar impresión: " + e.getMessage()));
         }
     }
 
