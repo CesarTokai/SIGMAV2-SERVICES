@@ -43,8 +43,10 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<?> handleIllegalState(IllegalStateException ex) {
+        log.warn("❌ Error de estado: {}", ex.getMessage());
         Map<String, Object> body = new HashMap<>();
         body.put("success", false);
+        body.put("error", "INVALID_STATE");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }

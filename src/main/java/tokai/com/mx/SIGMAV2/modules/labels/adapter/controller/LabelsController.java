@@ -1196,42 +1196,27 @@ public class LabelsController {
      */
     @PostMapping("/print-selected")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<?> printSelectedLabels(
+    public ResponseEntity<byte[]> printSelectedLabels(
             @RequestBody PrintSelectedLabelsRequestDTO request) {
         
         Long userId = getUserIdFromToken();
         log.info("🖨️ /labels/print-selected: Imprimiendo {} marbetes - usuario={}", 
                 request.getFolios().size(), userId);
         
-        try {
-            byte[] pdfBytes = labelService.printSelectedLabelsWithInfo(request, userId, getUserRoleFromToken());
-            
-            String filename = String.format("marbetes_seleccionados_%d.pdf", System.currentTimeMillis());
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(
-                    org.springframework.http.ContentDisposition.attachment()
-                            .filename(filename).build());
-            headers.setContentLength(pdfBytes.length);
-            
-            log.info("✅ Impresión completada: {} marbetes, {} KB", 
-                    request.getFolios().size(), pdfBytes.length / 1024);
-            
-            return ResponseEntity.ok().headers(headers).body(pdfBytes);
-            
-        } catch (IllegalArgumentException e) {
-            log.warn("❌ Error de validación en solicitud: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "VALIDATION_ERROR", "message", e.getMessage()));
-        } catch (IllegalStateException e) {
-            log.warn("❌ Error de estado: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "INVALID_STATE", "message", e.getMessage()));
-        } catch (Exception e) {
-            log.error("❌ Error al imprimir: {}", e.getMessage(), e);
-            return ResponseEntity.status(500)
-                    .body(Map.of("error", "INTERNAL_ERROR", "message", "Error interno al procesar impresión: " + e.getMessage()));
-        }
+        byte[] pdfBytes = labelService.printSelectedLabelsWithInfo(request, userId, getUserRoleFromToken());
+        
+        String filename = String.format("marbetes_seleccionados_%d.pdf", System.currentTimeMillis());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename(filename).build());
+        headers.setContentLength(pdfBytes.length);
+        
+        log.info("✅ Impresión completada: {} marbetes, {} KB", 
+                request.getFolios().size(), pdfBytes.length / 1024);
+        
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 
     /**
