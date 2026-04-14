@@ -1295,43 +1295,6 @@ public class LabelsController {
         }
     }
 
-    /* Obtiene la lista COMPLETA de TODOS los marbetes con información detallada
-     * Soporta paginación, filtros, búsqueda y ordenamiento mediante query parameters
-     * 
-     * Query Parameters (todos opcionales):
-     *   - periodId: ID del período
-     *   - warehouseId: ID del almacén
-     *   - productId: ID del producto
-     *   - estado: GENERADO, IMPRESO, CANCELADO
-     *   - impreso: true/false
-     *   - conteoCompleto: true/false
-     *   - cancelado: true/false
-     *   - searchText: texto a buscar (folio, producto, almacén)
-     *   - page: número de página (default: 0)
-     *   - size: tamaño de página (default: 20, max: 100)
-     *   - sortBy: folio, createdat, estado, producto, almacen (default: folio)
-     *   - sortDirection: ASC, DESC (default: ASC)
-     * 
-     * Ejemplos:
-     *   GET /labels/full-list
-     *   GET /labels/full-list?periodId=1&warehouseId=5
-     *   GET /labels/full-list?estado=IMPRESO&conteoCompleto=false&page=0&size=20
-     *   GET /labels/full-list?searchText=PROD-001&sortBy=folio&sortDirection=DESC
-     * 
-     * Response: {
-     *   "success": true,
-     *   "message": "Lista de marbetes con información completa",
-     *   "data": [ { LabelFullDetailDTO }, ... ],
-     *   "pagination": {
-     *     "totalElements": 150,
-     *     "totalPages": 8,
-     *     "currentPage": 0,
-     *     "pageSize": 20,
-     *     "hasNext": true,
-     *     "hasPrevious": false
-     *   }
-     * }
-     */
     @GetMapping("/full-list")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<?> getLabelFullList(
