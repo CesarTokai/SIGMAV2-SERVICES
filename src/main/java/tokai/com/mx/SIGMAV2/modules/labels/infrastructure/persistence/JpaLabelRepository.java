@@ -98,3 +98,4 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
     List<Label> findAllLabelsByPeriodAndWarehouseForDistribution(@Param("periodId") Long periodId,
                                                                   @Param("warehouseId") Long warehouseId);
 }
+

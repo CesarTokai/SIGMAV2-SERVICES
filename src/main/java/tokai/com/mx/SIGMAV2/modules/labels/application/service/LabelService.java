@@ -157,6 +157,19 @@ public interface LabelService {
      * @return byte[] PDF con los marbetes y su información
      */
     byte[] printSelectedLabelsWithInfo(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
+
+    /**
+     * 🖨️ POST /labels/print-selected-auto
+     * Imprime marbetes específicos de múltiples almacenes SIN requerir warehouseId
+     * El sistema autodetecta el almacén de cada marbete automáticamente
+     * 
+     * @param request DTO con folios a imprimir (periodo, folios, infoType)
+     * @param userId ID del usuario
+     * @param userRole Rol del usuario
+     * @return byte[] PDF con los marbetes y su información
+     * @throws IllegalArgumentException si los marbetes están en diferentes periodos
+     */
+    byte[] printSelectedLabelsAutoWarehouse(PrintSelectedLabelsAutoWarehouseDTO request, Long userId, String userRole);
 }
 
 

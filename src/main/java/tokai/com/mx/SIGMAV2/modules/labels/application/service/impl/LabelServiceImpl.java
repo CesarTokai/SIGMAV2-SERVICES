@@ -1744,7 +1744,8 @@ public class LabelServiceImpl implements LabelService {
     public java.util.List<LabelDetailForPrintDTO> getSelectedLabelsInfo(
             java.util.List<Long> folios, Long periodId, Long warehouseId, Long userId, String userRole) {
         
-        log.info("📋 Consultando información de {} marbetes seleccionados - usuario={}", folios.size(), userId);
+        log.info("📋 Consultando información de {} marbetes seleccionados - usuario={}, warehouseId={}", 
+                folios.size(), userId, warehouseId);
 
         if (folios == null || folios.isEmpty()) {
             throw new IllegalArgumentException("Debe proporcionar al menos un folio");
@@ -1754,7 +1755,11 @@ public class LabelServiceImpl implements LabelService {
             throw new IllegalArgumentException("Máximo 500 marbetes por consulta");
         }
 
-        warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        // Si warehouseId es null, permitir que se autodetecte
+        // Si no es null, validar acceso
+        if (warehouseId != null) {
+            warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
+        }
 
         java.util.List<LabelDetailForPrintDTO> results = new ArrayList<>();
 
@@ -1764,18 +1769,27 @@ public class LabelServiceImpl implements LabelService {
                 Label label = jpaLabelRepository.findById(folio)
                         .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
 
-                // Validar que el folio pertenece al período y almacén indicados
-                if (!label.getPeriodId().equals(periodId) || !label.getWarehouseId().equals(warehouseId)) {
-                    log.warn("Folio {} no pertenece al período {} o almacén {}", folio, periodId, warehouseId);
+                // Validar período
+                if (!label.getPeriodId().equals(periodId)) {
+                    log.warn("Folio {} no pertenece al período {}", folio, periodId);
                     continue;
                 }
+
+                // Si warehouseId se proporciona, validar que el folio pertenece a ese almacén
+                if (warehouseId != null && !label.getWarehouseId().equals(warehouseId)) {
+                    log.warn("Folio {} no pertenece al almacén {}", folio, warehouseId);
+                    continue;
+                }
+
+                // Obtener el almacén del marbete (ya sea del parámetro o autodetectado)
+                Long effectiveWarehouseId = (warehouseId != null) ? warehouseId : label.getWarehouseId();
 
                 LabelDetailForPrintDTO.LabelDetailForPrintDTOBuilder builder = LabelDetailForPrintDTO.builder();
 
                 builder.folio(folio)
                         .estado(label.getEstado() != null ? label.getEstado().name() : null)
                         .periodId(periodId)
-                        .warehouseId(warehouseId);
+                        .warehouseId(effectiveWarehouseId);  // ← SIEMPRE RETORNA warehouseId
 
                 // Producto
                 try {
@@ -1793,7 +1807,7 @@ public class LabelServiceImpl implements LabelService {
 
                 // Almacén
                 try {
-                    var warehouseOpt = warehouseRepository.findById(warehouseId);
+                    var warehouseOpt = warehouseRepository.findById(effectiveWarehouseId);
                     if (warehouseOpt.isPresent()) {
                         WarehouseEntity warehouse = warehouseOpt.get();
                         builder.claveAlmacen(warehouse.getWarehouseKey())
@@ -1816,7 +1830,7 @@ public class LabelServiceImpl implements LabelService {
                 // Existencias
                 try {
                     var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
-                            label.getProductId(), warehouseId, periodId);
+                            label.getProductId(), effectiveWarehouseId, periodId);
                     if (stockOpt.isPresent()) {
                         builder.existenciasTeoricas(stockOpt.get().getExistQty());
                     }
@@ -1914,6 +1928,77 @@ public class LabelServiceImpl implements LabelService {
         persistence.printLabelsRange(request.getPeriodId(), request.getWarehouseId(), minFolio, maxFolio, userId, false);
 
         log.info("✅ Impresión completada: {} marbetes, {} KB", labels.size(), pdfBytes.length / 1024);
+        return pdfBytes;
+    }
+
+    @Override
+    @Transactional
+    public byte[] printSelectedLabelsAutoWarehouse(PrintSelectedLabelsAutoWarehouseDTO request, Long userId, String userRole) {
+        log.info("🖨️ Imprimiendo {} marbetes seleccionados (autodetección de almacenes) - usuario={}", 
+                request.getFolios().size(), userId);
+
+        if (request.getFolios() == null || request.getFolios().isEmpty()) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un folio");
+        }
+
+        if (request.getFolios().size() > 500) {
+            throw new IllegalArgumentException("Máximo 500 marbetes por impresión");
+        }
+
+        // Obtener los labels y validar que existen y pertenecen al periodo
+        java.util.List<Label> labels = new ArrayList<>();
+        java.util.Map<Long, Integer> warehouseCountMap = new java.util.HashMap<>();
+
+        for (Long folio : request.getFolios()) {
+            Label label = jpaLabelRepository.findById(folio)
+                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
+
+            // Validar que pertenecen al mismo periodo
+            if (!label.getPeriodId().equals(request.getPeriodId())) {
+                throw new IllegalArgumentException(
+                    String.format("Folio %d pertenece al periodo %d, no al %d solicitado", 
+                        folio, label.getPeriodId(), request.getPeriodId()));
+            }
+
+            labels.add(label);
+            
+            // Contar marbetes por almacén para logging
+            warehouseCountMap.put(label.getWarehouseId(), 
+                warehouseCountMap.getOrDefault(label.getWarehouseId(), 0) + 1);
+        }
+
+        // Log de almacenes detectados
+        log.info("📊 Almacenes detectados: {}", warehouseCountMap.entrySet().stream()
+            .map(e -> String.format("Almacén %d: %d marbetes", e.getKey(), e.getValue()))
+            .collect(java.util.stream.Collectors.joining(", ")));
+
+        labels.sort(Comparator.comparing(Label::getFolio));
+
+        // Generar PDF con Jasper
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new InvalidLabelStateException("Error generando PDF");
+        }
+
+        // Registrar impresión: por cada almacén único, registrar el rango de impresión
+        // Agrupar labels por almacén
+        java.util.Map<Long, java.util.List<Label>> labelsByWarehouse = new java.util.TreeMap<>(
+            labels.stream().collect(java.util.stream.Collectors.groupingBy(Label::getWarehouseId)));
+
+        for (java.util.Map.Entry<Long, java.util.List<Label>> entry : labelsByWarehouse.entrySet()) {
+            Long warehouseId = entry.getKey();
+            java.util.List<Label> warehouseLabels = entry.getValue();
+            
+            Long minFolio = warehouseLabels.stream().map(Label::getFolio).min(Long::compareTo).orElse(0L);
+            Long maxFolio = warehouseLabels.stream().map(Label::getFolio).max(Long::compareTo).orElse(0L);
+            
+            log.info("Registrando impresión para almacén {}: folios {}-{}", warehouseId, minFolio, maxFolio);
+            persistence.printLabelsRange(request.getPeriodId(), warehouseId, minFolio, maxFolio, userId, false);
+        }
+
+        log.info("✅ Impresión completada: {} marbetes de {} almacenes, {} KB", 
+                labels.size(), warehouseCountMap.size(), pdfBytes.length / 1024);
         return pdfBytes;
     }
 }
