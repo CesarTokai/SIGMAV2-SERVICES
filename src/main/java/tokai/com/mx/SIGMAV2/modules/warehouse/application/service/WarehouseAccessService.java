@@ -19,8 +19,8 @@ public class WarehouseAccessService {
 
     private final UserWarehouseRepository userWarehouseRepository;
 
-    // Roles con acceso total a todos los almacenes
-    private static final List<String> ROLES_WITH_FULL_ACCESS = List.of("ADMINISTRADOR", "AUXILIAR_DE_CONTEO");
+    // Roles con acceso total a todos los almacenes (sin necesidad de asignación manual)
+    private static final List<String> ROLES_WITH_FULL_ACCESS = List.of("ADMINISTRADOR", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
     /**
      * Valida que un usuario tenga acceso a un almacén específico
@@ -36,12 +36,12 @@ public class WarehouseAccessService {
 
         String roleUpper = userRole.toUpperCase();
 
-        // Administradores y Auxiliares tienen acceso a todos los almacenes
+        // ADMINISTRADOR, AUXILIAR, AUXILIAR_DE_CONTEO: Acceso a todos los almacenes sin validación
         if (ROLES_WITH_FULL_ACCESS.contains(roleUpper)) {
             return;
         }
 
-        // Para otros roles (ALMACENISTA, AUXILIAR_DE_CONTEO), verificar asignación en user_warehouses
+        // ALMACENISTA: Verificar asignación en user_warehouses
         boolean hasAccess = userWarehouseRepository.existsByUserIdAndWarehouseIdAndWarehouseDeletedAtIsNull(userId, warehouseId);
 
         if (!hasAccess) {
@@ -64,12 +64,12 @@ public class WarehouseAccessService {
 
         String roleUpper = userRole.toUpperCase();
 
-        // Administradores y Auxiliares tienen acceso a todos los almacenes
+        // ADMINISTRADOR, AUXILIAR, AUXILIAR_DE_CONTEO: Acceso a todos los almacenes
         if (ROLES_WITH_FULL_ACCESS.contains(roleUpper)) {
             return null; // null indica acceso total
         }
 
-        // Para otros roles, devolver solo los almacenes asignados activos
+        // ALMACENISTA: Devolver solo los almacenes asignados activos
         return userWarehouseRepository.findByUserIdWithActiveWarehouses(userId)
                 .stream()
                 .map(uw -> uw.getWarehouse().getId())
