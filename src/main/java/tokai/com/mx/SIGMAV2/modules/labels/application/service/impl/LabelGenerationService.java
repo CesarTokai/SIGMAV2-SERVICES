@@ -148,13 +148,15 @@ public class LabelGenerationService {
                 label.setEstado(Label.State.GENERADO);
                 label.setCreatedBy(userId);
                 label.setCreatedAt(now);
+                // GEN-QR-1: Generar contenido QR = folio como string
+                label.setQrContent(String.valueOf(folio));
                 labels.add(label);
             }
 
             persistence.saveAll(labels);
             totalGenerados += cantidad;
 
-            log.info("✅ Producto {}: {} marbetes (folios {}-{}) asignados a LabelRequest {}",
+            log.info("✅ Producto {}: {} marbetes (folios {}-{}) con QR asignados a LabelRequest {}",
                     product.getProductId(), cantidad, range[0], range[1], labelRequest.getIdLabelRequest());
         }
 

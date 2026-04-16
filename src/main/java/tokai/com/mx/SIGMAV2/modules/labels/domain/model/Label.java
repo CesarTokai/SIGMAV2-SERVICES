@@ -29,6 +29,9 @@ public class Label {
     @Column(nullable = false)
     private State estado = State.GENERADO;
 
+    @Column(name = "qr_content", length = 255)
+    private String qrContent;
+
     @Column(name = "impreso_at")
     private LocalDateTime impresoAt;
 

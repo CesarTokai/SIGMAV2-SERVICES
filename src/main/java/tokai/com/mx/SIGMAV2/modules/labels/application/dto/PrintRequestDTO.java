@@ -22,5 +22,7 @@ public class PrintRequestDTO {
 
     // Flag para forzar reimpresión de marbetes ya impresos
     private Boolean forceReprint = false;
-}
 
+    // Flag para generar PDF con QR embebido (IMP-QR-1)
+    private Boolean withQR = false;
+}

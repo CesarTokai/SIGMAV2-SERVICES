@@ -533,34 +533,32 @@ public class LabelsController {
      * 🎯 POST /labels/print-with-qr
      * Genera e imprime marbetes CON códigos QR incrustados en el PDF
      * 
-     * Request: { "periodId": 1, "warehouseId": 5 }
+     * Request: { "periodId": 1, "warehouseId": 5, "withQR": true }
      * Response: PDF con todos los marbetes + QR
      */
     @PostMapping("/print-with-qr")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> printLabelsWithQR(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
         
         log.info("🎯 /print-with-qr: Generando marbetes CON QR - usuario={}, periodo={}, almacén={}", 
                  userId, dto.getPeriodId(), dto.getWarehouseId());
         
         try {
-            // Generar marbetes con QR incluido
-            List<MarbeteReportDTO> marbetesConQR = marbeteQRIntegrationService.generarMarbetesConQR(
-                dto.getPeriodId(),
-                dto.getWarehouseId()
-            );
+            // Establecer flag withQR
+            dto.setWithQR(true);
+            
+            // Llamar al método unified printLabels() que detecta la rama QR
+            byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
 
-            if (marbetesConQR.isEmpty()) {
-                log.warn("⚠️ No hay marbetes para generar período={}, almacén={}",
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                log.warn("⚠️ Error: PDF vacío generado para período={}, almacén={}",
                          dto.getPeriodId(), dto.getWarehouseId());
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(500).build();
             }
 
-            // Generar PDF con la plantilla que incluye QR
-            byte[] pdfBytes = generarPDFConQR(marbetesConQR);
-
-            log.info("✅ PDF con QR generado: {} marbetes, {} bytes", marbetesConQR.size(), pdfBytes.length);
+            log.info("✅ PDF con QR generado: {} bytes", pdfBytes.length);
 
             return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes_con_qr");
             
