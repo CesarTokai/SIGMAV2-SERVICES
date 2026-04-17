@@ -26,6 +26,9 @@ public class GenerateBatchListDTO {
         @NotNull
         @Min(1)
         private Integer labelsToGenerate;
+
+        @jakarta.validation.constraints.Size(max = 600, message = "El comentario no puede exceder 600 caracteres")
+        private String comment;
     }
 }
 

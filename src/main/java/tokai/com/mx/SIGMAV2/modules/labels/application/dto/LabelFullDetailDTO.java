@@ -25,6 +25,7 @@ public class LabelFullDetailDTO {
     // ═══════════════════════════════════════════════════════════════
     private Long folio;
     private String estado;
+    private String comment;     // Comentario individual del marbete
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime impresoAt;

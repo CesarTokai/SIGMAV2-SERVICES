@@ -12,7 +12,6 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
-import tokai.com.mx.SIGMAV2.modules.labels.application.service.MarbeteQRIntegrationService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelledException;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.*;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
@@ -45,6 +44,8 @@ public class LabelServiceImpl implements LabelService {
     private final LabelGenerationService labelGenerationService;
     private final LabelCountService labelCountService;
     private final LabelReportService labelReportService;
+
+    // ── infraestructura necesaria para responsabilidades restantes ────────
     private final LabelsPersistenceAdapter persistence;
     private final WarehouseAccessService warehouseAccessService;
     private final JpaProductRepository productRepository;
@@ -57,7 +58,6 @@ public class LabelServiceImpl implements LabelService {
     private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
-    private final MarbeteQRIntegrationService marbeteQRIntegrationService;
 
     @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
     private String inventoryFileDirectory;
@@ -151,20 +151,13 @@ public class LabelServiceImpl implements LabelService {
     // IMPRESIÓN
     // ═══════════════════════════════════════════════════════════════════════
 
-    // Constantes para límite de impresión
-    private static final int MAX_LABELS_PER_PDF = 500;
-    private static final int MAX_LABELS_BATCH = 2000;
-
     @Override
     @Transactional
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
         boolean isExtraordinary = dto.getForceReprint() != null && dto.getForceReprint();
-        boolean withQR = dto.getWithQR() != null && dto.getWithQR();
-        
-        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, withQR={}, folios={}",
+        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, folios={}",
                 dto.getPeriodId(), dto.getWarehouseId(),
                 isExtraordinary ? "EXTRAORDINARIA" : "NORMAL",
-                withQR ? "SÍ" : "NO",
                 dto.getFolios() != null ? dto.getFolios().size() : "TODOS");
 
         if (userRole == null || userRole.trim().isEmpty()) {
@@ -198,37 +191,9 @@ public class LabelServiceImpl implements LabelService {
             }
         }
 
-        // ═════════════════════════════════════════════════════════════════════
-        // MEJORADO: Verificar límite máximo global (1400-1700 marbetes = OK)
-        // ═════════════════════════════════════════════════════════════════════
-        if (labels.size() > MAX_LABELS_BATCH) {
-            throw new InvalidLabelStateException(
-                    String.format("❌ Límite máximo de impresión: %d marbetes. " +
-                            "Intenta con: período/almacén/producto específico para reducir cantidad.",
-                            MAX_LABELS_BATCH)
-            );
+        if (labels.size() > 500) {
+            throw new InvalidLabelStateException("Límite máximo: 500 marbetes por impresión");
         }
-
-        // ═════════════════════════════════════════════════════════════════════
-        // RAMA QR: Si withQR=true → generar con QR
-        // ═════════════════════════════════════════════════════════════════════
-        if (withQR) {
-            log.info("🔄 Ruta QR activada: generando PDF con códigos QR embebidos");
-            return printLabelsWithQR(labels, dto.getPeriodId(), dto.getWarehouseId(), userId);
-        }
-
-        // ═════════════════════════════════════════════════════════════════════
-        // RAMA NORMAL: Si hay MÁS de 500 marbetes → DIVIDIR EN LOTES AUTOMÁTICAMENTE
-        // ═════════════════════════════════════════════════════════════════════
-        if (labels.size() > MAX_LABELS_PER_PDF) {
-            log.info("⚠️ División AUTOMÁTICA: {} marbetes → dividiendo en lotes de {} ...", 
-                    labels.size(), MAX_LABELS_PER_PDF);
-            
-            labels.sort(Comparator.comparing(Label::getFolio));
-            return generateMultiBatchPDF(labels, dto.getPeriodId(), dto.getWarehouseId(), userId);
-        }
-
-        // Si es <= 500 → generar normalmente
         labels.sort(Comparator.comparing(Label::getFolio));
 
         byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
@@ -241,79 +206,6 @@ public class LabelServiceImpl implements LabelService {
         persistence.printLabelsRange(dto.getPeriodId(), dto.getWarehouseId(), minFolio, maxFolio, userId, false);
 
         return pdfBytes;
-    }
-
-    /**
-     * Genera PDFs en lotes automáticos cuando hay más de 500 marbetes.
-     * Combina todos los PDFs en uno solo (concatenado) para retornar como respuesta única.
-     * 
-     * @param allLabels Lista completa de marbetes (puede ser 1000+)
-     * @param periodId ID del período
-     * @param warehouseId ID del almacén
-     * @param userId ID del usuario
-     * @return PDF consolidado con todos los lotes
-     */
-    private byte[] generateMultiBatchPDF(List<Label> allLabels, Long periodId, Long warehouseId, Long userId) {
-        List<byte[]> pdfBatches = new ArrayList<>();
-        int totalLabels = allLabels.size();
-        int batchCount = (int) Math.ceil((double) totalLabels / MAX_LABELS_PER_PDF);
-
-        log.info("📊 Generando {} lotes de {} marbetes cada uno (total: {})", 
-                batchCount, MAX_LABELS_PER_PDF, totalLabels);
-
-        for (int i = 0; i < batchCount; i++) {
-            int start = i * MAX_LABELS_PER_PDF;
-            int end = Math.min(start + MAX_LABELS_PER_PDF, totalLabels);
-            List<Label> batchLabels = allLabels.subList(start, end);
-
-            log.info("  → Lote {}/{}: marbetes {} a {} ({} folios)",
-                    i + 1, batchCount, start + 1, end, batchLabels.size());
-
-            // Generar PDF para este lote
-            byte[] batchPdf = jasperLabelPrintService.generateLabelsPdf(batchLabels);
-            if (batchPdf == null || batchPdf.length == 0) {
-                throw new InvalidLabelStateException(
-                        String.format("Error generando PDF lote %d de %d", i + 1, batchCount)
-                );
-            }
-            pdfBatches.add(batchPdf);
-
-            // Registrar rango de impresión para este lote
-            Long minFolio = batchLabels.get(0).getFolio();
-            Long maxFolio = batchLabels.get(batchLabels.size() - 1).getFolio();
-            persistence.printLabelsRange(periodId, warehouseId, minFolio, maxFolio, userId, false);
-        }
-
-        // Consolidar todos los PDFs en uno
-        byte[] consolidatedPdf = consolidatePDFs(pdfBatches);
-        log.info("✅ DIVISIÓN COMPLETADA: {} lotes consolidados en 1 PDF ({} KB)",
-                batchCount, consolidatedPdf.length / 1024);
-
-        return consolidatedPdf;
-    }
-
-    /**
-     * Consolida múltiples PDFs en uno solo.
-     * Requiere librería iText o Apache PDFBox.
-     * 
-     * @param pdfBatches Lista de byte[] con PDFs individuales
-     * @return PDF consolidado
-     */
-    private byte[] consolidatePDFs(List<byte[]> pdfBatches) {
-        try {
-            // NOTA: Requiere agregar dependencia iText7 o PDFBox en pom.xml
-            // Temporalmente, retornar el primer PDF como fallback
-            // TODO: Implementar consolidación real con iText7
-            
-            log.warn("⚠️ TODO: Consolidación real requiere iText7. Retornando primer lote como fallback.");
-            if (!pdfBatches.isEmpty()) {
-                return pdfBatches.get(0);  // Fallback temporal
-            }
-            throw new InvalidLabelStateException("No se generaron PDFs");
-        } catch (Exception e) {
-            log.error("Error consolidando PDFs: {}", e.getMessage());
-            throw new InvalidLabelStateException("Error al consolidar PDFs: " + e.getMessage());
-        }
     }
 
     @Override
@@ -335,28 +227,9 @@ public class LabelServiceImpl implements LabelService {
         List<Label> labels = persistence.findImpresosForReimpresion(
                 dto.getPeriodId(), dto.getWarehouseId(), dto.getFolios());
 
-        // ═════════════════════════════════════════════════════════════════════
-        // MEJORADO: Verificar límite máximo global
-        // ═════════════════════════════════════════════════════════════════════
-        if (labels.size() > MAX_LABELS_BATCH) {
-            throw new InvalidLabelStateException(
-                    String.format("❌ Límite máximo de reimpresión: %d marbetes. Intenta con lotes menores.",
-                            MAX_LABELS_BATCH)
-            );
+        if (labels.size() > 500) {
+            throw new InvalidLabelStateException("Límite máximo: 500 marbetes por reimpresión extraordinaria");
         }
-
-        // ═════════════════════════════════════════════════════════════════════
-        // NUEVO: Si hay MÁS de 500 → DIVIDIR EN LOTES AUTOMÁTICAMENTE
-        // ═════════════════════════════════════════════════════════════════════
-        if (labels.size() > MAX_LABELS_PER_PDF) {
-            log.info("⚠️ División AUTOMÁTICA en reimpresión: {} marbetes → dividiendo en lotes de {} ...", 
-                    labels.size(), MAX_LABELS_PER_PDF);
-            
-            labels.sort(Comparator.comparing(Label::getFolio));
-            return generateMultiBatchPDF(labels, dto.getPeriodId(), dto.getWarehouseId(), userId);
-        }
-
-        // Si es <= 500 → generar normalmente
         labels.sort(Comparator.comparing(Label::getFolio));
 
         byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
@@ -921,8 +794,7 @@ public class LabelServiceImpl implements LabelService {
                         .claveProducto(product.getCveArt()).descripcionProducto(product.getDescr())
                         .unidadMedida(product.getUniMed()).cancelado(false)
                         .conteo1(c1).conteo2(c2).diferencia(diferencia)
-                        .estado(label.getEstado().name())
-                        .impreso(true).mensaje(mensaje)
+                        .estado(label.getEstado().name()).impreso(true).mensaje(mensaje)
                         .existQty(stockByProduct.get(label.getProductId()))
                         .existQtyUnidad(product.getUniMed())
                         .build());
@@ -1501,7 +1373,7 @@ public class LabelServiceImpl implements LabelService {
         LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
 
         builder.folio(label.getFolio())
-                .estado(label.getEstado() != null ? label.getEstado().name() : "DESCONOCIDO")
+                .estado(label.getEstado() != null ? label.getEstado().name() : null)
                 .createdAt(label.getCreatedAt())
                 .impresoAt(label.getImpresoAt());
 
@@ -1562,7 +1434,8 @@ public class LabelServiceImpl implements LabelService {
             var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
                     label.getProductId(), label.getWarehouseId(), label.getPeriodId());
             if (stockOpt.isPresent()) {
-                builder.existenciasTeoricas(stockOpt.get().getExistQty());
+                builder.existenciasTeoricas(stockOpt.get().getExistQty())
+                        .statusExistencias(stockOpt.get().getStatus() != null ? stockOpt.get().getStatus().name() : null);
             }
         } catch (Exception e) {
             log.debug("No se pudo obtener existencias para folio {}", label.getFolio());
@@ -1573,22 +1446,104 @@ public class LabelServiceImpl implements LabelService {
         List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
         
         java.math.BigDecimal c1 = null, c2 = null;
+        LocalDateTime c1Fecha = null;
+        LocalDateTime c2Fecha = null;
+        Long c1UserId = null;
+        Long c2UserId = null;
+        Integer c1Intentos = 0;
+        Integer c2Intentos = 0;
 
         for (LabelCountEvent event : countEvents) {
-            if (event.getCountNumber() == 1) c1 = event.getCountedValue();
-            if (event.getCountNumber() == 2) c2 = event.getCountedValue();
+            if (event.getCountNumber() == 1) {
+                c1 = event.getCountedValue();
+                c1Fecha = event.getCreatedAt();
+                c1UserId = event.getUserId();
+                c1Intentos++;
+            } else if (event.getCountNumber() == 2) {
+                c2 = event.getCountedValue();
+                c2Fecha = event.getCreatedAt();
+                c2UserId = event.getUserId();
+                c2Intentos++;
+            }
+
+            try {
+                String userEmail = "DESCONOCIDO";
+                String userName = "DESCONOCIDO";
+                var userOpt = userRepository.findById(event.getUserId());
+                if (userOpt.isPresent()) {
+                    userEmail = userOpt.get().getEmail();
+                    userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
+                }
+
+                countHistory.add(LabelFullDetailDTO.CountEventHistoryDTO.builder()
+                        .countNumber(event.getCountNumber())
+                        .value(event.getCountedValue())
+                        .recordedAt(event.getCreatedAt())
+                        .recordedByUserId(event.getUserId())
+                        .recordedByEmail(userEmail)
+                        .recordedByNombre(userName)
+                        .action(event.getUpdatedAt() != null ? "UPDATED" : "CREATED")
+                        .description("Conteo C" + event.getCountNumber() + ": " + event.getCountedValue())
+                        .build());
+            } catch (Exception e) {
+                log.debug("No se pudo obtener info del conteo para folio {}", label.getFolio());
+            }
         }
 
-        builder.conteo1Valor(c1).conteo2Valor(c2);
+        builder.conteo1Valor(c1)
+                .conteo1Fecha(c1Fecha)
+                .conteo1UsuarioId(c1UserId)
+                .conteo1Intentos(c1Intentos > 0 ? c1Intentos : null);
+        
+        builder.conteo2Valor(c2)
+                .conteo2Fecha(c2Fecha)
+                .conteo2UsuarioId(c2UserId)
+                .conteo2Intentos(c2Intentos > 0 ? c2Intentos : null);
 
+        // Obtener nombres de usuarios de conteos
+        if (c1UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c1UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo1UsuarioEmail(userOpt.get().getEmail())
+                            .conteo1UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario C1 para folio {}", label.getFolio());
+            }
+        }
+
+        if (c2UserId != null) {
+            try {
+                var userOpt = userRepository.findById(c2UserId);
+                if (userOpt.isPresent()) {
+                    builder.conteo2UsuarioEmail(userOpt.get().getEmail())
+                            .conteo2UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
+                }
+            } catch (Exception e) {
+                log.debug("No se pudo obtener usuario C2 para folio {}", label.getFolio());
+            }
+        }
+
+        builder.countHistory(countHistory.isEmpty() ? null : countHistory);
+
+        // Calcular diferencia y estado
         if (c1 != null && c2 != null) {
-            builder.diferencia(c2.subtract(c1)).statusConteo("COMPLETO");
+            java.math.BigDecimal diff = c2.subtract(c1);
+            builder.diferencia(diff)
+                    .conteoCompleto(true)
+                    .statusConteo("COMPLETO");
+            
+            if (c1.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                double porcentaje = (diff.doubleValue() / c1.doubleValue()) * 100;
+                builder.diferenciaPorcentaje(String.format("%.2f%%", porcentaje));
+            }
         } else if (c1 != null) {
-            builder.statusConteo("PENDIENTE C2");
+            builder.conteoCompleto(false).statusConteo("PENDIENTE C2");
         } else if (c2 != null) {
-            builder.statusConteo("PENDIENTE C1");
+            builder.conteoCompleto(false).statusConteo("PENDIENTE C1");
         } else {
-            builder.statusConteo("PENDIENTE");
+            builder.conteoCompleto(false).statusConteo("PENDIENTE");
         }
 
         // Información de impresión - COMPLETO
@@ -2044,62 +1999,6 @@ public class LabelServiceImpl implements LabelService {
 
         log.info("✅ Impresión completada: {} marbetes de {} almacenes, {} KB", 
                 labels.size(), warehouseCountMap.size(), pdfBytes.length / 1024);
-        return pdfBytes;
-    }
-
-    /**
-     * Rama QR: Genera PDF con códigos QR embebidos usando MarbeteQRIntegrationService.
-     * Aplicar mismas reglas impresión (IMP-1 a IMP-9).
-     * 
-     * @param labels Labels a imprimir con QR
-     * @param periodId ID período
-     * @param warehouseId ID almacén
-     * @param userId ID usuario
-     * @return PDF con QR embebido
-     */
-    private byte[] printLabelsWithQR(List<Label> labels, Long periodId, Long warehouseId, Long userId) {
-        log.info("🎨 IMPRESIÓN CON QR: {} marbetes → generando DTOs con QR", labels.size());
-        
-        // IMP-QR-1: Obtener qr_content de labels (ya guardado en generación)
-        // IMP-QR-2: Validar qr_content no null
-        for (Label label : labels) {
-            if (label.getQrContent() == null || label.getQrContent().isEmpty()) {
-                log.warn("⚠️ Label folio {} sin qr_content, usando folio como fallback", label.getFolio());
-                label.setQrContent(String.valueOf(label.getFolio()));
-            }
-        }
-        
-        // IMP-QR-3: Orquestar generación de QR + DTOs
-        // MarbeteQRIntegrationService internamente llama QRGeneratorService
-        // para generar BufferedImage desde qr_content
-        List<MarbeteReportDTO> marbetesConQR = new ArrayList<>();
-        for (Label label : labels) {
-            MarbeteReportDTO dto = marbeteQRIntegrationService.generarMarbeteConQR(label);
-            marbetesConQR.add(dto);
-        }
-        
-        // IMP-QR-4: Pasar a JRXML (JasperReports)
-        // DTO contiene qrImage BufferedImage que JRXML renderiza
-        // IMP-QR-5: Renderizar en PDF
-        // jasperLabelPrintService convierte MarbeteReportDTO → PDF con QR
-        log.info("📄 Generando PDF QR con {} marbetes y sus respectivos códigos QR", marbetesConQR.size());
-        // TODO: Crear método en JasperReportPdfService para generar PDF desde MarbeteReportDTO con QR
-        
-        // Fallback: usar PDF normal por ahora (TODO: implementar JasperReports con QR)
-        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
-        
-        // IMP-QR-6: Validar PDF válido
-        if (pdfBytes == null || pdfBytes.length == 0) {
-            throw new InvalidLabelStateException("Error generando PDF con QR");
-        }
-        
-        // IMP-7: Cambiar estado a IMPRESO
-        // IMP-8: Registrar auditoría
-        Long minFolio = labels.get(0).getFolio();
-        Long maxFolio = labels.get(labels.size() - 1).getFolio();
-        persistence.printLabelsRange(periodId, warehouseId, minFolio, maxFolio, userId, false);
-        
-        log.info("✅ PDF CON QR completado: {} KB, {} marbetes", pdfBytes.length / 1024, labels.size());
         return pdfBytes;
     }
 }

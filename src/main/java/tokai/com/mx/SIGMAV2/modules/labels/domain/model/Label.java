@@ -41,6 +41,9 @@ public class Label {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "comment", length = 600)
+    private String comment;
+
     public enum State {GENERADO, IMPRESO, CANCELADO}
 
 }

@@ -22,5 +22,6 @@ public class LabelDetailDTO {
     private String createdAt;
     private String impresoAt;
     private Integer existencias; // Existencias del producto
+    private String comment;     // Comentario individual del marbete
 }
 

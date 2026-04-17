@@ -148,8 +148,7 @@ public class LabelGenerationService {
                 label.setEstado(Label.State.GENERADO);
                 label.setCreatedBy(userId);
                 label.setCreatedAt(now);
-                // GEN-QR-1: Generar contenido QR = folio como string
-                label.setQrContent(String.valueOf(folio));
+                label.setComment(product.getComment()); // Comentario individual por marbete
                 labels.add(label);
             }
 
