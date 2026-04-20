@@ -170,6 +170,19 @@ public interface LabelService {
      * @throws IllegalArgumentException si los marbetes están en diferentes periodos
      */
     byte[] printSelectedLabelsAutoWarehouse(PrintSelectedLabelsAutoWarehouseDTO request, Long userId, String userRole);
+
+    /**
+     * 📊 GET /labels/report/with-comments
+     * Reporte de Marbetes con Comentarios de Conteos
+     * Retorna lista de marbetes con:
+     * - Información del producto y almacén
+     * - Conteos C1 y C2 con sus comentarios
+     * - Análisis de diferencias
+     * 
+     * @param filter DTO con filtros (periodId, warehouseId)
+     * @param userId ID del usuario consultando
+     * @param userRole Rol del usuario
+     * @return Lista de marbetes con comentarios de conteos
+     */
+    List<LabelWithCommentsReportDTO> getLabelListWithComments(ReportFilterDTO filter, Long userId, String userRole);
 }
-
-

@@ -11,6 +11,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.Product
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
+import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelWithCommentsReportDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
@@ -19,6 +20,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCo
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 
 import java.io.BufferedWriter;
@@ -339,7 +341,6 @@ public class LabelReportService {
             if (group.isEmpty()) continue;
             Label first = group.get(0);
             BigDecimal fisicas    = BigDecimal.ZERO;
-            int        pendientes = 0;
 
             for (Label label : group) {
                 BigDecimal c2 = null;
@@ -347,7 +348,6 @@ public class LabelReportService {
                     if (e.getCountNumber() == 2) { c2 = e.getCountedValue(); break; }
                 }
                 if (c2 != null) fisicas = fisicas.add(c2);
-                else pendientes++;
             }
 
             BigDecimal teoricas = BigDecimal.ZERO;
@@ -663,7 +663,150 @@ public class LabelReportService {
 
     /** Verifica si el rol es AUXILIAR_DE_CONTEO (sin restricción de almacén). */
     private boolean isAuxiliarDeConteo(String userRole) {
-        return userRole != null && userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO");
+        return userRole != null && userRole.equalsIgnoreCase("AUXILIAR_DE_CONTEO");
+    }
+
+    /**
+     * NUEVA API: Reporte de Marbetes con Comentarios
+     * Retorna SOLO marbetes que tienen al menos UN comentario en C1 o C2
+     * - Información del producto y almacén
+     * - Conteos C1 y C2 con sus comentarios
+     * - Análisis de diferencias
+     * 
+     * Útil para:
+     * - Auditar conteos que tienen observaciones
+     * - Consultar marbetes con discrepancias y notas
+     * - Generar reportes de validación solo con comentarios
+     */
+    @Transactional(readOnly = true)
+    public List<LabelWithCommentsReportDTO> getLabelListWithComments(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Iniciando reporte de marbetes con comentarios para período={}, almacén={}", 
+                 filter.getPeriodId(), filter.getWarehouseId());
+
+        // Validar acceso al almacén
+        validateAccess(userId, filter.getWarehouseId(), userRole);
+
+        // Obtener marbetes filtrados
+        List<Label> labels = filter.getWarehouseId() != null
+                ? jpaLabelRepository.findAllLabelsByPeriodAndWarehouseForDistribution(filter.getPeriodId(), filter.getWarehouseId())
+                : jpaLabelRepository.findAllLabelsByPeriodForDistribution(filter.getPeriodId());
+
+        if (labels.isEmpty()) {
+            log.warn("No se encontraron marbetes para período={}, almacén={}", 
+                     filter.getPeriodId(), filter.getWarehouseId());
+            return new ArrayList<>();
+        }
+
+        // Pre-cargar datos en batch
+        Map<Long, ProductEntity> productMap = batchLoadProducts(labels);
+        Map<Long, WarehouseEntity> warehouseMap = batchLoadWarehouses(labels);
+        
+        Set<Long> folios = labels.stream().map(Label::getFolio).collect(Collectors.toSet());
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioInOrderByFolioAscCountNumberAsc(folios);
+        Map<Long, Map<Integer, LabelCountEvent>> countsByFolioAndNumber = countEvents.stream()
+                .collect(Collectors.groupingBy(
+                        LabelCountEvent::getFolio,
+                        Collectors.toMap(LabelCountEvent::getCountNumber, Function.identity())
+                ));
+
+        // Mapear a DTOs
+        List<LabelWithCommentsReportDTO> result = new ArrayList<>();
+        for (Label label : labels) {
+            try {
+                ProductEntity product = productMap.get(label.getProductId());
+                WarehouseEntity warehouse = warehouseMap.get(label.getWarehouseId());
+
+                if (product == null || warehouse == null) {
+                    log.warn("Producto o almacén no encontrado para folio {}", label.getFolio());
+                    continue;
+                }
+
+                // Obtener conteos C1 y C2
+                Map<Integer, LabelCountEvent> countsByNumber = countsByFolioAndNumber.getOrDefault(label.getFolio(), new HashMap<>());
+                LabelCountEvent countC1 = countsByNumber.get(1);
+                LabelCountEvent countC2 = countsByNumber.get(2);
+
+                // ✅ FILTRO: SOLO incluir si tiene COMENTARIOS
+                boolean tieneComentarioC1 = countC1 != null && countC1.getComment() != null && !countC1.getComment().trim().isEmpty();
+                boolean tieneComentarioC2 = countC2 != null && countC2.getComment() != null && !countC2.getComment().trim().isEmpty();
+                
+                if (!tieneComentarioC1 && !tieneComentarioC2) {
+                    log.debug("Folio {} sin comentarios, omitiendo", label.getFolio());
+                    continue; // Saltar este marbete si no tiene comentarios
+                }
+
+                // Calcular diferencia
+                BigDecimal diferencia = null;
+                String diferenciaPorcentaje = null;
+                if (countC1 != null && countC2 != null) {
+                    diferencia = countC2.getCountedValue().subtract(countC1.getCountedValue());
+                    if (countC1.getCountedValue().signum() > 0) {
+                        diferenciaPorcentaje = diferencia.divide(countC1.getCountedValue(), 4, RoundingMode.HALF_UP)
+                                .multiply(new BigDecimal("100"))
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .toPlainString() + "%";
+                    }
+                }
+
+                // Construir DTO
+                LabelWithCommentsReportDTO dto = LabelWithCommentsReportDTO.builder()
+                        .folio(label.getFolio())
+                        .estado(label.getEstado() != null ? label.getEstado().name() : "PENDIENTE")
+                        .createdAt(label.getCreatedAt())
+                        .impreso(label.getImpresoAt() != null)
+                        .cancelado(label.getEstado() == Label.State.CANCELADO)
+                        
+                        // Producto
+                        .claveProducto(product.getCveArt())
+                        .nombreProducto(product.getDescr())
+                        .unidadMedida(product.getUniMed())
+                        .descripcionProducto(product.getDescr())
+                        
+                        // Almacén
+                        .claveAlmacen(warehouse.getWarehouseKey())
+                        .nombreAlmacen(warehouse.getNameWarehouse())
+                        
+                        // Período
+                        .periodId(label.getPeriodId())
+                        
+                        // Existencias teóricas
+                        .existenciasTeoricas(null) // No existe en Label domain model
+                        
+                        // Conteo C1 con comentario
+                        .conteo1Valor(countC1 != null ? countC1.getCountedValue() : null)
+                        .conteo1Fecha(countC1 != null ? countC1.getCreatedAt() : null)
+                        .conteo1UsuarioEmail(countC1 != null && countC1.getUserId() != null ? 
+                                userRepository.findById(countC1.getUserId()).map(BeanUser::getEmail).orElse("") : null)
+                        .conteo1UsuarioNombre(countC1 != null && countC1.getUserId() != null ? 
+                                userRepository.findById(countC1.getUserId()).map(u -> (u.getName() != null ? u.getName() : (u.getFirstLastName() + " " + u.getSecondLastName()).trim())).orElse("") : null)
+                        .conteo1Comentario(countC1 != null ? countC1.getComment() : null)
+                        
+                        // Conteo C2 con comentario
+                        .conteo2Valor(countC2 != null ? countC2.getCountedValue() : null)
+                        .conteo2Fecha(countC2 != null ? countC2.getCreatedAt() : null)
+                        .conteo2UsuarioEmail(countC2 != null && countC2.getUserId() != null ? 
+                                userRepository.findById(countC2.getUserId()).map(BeanUser::getEmail).orElse("") : null)
+                        .conteo2UsuarioNombre(countC2 != null && countC2.getUserId() != null ? 
+                                userRepository.findById(countC2.getUserId()).map(u -> (u.getName() != null ? u.getName() : (u.getFirstLastName() + " " + u.getSecondLastName()).trim())).orElse("") : null)
+                        .conteo2Comentario(countC2 != null ? countC2.getComment() : null)
+                        
+                        // Análisis
+                        .diferencia(diferencia)
+                        .diferenciaPorcentaje(diferenciaPorcentaje)
+                        .conteoCompleto(countC1 != null && countC2 != null)
+                        .statusConteo(countC1 == null ? "SIN_CONTEO" : (countC2 == null ? "CONTEO_PARCIAL" : "CONTEO_COMPLETO"))
+                        
+                        .build();
+
+                result.add(dto);
+
+            } catch (Exception e) {
+                log.error("Error procesando folio {}: {}", label.getFolio(), e.getMessage());
+            }
+        }
+
+        log.info("✓ Reporte generado: {} marbetes con comentarios", result.size());
+        return result;
     }
 
     // ── clase interna de soporte para generateInventoryFile ─────────────

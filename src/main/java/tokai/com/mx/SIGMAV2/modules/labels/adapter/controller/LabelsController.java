@@ -285,6 +285,34 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.getProductDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
+    /**
+     * 📊 GET /api/sigmav2/labels/reports/with-comments
+     * Reporte de Marbetes con Comentarios de Conteos
+     * Retorna lista de marbetes con:
+     * - Información del producto y almacén
+     * - Conteos C1 y C2 con sus comentarios
+     * - Análisis de diferencias
+     * 
+     * Body:
+     * {
+     *   "periodId": 1,
+     *   "warehouseId": 5
+     * }
+     * 
+     * Response: List<LabelWithCommentsReportDTO>
+     */
+    @PostMapping("/reports/with-comments")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<LabelWithCommentsReportDTO>> getLabelListWithComments(
+            @Valid @RequestBody ReportFilterDTO filter) {
+        log.info("📊 Reporte de marbetes con comentarios - periodo={}, almacén={}", 
+                filter.getPeriodId(), filter.getWarehouseId());
+        List<LabelWithCommentsReportDTO> result = labelService.getLabelListWithComments(
+                filter, getUserIdFromToken(), getUserRoleFromToken());
+        log.info("✅ Reporte generado: {} marbetes", result.size());
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/generate-file")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> generateInventoryFile(@Valid @RequestBody GenerateFileRequestDTO dto) {

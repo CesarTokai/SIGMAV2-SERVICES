@@ -835,6 +835,9 @@ public class LabelServiceImpl implements LabelService {
     @Override public List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         return labelReportService.getProductDetailReport(filter, userId, userRole);
     }
+    @Override public List<LabelWithCommentsReportDTO> getLabelListWithComments(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getLabelListWithComments(filter, userId, userRole);
+    }
 
     @Override
     public GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole) {
@@ -1375,7 +1378,7 @@ public class LabelServiceImpl implements LabelService {
         LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
 
         builder.folio(label.getFolio())
-                .estado(label.getEstado() != null ? label.getEstado().name() : null)
+                .estado(label.getEstado() != null ? label.getEstado().name() : "DESCONOCIDO")
                 .createdAt(label.getCreatedAt())
                 .impresoAt(label.getImpresoAt());
 
@@ -1436,8 +1439,7 @@ public class LabelServiceImpl implements LabelService {
             var stockOpt = inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(
                     label.getProductId(), label.getWarehouseId(), label.getPeriodId());
             if (stockOpt.isPresent()) {
-                builder.existenciasTeoricas(stockOpt.get().getExistQty())
-                        .statusExistencias(stockOpt.get().getStatus() != null ? stockOpt.get().getStatus().name() : null);
+                builder.existenciasTeoricas(stockOpt.get().getExistQty());
             }
         } catch (Exception e) {
             log.debug("No se pudo obtener existencias para folio {}", label.getFolio());
@@ -1448,104 +1450,22 @@ public class LabelServiceImpl implements LabelService {
         List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
         
         java.math.BigDecimal c1 = null, c2 = null;
-        LocalDateTime c1Fecha = null;
-        LocalDateTime c2Fecha = null;
-        Long c1UserId = null;
-        Long c2UserId = null;
-        Integer c1Intentos = 0;
-        Integer c2Intentos = 0;
 
         for (LabelCountEvent event : countEvents) {
-            if (event.getCountNumber() == 1) {
-                c1 = event.getCountedValue();
-                c1Fecha = event.getCreatedAt();
-                c1UserId = event.getUserId();
-                c1Intentos++;
-            } else if (event.getCountNumber() == 2) {
-                c2 = event.getCountedValue();
-                c2Fecha = event.getCreatedAt();
-                c2UserId = event.getUserId();
-                c2Intentos++;
-            }
-
-            try {
-                String userEmail = "DESCONOCIDO";
-                String userName = "DESCONOCIDO";
-                var userOpt = userRepository.findById(event.getUserId());
-                if (userOpt.isPresent()) {
-                    userEmail = userOpt.get().getEmail();
-                    userName = userOpt.get().getName() + " " + userOpt.get().getFirstLastName();
-                }
-
-                countHistory.add(LabelFullDetailDTO.CountEventHistoryDTO.builder()
-                        .countNumber(event.getCountNumber())
-                        .value(event.getCountedValue())
-                        .recordedAt(event.getCreatedAt())
-                        .recordedByUserId(event.getUserId())
-                        .recordedByEmail(userEmail)
-                        .recordedByNombre(userName)
-                        .action(event.getUpdatedAt() != null ? "UPDATED" : "CREATED")
-                        .description("Conteo C" + event.getCountNumber() + ": " + event.getCountedValue())
-                        .build());
-            } catch (Exception e) {
-                log.debug("No se pudo obtener info del conteo para folio {}", label.getFolio());
-            }
+            if (event.getCountNumber() == 1) c1 = event.getCountedValue();
+            if (event.getCountNumber() == 2) c2 = event.getCountedValue();
         }
 
-        builder.conteo1Valor(c1)
-                .conteo1Fecha(c1Fecha)
-                .conteo1UsuarioId(c1UserId)
-                .conteo1Intentos(c1Intentos > 0 ? c1Intentos : null);
-        
-        builder.conteo2Valor(c2)
-                .conteo2Fecha(c2Fecha)
-                .conteo2UsuarioId(c2UserId)
-                .conteo2Intentos(c2Intentos > 0 ? c2Intentos : null);
+        builder.conteo1Valor(c1).conteo2Valor(c2);
 
-        // Obtener nombres de usuarios de conteos
-        if (c1UserId != null) {
-            try {
-                var userOpt = userRepository.findById(c1UserId);
-                if (userOpt.isPresent()) {
-                    builder.conteo1UsuarioEmail(userOpt.get().getEmail())
-                            .conteo1UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
-                }
-            } catch (Exception e) {
-                log.debug("No se pudo obtener usuario C1 para folio {}", label.getFolio());
-            }
-        }
-
-        if (c2UserId != null) {
-            try {
-                var userOpt = userRepository.findById(c2UserId);
-                if (userOpt.isPresent()) {
-                    builder.conteo2UsuarioEmail(userOpt.get().getEmail())
-                            .conteo2UsuarioNombre(userOpt.get().getName() + " " + userOpt.get().getFirstLastName());
-                }
-            } catch (Exception e) {
-                log.debug("No se pudo obtener usuario C2 para folio {}", label.getFolio());
-            }
-        }
-
-        builder.countHistory(countHistory.isEmpty() ? null : countHistory);
-
-        // Calcular diferencia y estado
         if (c1 != null && c2 != null) {
-            java.math.BigDecimal diff = c2.subtract(c1);
-            builder.diferencia(diff)
-                    .conteoCompleto(true)
-                    .statusConteo("COMPLETO");
-            
-            if (c1.compareTo(java.math.BigDecimal.ZERO) > 0) {
-                double porcentaje = (diff.doubleValue() / c1.doubleValue()) * 100;
-                builder.diferenciaPorcentaje(String.format("%.2f%%", porcentaje));
-            }
+            builder.diferencia(c2.subtract(c1)).statusConteo("COMPLETO");
         } else if (c1 != null) {
-            builder.conteoCompleto(false).statusConteo("PENDIENTE C2");
+            builder.statusConteo("PENDIENTE C2");
         } else if (c2 != null) {
-            builder.conteoCompleto(false).statusConteo("PENDIENTE C1");
+            builder.statusConteo("PENDIENTE C1");
         } else {
-            builder.conteoCompleto(false).statusConteo("PENDIENTE");
+            builder.statusConteo("PENDIENTE");
         }
 
         // Información de impresión - COMPLETO
