@@ -83,14 +83,20 @@ public class LabelCountService {
                     String.format("El conteo C2 ya fue registrado para el folio %d.", dto.getFolio()));
         }
 
-        LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
-        
-        // Registrar en historial con periodId y warehouseId del marbete
-        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
-        
-        return result;
+         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
+         LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+         
+         // Agregar comentario si se proporciona
+         if (dto.getComment() != null && !dto.getComment().trim().isEmpty()) {
+             result.setComment(dto.getComment().trim());
+             jpaLabelCountEventRepository.save(result);
+         }
+         
+         // Registrar en historial con periodId y warehouseId del marbete
+         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+         countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
+         
+         return result;
     }
 
     @Transactional
@@ -108,31 +114,36 @@ public class LabelCountService {
                 .findFirst()
                 .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C1 para actualizar en folio " + dto.getFolio()));
 
-        BigDecimal valorAnterior = eventC1.getCountedValue();
-        eventC1.setPreviousValue(valorAnterior);
-        eventC1.setCountedValue(dto.getCountedValue());
-        eventC1.setUpdatedAt(LocalDateTime.now());
-        eventC1.setUpdatedBy(userId);
+         BigDecimal valorAnterior = eventC1.getCountedValue();
+         eventC1.setPreviousValue(valorAnterior);
+         eventC1.setCountedValue(dto.getCountedValue());
+         eventC1.setUpdatedAt(LocalDateTime.now());
+         eventC1.setUpdatedBy(userId);
+         
+         // Actualizar comentario si se proporciona
+         if (dto.getComment() != null && !dto.getComment().trim().isEmpty()) {
+             eventC1.setComment(dto.getComment().trim());
+         }
 
-        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
-        
-        // Registrar actualización en historial con periodId y warehouseId correctos
-        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountUpdate(
-            userId,
-            email,
-            dto.getFolio(),
-            1,
-            dto.getCountedValue().intValue(),
-            valorAnterior.intValue(),
-            userRole,
-            label.getWarehouseId(),
-            label.getPeriodId()
-        );
-        
-        log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
-                dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
-        return updated;
+         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
+         
+         // Registrar actualización en historial con periodId y warehouseId correctos
+         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+         countHistoryService.recordCountUpdate(
+             userId,
+             email,
+             dto.getFolio(),
+             1,
+             dto.getCountedValue().intValue(),
+             valorAnterior.intValue(),
+             userRole,
+             label.getWarehouseId(),
+             label.getPeriodId()
+         );
+         
+         log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
+                 dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
+         return updated;
     }
 
     @Transactional
@@ -150,31 +161,36 @@ public class LabelCountService {
                 .findFirst()
                 .orElseThrow(() -> new LabelNotFoundException("No existe un conteo C2 para actualizar en folio " + dto.getFolio()));
 
-        BigDecimal oldValue = eventC2.getCountedValue();
-        eventC2.setPreviousValue(oldValue);
-        eventC2.setCountedValue(dto.getCountedValue());
-        eventC2.setUpdatedAt(LocalDateTime.now());
-        eventC2.setUpdatedBy(userId);
+         BigDecimal oldValue = eventC2.getCountedValue();
+         eventC2.setPreviousValue(oldValue);
+         eventC2.setCountedValue(dto.getCountedValue());
+         eventC2.setUpdatedAt(LocalDateTime.now());
+         eventC2.setUpdatedBy(userId);
+         
+         // Actualizar comentario si se proporciona
+         if (dto.getComment() != null && !dto.getComment().trim().isEmpty()) {
+             eventC2.setComment(dto.getComment().trim());
+         }
 
-        LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
-        
-        // Registrar actualización en historial con periodId y warehouseId correctos
-        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        countHistoryService.recordCountUpdate(
-            userId,
-            email,
-            dto.getFolio(),
-            2,
-            dto.getCountedValue().intValue(),
-            oldValue.intValue(),
-            userRole,
-            label.getWarehouseId(),
-            label.getPeriodId()
-        );
-        
-        log.info("Conteo C2 actualizado: folio={}, anterior={}, nuevo={}, by={}",
-                dto.getFolio(), oldValue, dto.getCountedValue(), userId);
-        return updated;
+         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
+         
+         // Registrar actualización en historial con periodId y warehouseId correctos
+         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+         countHistoryService.recordCountUpdate(
+             userId,
+             email,
+             dto.getFolio(),
+             2,
+             dto.getCountedValue().intValue(),
+             oldValue.intValue(),
+             userRole,
+             label.getWarehouseId(),
+             label.getPeriodId()
+         );
+         
+         log.info("Conteo C2 actualizado: folio={}, anterior={}, nuevo={}, by={}",
+                 dto.getFolio(), oldValue, dto.getCountedValue(), userId);
+         return updated;
     }
 
     // ── helpers privados ────────────────────────────────────────────────────

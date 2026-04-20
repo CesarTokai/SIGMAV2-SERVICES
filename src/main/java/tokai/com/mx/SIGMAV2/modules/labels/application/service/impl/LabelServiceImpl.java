@@ -155,9 +155,11 @@ public class LabelServiceImpl implements LabelService {
     @Transactional
     public byte[] printLabels(PrintRequestDTO dto, Long userId, String userRole) {
         boolean isExtraordinary = dto.getForceReprint() != null && dto.getForceReprint();
-        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, folios={}",
+        boolean withQR = dto.getWithQR() != null && dto.getWithQR();
+        log.info("📄 Imprimiendo marbetes: periodo={}, almacén={}, tipo={}, withQR={}, folios={}",
                 dto.getPeriodId(), dto.getWarehouseId(),
                 isExtraordinary ? "EXTRAORDINARIA" : "NORMAL",
+                withQR,
                 dto.getFolios() != null ? dto.getFolios().size() : "TODOS");
 
         if (userRole == null || userRole.trim().isEmpty()) {
@@ -196,7 +198,7 @@ public class LabelServiceImpl implements LabelService {
         }
         labels.sort(Comparator.comparing(Label::getFolio));
 
-        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels);
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels, withQR);
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new InvalidLabelStateException("Error generando PDF");
         }

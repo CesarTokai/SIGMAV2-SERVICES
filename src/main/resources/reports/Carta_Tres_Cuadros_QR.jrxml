@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Carta_Tres_Cuadros" pageWidth="612" pageHeight="792" whenNoDataType="NoPages" columnWidth="582" leftMargin="15" rightMargin="15" topMargin="20" bottomMargin="20" uuid="70af64f2-2177-4f3c-a1e2-51dc72b8f58d">
+    <property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+    <field name="nomMarbete1" class="java.lang.String"/>
+    <field name="clave1" class="java.lang.String"/>
+    <field name="descr1" class="java.lang.String"/>
+    <field name="almacen1" class="java.lang.String"/>
+    <field name="fecha1" class="java.lang.String"/>
+    <field name="qrImage1" class="java.awt.image.BufferedImage"/>
+    <field name="nomMarbete2" class="java.lang.String"/>
+    <field name="clave2" class="java.lang.String"/>
+    <field name="descr2" class="java.lang.String"/>
+    <field name="almacen2" class="java.lang.String"/>
+    <field name="fecha2" class="java.lang.String"/>
+    <field name="qrImage2" class="java.awt.image.BufferedImage"/>
+    <field name="nomMarbete3" class="java.lang.String"/>
+    <field name="clave3" class="java.lang.String"/>
+    <field name="descr3" class="java.lang.String"/>
+    <field name="almacen3" class="java.lang.String"/>
+    <field name="fecha3" class="java.lang.String"/>
+    <field name="qrImage3" class="java.awt.image.BufferedImage"/>
+    <detail>
+        <band height="328" splitType="Stretch">
+            <rectangle>
+                <reportElement x="31" y="17" width="150" height="224" uuid="791267c0-ac8e-42b8-a9b3-39784e0e812c"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="33" y="18" width="52" height="19" uuid="a246188e-8aea-47cf-8f33-5d86caa074cb"/>
+                <textElement>
+                    <font size="10.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="86" y="17" width="93" height="19" uuid="4e4bde0d-cc79-440a-bb2a-8b2294b1bfc4"/>
+                <textElement>
+                    <font size="10.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="31" y="83" width="150" height="14" uuid="48f02926-fb29-47bd-801b-94a4c04e34db"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="31" y="98" width="150" height="14" uuid="84e86106-f500-48bd-9cbd-c3ac6287927c"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr1}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="33" y="222" width="53" height="18" uuid="d85a33d0-28d1-420a-a7ce-ecaa98d244a5"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="86" y="222" width="90" height="18" uuid="3f6e5ff9-88ce-47fc-967b-901f54841239"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="145" y="21" width="36" height="11" uuid="bfd30885-8e77-4709-92d4-98bba4574394"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha1}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="31" y="35" width="150" height="1" uuid="72a3f164-3f00-467a-ae65-39004d762445">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <image>
+                <reportElement x="60" y="120" width="91" height="89" uuid="81bc9149-c5dc-4645-983a-6b219f710d19"/>
+                <imageExpression><![CDATA[$F{qrImage1}]]></imageExpression>
+            </image>
+            <staticText>
+                <reportElement x="31" y="37" width="150" height="10" uuid="6e27a7e2-f303-4303-adfd-af8cb082fb36"/>
+                <textElement textAlignment="Center">
+                    <font size="7" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TARJETAS PARA INVENTARIO FISICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="58" y="48" width="94" height="16" uuid="ddb44c41-625c-470b-80dc-1c8819b391ea"/>
+                <textElement textAlignment="Center">
+                    <font size="10.5"/>
+                </textElement>
+                <text><![CDATA[TOKAI DE MEXICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="66" y="64" width="80" height="17" uuid="b53ec374-b71f-47ee-9408-bf19e685a12d"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5"/>
+                </textElement>
+                <text><![CDATA[Codigo y descripcion]]></text>
+            </staticText>
+            <rectangle>
+                <reportElement x="221" y="17" width="150" height="224" uuid="53268ac8-cffa-436d-b2e6-4bad8a76d1b0"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="223" y="18" width="52" height="19" uuid="ee8d3c9d-a55d-4c23-adb4-222988901fcf"/>
+                <textElement>
+                    <font size="10.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="276" y="17" width="93" height="19" uuid="f8ff8e90-26a9-4049-b830-e426708daa3c"/>
+                <textElement>
+                    <font size="10.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="221" y="83" width="150" height="14" uuid="79bb3e36-6d94-4817-8ebb-db3b92507020"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="221" y="98" width="150" height="14" uuid="41ed6977-cae2-4ce4-afd4-69e537213e23"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr2}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="223" y="222" width="53" height="18" uuid="20378f2f-7096-4861-873f-51a629dcc7e7"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="276" y="222" width="90" height="18" uuid="705db41e-3059-41b4-82b5-f6edc35167fb"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="335" y="21" width="36" height="11" uuid="ec92bf4c-987a-4513-8701-3ad2b7b181a5"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha2}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="221" y="35" width="150" height="1" uuid="d955fb55-cdca-4984-b1a0-63c792a9e04c">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <image>
+                <reportElement x="250" y="120" width="91" height="89" uuid="03e6c78c-387e-47eb-96c8-d84a80ff09e1"/>
+                <imageExpression><![CDATA[$F{qrImage2}]]></imageExpression>
+            </image>
+            <staticText>
+                <reportElement x="221" y="37" width="150" height="10" uuid="cca588fe-f192-465c-9f5a-db4b873d1df2"/>
+                <textElement textAlignment="Center">
+                    <font size="7" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TARJETAS PARA INVENTARIO FISICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="248" y="48" width="94" height="16" uuid="db7a3679-633a-4da8-8275-3409c9575a21"/>
+                <textElement textAlignment="Center">
+                    <font size="10.5"/>
+                </textElement>
+                <text><![CDATA[TOKAI DE MEXICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="256" y="64" width="80" height="17" uuid="84830ea5-32f0-4226-9c36-49a5a5321a94"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5"/>
+                </textElement>
+                <text><![CDATA[Codigo y descripcion]]></text>
+            </staticText>
+            <rectangle>
+                <reportElement x="411" y="17" width="150" height="224" uuid="6b14fd2b-0586-4e63-b51f-983c3f3eddc7"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#000000"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="413" y="18" width="52" height="19" uuid="9d60f274-7b30-40eb-9d6a-1e242e18fea5"/>
+                <textElement>
+                    <font size="10.5" isBold="false"/>
+                </textElement>
+                <text><![CDATA[N.Marbete:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="466" y="17" width="93" height="19" uuid="b7776de0-b721-40aa-b8f2-03e77d868bc3"/>
+                <textElement>
+                    <font size="10.5"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nomMarbete3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="411" y="83" width="150" height="14" uuid="4be4f3ff-3905-4cf0-81b8-28854a45e65a"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{clave3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="411" y="98" width="150" height="14" uuid="a5c9ed6b-a9da-4d61-8ddf-ea48a61aecdc"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{descr3}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="413" y="222" width="53" height="18" uuid="fa6cea90-138b-4d24-89ba-6d9a26f62155"/>
+                <textElement>
+                    <font size="12.5"/>
+                </textElement>
+                <text><![CDATA[Almacen:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="466" y="222" width="90" height="18" uuid="338295bf-2d09-4f68-8baf-aa67a4d40562"/>
+                <textElement>
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{almacen3}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="525" y="21" width="36" height="11" uuid="0a916357-c5b3-4680-bcc0-f5b8cda633b1"/>
+                <textElement>
+                    <font size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{fecha3}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="411" y="35" width="150" height="1" uuid="7ab5a323-6b5f-453a-a7b7-a4b418e37cd5">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+            </line>
+            <image>
+                <reportElement x="440" y="120" width="91" height="89" uuid="2580e6ba-6465-4e04-9192-5f98c9bbe540"/>
+                <imageExpression><![CDATA[$F{qrImage3}]]></imageExpression>
+            </image>
+            <staticText>
+                <reportElement x="411" y="37" width="150" height="10" uuid="cf780f80-3a56-4228-b00e-7f38646ac1cd"/>
+                <textElement textAlignment="Center">
+                    <font size="7" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TARJETAS PARA INVENTARIO FISICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="438" y="48" width="94" height="16" uuid="3de94eb7-8b4a-451e-baca-3b0865328e37"/>
+                <textElement textAlignment="Center">
+                    <font size="10.5"/>
+                </textElement>
+                <text><![CDATA[TOKAI DE MEXICO]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="446" y="64" width="80" height="17" uuid="44031a4d-fc41-41b8-9318-6fe461b87cb2"/>
+                <textElement textAlignment="Center">
+                    <font size="8.5"/>
+                </textElement>
+                <text><![CDATA[Codigo y descripcion]]></text>
+            </staticText>
+        </band>
+    </detail>
+</jasperReport>

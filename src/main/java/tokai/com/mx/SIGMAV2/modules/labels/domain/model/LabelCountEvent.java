@@ -52,5 +52,12 @@ public class LabelCountEvent {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    /**
+     * Comentario opcional del conteo (máx 600 caracteres)
+     * Puede contener notas o observaciones del proceso de conteo físico
+     */
+    @Column(name = "comment", length = 600)
+    private String comment;
+
     public enum Role {ADMINISTRADOR, ALMACENISTA, AUXILIAR, AUXILIAR_DE_CONTEO}
 }
