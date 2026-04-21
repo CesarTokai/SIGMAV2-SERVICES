@@ -313,6 +313,99 @@ public class LabelsController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * 📄 PDF de Marbetes con Comentarios - Almacén Específico
+     * POST /api/sigmav2/labels/reports/with-comments/pdf
+     * 
+     * Genera un PDF con todos los marbetes que tienen comentarios en conteos C1 o C2
+     * para un almacén específico en un período determinado.
+     * 
+     * Body:
+     * {
+     *   "periodId": 1,
+     *   "warehouseId": 5
+     * }
+     */
+    @PostMapping("/reports/with-comments/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> generateLabelWithCommentsPdf(
+            @Valid @RequestBody ReportFilterDTO filter) {
+        log.info("📄 Generando PDF marbetes con comentarios - período={}, almacén={}", 
+                filter.getPeriodId(), filter.getWarehouseId());
+        
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+        
+        List<LabelWithCommentsReportDTO> data = labelService.getLabelListWithComments(
+                filter, userId, userRole);
+        
+        if (data.isEmpty()) {
+            log.warn("No hay marbetes con comentarios para generar PDF");
+            return ResponseEntity.status(404).body(new byte[0]);
+        }
+        
+        byte[] pdfBytes = jasperReportPdfService.generateLabelWithCommentsPdf(data);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename("Reporte_Marbetes_Comentarios_" + filter.getPeriodId() + ".pdf")
+                        .build());
+        headers.setContentLength(pdfBytes.length);
+        
+        log.info("✓ PDF generado: {} KB", pdfBytes.length / 1024);
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
+    /**
+     * 📄 PDF de Marbetes con Comentarios - Todos los Almacenes
+     * POST /api/sigmav2/labels/reports/with-comments/all/pdf
+     * 
+     * Genera un PDF con todos los marbetes que tienen comentarios en conteos C1 o C2
+     * para TODOS los almacenes en un período determinado.
+     * 
+     * Body:
+     * {
+     *   "periodId": 1
+     * }
+     */
+    @PostMapping("/reports/with-comments/all/pdf")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<byte[]> generateLabelWithCommentsAllWarehousesPdf(
+            @Valid @RequestBody ReportFilterDTO filter) {
+        log.info("📄 Generando PDF marbetes con comentarios - TODOS los almacenes, período={}", 
+                filter.getPeriodId());
+        
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+        
+        ReportFilterDTO allWarehousesFilter = new ReportFilterDTO();
+        allWarehousesFilter.setPeriodId(filter.getPeriodId());
+        allWarehousesFilter.setWarehouseId(null);
+        
+        List<LabelWithCommentsReportDTO> data = labelService.getLabelListWithComments(
+                allWarehousesFilter, userId, userRole);
+        
+        if (data.isEmpty()) {
+            log.warn("No hay marbetes con comentarios para generar PDF");
+            return ResponseEntity.status(404).body(new byte[0]);
+        }
+        
+        byte[] pdfBytes = jasperReportPdfService.generateLabelWithCommentsPdf(data);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename("Reporte_Marbetes_Comentarios_TodosAlmacenes_" + filter.getPeriodId() + ".pdf")
+                        .build());
+        headers.setContentLength(pdfBytes.length);
+        
+        log.info("✓ PDF generado (todos los almacenes): {} KB", pdfBytes.length / 1024);
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
     @PostMapping("/generate-file")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> generateInventoryFile(@Valid @RequestBody GenerateFileRequestDTO dto) {
