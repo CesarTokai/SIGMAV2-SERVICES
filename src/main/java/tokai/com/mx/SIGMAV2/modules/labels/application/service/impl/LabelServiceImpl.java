@@ -11,7 +11,9 @@ import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperLabelPrintService;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.JasperReportCacheService;
 import tokai.com.mx.SIGMAV2.modules.labels.application.service.LabelService;
+import tokai.com.mx.SIGMAV2.modules.labels.application.service.MarbeteQRIntegrationService;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.exception.LabelAlreadyCancelledException;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.*;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter.LabelsPersistenceAdapter;
@@ -44,6 +46,7 @@ public class LabelServiceImpl implements LabelService {
     private final LabelGenerationService labelGenerationService;
     private final LabelCountService labelCountService;
     private final LabelReportService labelReportService;
+    private final MarbeteQRIntegrationService marbeteQRIntegrationService;
 
     // ── infraestructura necesaria para responsabilidades restantes ────────
     private final LabelsPersistenceAdapter persistence;
@@ -58,6 +61,7 @@ public class LabelServiceImpl implements LabelService {
     private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
+    private final JasperReportCacheService reportCacheService;
 
     @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
     private String inventoryFileDirectory;
@@ -682,9 +686,26 @@ public class LabelServiceImpl implements LabelService {
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
         java.math.BigDecimal c1 = null, c2 = null;
+        String comentarioC1 = null, usuarioC1 = null;
+        String comentarioC2 = null, usuarioC2 = null;
+        
         for (LabelCountEvent e : events) {
-            if (e.getCountNumber() == 1) c1 = e.getCountedValue();
-            if (e.getCountNumber() == 2) c2 = e.getCountedValue();
+            if (e.getCountNumber() == 1) {
+                c1 = e.getCountedValue();
+                comentarioC1 = e.getComment();
+                if (e.getUserId() != null) {
+                    usuarioC1 = userRepository.findById(e.getUserId())
+                            .map(u -> (u.getName() != null ? u.getName() : u.getEmail())).orElse(null);
+                }
+            }
+            if (e.getCountNumber() == 2) {
+                c2 = e.getCountedValue();
+                comentarioC2 = e.getComment();
+                if (e.getUserId() != null) {
+                    usuarioC2 = userRepository.findById(e.getUserId())
+                            .map(u -> (u.getName() != null ? u.getName() : u.getEmail())).orElse(null);
+                }
+            }
         }
         java.math.BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1) : null;
 
@@ -709,6 +730,9 @@ public class LabelServiceImpl implements LabelService {
                 .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
                 .impreso(!persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, label.getWarehouseId()).isEmpty())
                 .mensaje(mensaje).existQty(existQty).existQtyUnidad(product.getUniMed())
+                // Agregar comentarios
+                .conteo1Comentario(comentarioC1).conteo1UsuarioNombre(usuarioC1)
+                .conteo2Comentario(comentarioC2).conteo2UsuarioNombre(usuarioC2)
                 .build();
     }
 
@@ -783,9 +807,26 @@ public class LabelServiceImpl implements LabelService {
 
                 List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
                 java.math.BigDecimal c1 = null, c2 = null;
+                String comentarioC1 = null, usuarioC1 = null;
+                String comentarioC2 = null, usuarioC2 = null;
+                
                 for (LabelCountEvent e : events) {
-                    if (e.getCountNumber() == 1) c1 = e.getCountedValue();
-                    if (e.getCountNumber() == 2) c2 = e.getCountedValue();
+                    if (e.getCountNumber() == 1) {
+                        c1 = e.getCountedValue();
+                        comentarioC1 = e.getComment();
+                        if (e.getUserId() != null) {
+                            usuarioC1 = userRepository.findById(e.getUserId())
+                                    .map(u -> (u.getName() != null ? u.getName() : u.getEmail())).orElse(null);
+                        }
+                    }
+                    if (e.getCountNumber() == 2) {
+                        c2 = e.getCountedValue();
+                        comentarioC2 = e.getComment();
+                        if (e.getUserId() != null) {
+                            usuarioC2 = userRepository.findById(e.getUserId())
+                                    .map(u -> (u.getName() != null ? u.getName() : u.getEmail())).orElse(null);
+                        }
+                    }
                 }
                 java.math.BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1) : null;
                 String mensaje = (c1 != null && c2 != null) ? "Completo" : (c1 != null) ? "Pendiente C2" : "Pendiente C1";
@@ -796,9 +837,13 @@ public class LabelServiceImpl implements LabelService {
                         .claveProducto(product.getCveArt()).descripcionProducto(product.getDescr())
                         .unidadMedida(product.getUniMed()).cancelado(false)
                         .conteo1(c1).conteo2(c2).diferencia(diferencia)
-                        .estado(label.getEstado().name()).impreso(true).mensaje(mensaje)
+                        .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
+                        .impreso(true).mensaje(mensaje)
                         .existQty(stockByProduct.get(label.getProductId()))
                         .existQtyUnidad(product.getUniMed())
+                        // Agregar comentarios
+                        .conteo1Comentario(comentarioC1).conteo1UsuarioNombre(usuarioC1)
+                        .conteo2Comentario(comentarioC2).conteo2UsuarioNombre(usuarioC2)
                         .build());
             } catch (Exception e) {
                 log.error("Error procesando folio {}: {}", label.getFolio(), e.getMessage());
@@ -1908,19 +1953,105 @@ public class LabelServiceImpl implements LabelService {
         java.util.Map<Long, java.util.List<Label>> labelsByWarehouse = new java.util.TreeMap<>(
             labels.stream().collect(java.util.stream.Collectors.groupingBy(Label::getWarehouseId)));
 
-        for (java.util.Map.Entry<Long, java.util.List<Label>> entry : labelsByWarehouse.entrySet()) {
+        for (Map.Entry<Long, java.util.List<Label>> entry : labelsByWarehouse.entrySet()) {
             Long warehouseId = entry.getKey();
             java.util.List<Label> warehouseLabels = entry.getValue();
-            
-            Long minFolio = warehouseLabels.stream().map(Label::getFolio).min(Long::compareTo).orElse(0L);
-            Long maxFolio = warehouseLabels.stream().map(Label::getFolio).max(Long::compareTo).orElse(0L);
-            
-            log.info("Registrando impresión para almacén {}: folios {}-{}", warehouseId, minFolio, maxFolio);
+            Long minFolio = warehouseLabels.getFirst().getFolio();
+            Long maxFolio = warehouseLabels.getLast().getFolio();
             persistence.printLabelsRange(request.getPeriodId(), warehouseId, minFolio, maxFolio, userId, false);
         }
 
         log.info("✅ Impresión completada: {} marbetes de {} almacenes, {} KB", 
-                labels.size(), warehouseCountMap.size(), pdfBytes.length / 1024);
+                labels.size(), labelsByWarehouse.size(), pdfBytes.length / 1024);
         return pdfBytes;
+    }
+
+    @Override
+    @Transactional
+    public byte[] printSelectedLabelsWithQR(PrintSelectedLabelsRequestDTO request, Long userId, String userRole) {
+        log.info("🎯 /print-selected-with-qr: Imprimiendo {} marbetes CON QR - usuario={}", 
+                request.getFolios().size(), userId);
+
+        if (request.getFolios() == null || request.getFolios().isEmpty()) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un folio");
+        }
+
+        if (request.getFolios().size() > 500) {
+            throw new IllegalArgumentException("Máximo 500 marbetes por impresión");
+        }
+
+        warehouseAccessService.validateWarehouseAccess(userId, request.getWarehouseId(), userRole);
+
+        try {
+            // Generar marbetes CON QR para los folios específicos
+            List<MarbeteReportDTO> marbetesConQR = marbeteQRIntegrationService
+                .generarMarbetesEspecificosConQR(request.getFolios(), request.getPeriodId(), request.getWarehouseId());
+
+            if (marbetesConQR.isEmpty()) {
+                log.warn("⚠️ No se encontraron los folios solicitados");
+                throw new LabelNotFoundException("No se encontraron marbetes para los folios proporcionados");
+            }
+
+            // Generar PDF con QR usando el método helper del controlador
+            // NOTA: Estamos dentro del servicio, así que usamos una lógica similar pero encapsulada
+            byte[] pdfBytes = generarPDFConQRInterno(marbetesConQR);
+            
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                throw new InvalidLabelStateException("Error generando PDF con QR");
+            }
+
+            // Registrar impresión
+            Long minFolio = request.getFolios().stream().min(Long::compareTo).orElse(0L);
+            Long maxFolio = request.getFolios().stream().max(Long::compareTo).orElse(0L);
+            persistence.printLabelsRange(request.getPeriodId(), request.getWarehouseId(), minFolio, maxFolio, userId, false);
+
+            log.info("✅ Impresión CON QR completada: {} marbetes, {} KB", marbetesConQR.size(), pdfBytes.length / 1024);
+            return pdfBytes;
+            
+        } catch (Exception e) {
+            log.error("❌ Error al generar PDF específico con QR: {}", e.getMessage(), e);
+            throw new InvalidLabelStateException("Error generando PDF con QR: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Helper interno para generar PDF con QR a partir de DTOs de marbetes
+     * Nota: Este método utiliza la plantilla Carta_Tres_Cuadros_QR.jrxml
+     * que ya está configurada en JasperReportCacheService
+     */
+    private byte[] generarPDFConQRInterno(List<MarbeteReportDTO> marbetes) {
+        try {
+            log.info("📄 Generando PDF con QR para {} marbetes", marbetes.size());
+            
+            if (marbetes == null || marbetes.isEmpty()) {
+                log.warn("⚠️ Lista de marbetes vacía o null");
+                return new byte[0];
+            }
+            
+            // Crear datasource directamente desde los DTOs
+            net.sf.jasperreports.engine.data.JRBeanCollectionDataSource datasource = 
+                new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource(marbetes);
+            
+            // Usar la plantilla Carta_Tres_Cuadros_QR con parámetros vacíos
+            java.util.Map<String, Object> parameters = new java.util.HashMap<>();
+            
+            // Obtener la plantilla compilada del cache (reutiliza la misma que usa JasperLabelPrintService)
+            net.sf.jasperreports.engine.JasperReport jasperReport = 
+                reportCacheService.getReport("Carta_Tres_Cuadros_QR");
+            
+            // Llenar el reporte
+            net.sf.jasperreports.engine.JasperPrint jasperPrint = 
+                net.sf.jasperreports.engine.JasperFillManager.fillReport(jasperReport, parameters, datasource);
+            
+            // Exportar a PDF
+            byte[] pdfBytes = net.sf.jasperreports.engine.JasperExportManager.exportReportToPdf(jasperPrint);
+            
+            log.info("✅ PDF con QR generado exitosamente: {} bytes", pdfBytes.length);
+            return pdfBytes;
+            
+        } catch (Exception e) {
+            log.error("❌ Error al generar PDF con QR: {}", e.getMessage(), e);
+            throw new InvalidLabelStateException("Error generando PDF con QR: " + e.getMessage());
+        }
     }
 }

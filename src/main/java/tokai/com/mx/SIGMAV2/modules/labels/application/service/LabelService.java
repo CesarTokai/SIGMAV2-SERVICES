@@ -185,4 +185,16 @@ public interface LabelService {
      * @return Lista de marbetes con comentarios de conteos
      */
     List<LabelWithCommentsReportDTO> getLabelListWithComments(ReportFilterDTO filter, Long userId, String userRole);
-}
+
+    /**
+     * 🖨️ POST /labels/print-selected-with-qr
+     * Imprime marbetes específicos CON QR
+     * El usuario proporciona los folios y se genera PDF con QR incluido
+     * 
+     * @param request DTO con folios a imprimir
+     * @param userId ID del usuario
+     * @param userRole Rol del usuario
+     * @return byte[] PDF con los marbetes y sus códigos QR
+     */
+    byte[] printSelectedLabelsWithQR(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
+ }

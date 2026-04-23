@@ -103,7 +103,7 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    @PutMapping("/counts/c1")
+    @PutMapping("/counts/c1/update")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
@@ -111,7 +111,7 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
-    @PutMapping("/counts/c2")
+    @PutMapping("/counts/c2/update")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
@@ -1410,6 +1410,52 @@ public class LabelsController {
             return ResponseEntity.status(400).build();
         } catch (Exception e) {
             log.error("❌ Error al imprimir marbetes: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    /**
+     * 🎯 POST /labels/print-selected-with-qr
+     * Imprime marbetes específicos CON QR (similar a print-selected pero con códigos QR)
+     * 
+     * Request: {
+     *   "folios": [1, 142, 200],
+     *   "periodId": 1,
+     *   "warehouseId": 40
+     * }
+     * 
+     * Response: PDF binario con los marbetes y sus códigos QR incluidos
+     */
+    @PostMapping("/print-selected-with-qr")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
+    public ResponseEntity<byte[]> printSelectedLabelsWithQR(
+            @RequestBody PrintSelectedLabelsRequestDTO request) {
+        
+        Long userId = getUserIdFromToken();
+        log.info("🎯 /labels/print-selected-with-qr: Imprimiendo {} marbetes CON QR - usuario={}", 
+                request.getFolios().size(), userId);
+        
+        try {
+            byte[] pdfBytes = labelService.printSelectedLabelsWithQR(request, userId, getUserRoleFromToken());
+            
+            String filename = String.format("marbetes_qr_seleccionados_%d.pdf", System.currentTimeMillis());
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filename).build());
+            headers.setContentLength(pdfBytes.length);
+            
+            log.info("✅ Impresión CON QR completada: {} marbetes, {} KB", 
+                    request.getFolios().size(), pdfBytes.length / 1024);
+            
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("❌ Error en parámetros: {}", e.getMessage());
+            return ResponseEntity.status(400).build();
+        } catch (Exception e) {
+            log.error("❌ Error al imprimir marbetes con QR: {}", e.getMessage(), e);
             return ResponseEntity.status(500).build();
         }
     }

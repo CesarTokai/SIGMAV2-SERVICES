@@ -33,5 +33,11 @@ public class LabelForCountDTO {
     private String mensaje;
     private BigDecimal existQty;
     private String existQtyUnidad;
+    
+    // Comentarios de conteos
+    private String conteo1Comentario;
+    private String conteo1UsuarioNombre;
+    private String conteo2Comentario;
+    private String conteo2UsuarioNombre;
 }
 
