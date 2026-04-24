@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserActivityLogRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUserActivityLog;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUserActivityLog;
 import tokai.com.mx.SIGMAV2.security.infrastructure.adapter.SecurityUserAdapter;
 
 import java.util.*;
@@ -54,7 +54,7 @@ public class UserActivityLogController {
             }
 
             User user = userOpt.get();
-            tokai.com.mx.SIGMAV2.modules.users.model.BeanUser beanUser =
+            tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser beanUser =
                 securityUserAdapter.toLegacyUser(user);
 
             Pageable pageable = PageRequest.of(page, size);
@@ -118,7 +118,7 @@ public class UserActivityLogController {
             }
 
             User user = userOpt.get();
-            tokai.com.mx.SIGMAV2.modules.users.model.BeanUser beanUser =
+            tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser beanUser =
                 securityUserAdapter.toLegacyUser(user);
 
             // Obtener últimas actividades (máximo 10)

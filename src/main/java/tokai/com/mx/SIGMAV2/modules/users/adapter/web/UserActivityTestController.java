@@ -44,7 +44,7 @@ public class UserActivityTestController {
             }
 
             User user = userOpt.get();
-            tokai.com.mx.SIGMAV2.modules.users.model.BeanUser beanUser =
+            tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser beanUser =
                 securityUserAdapter.toLegacyUser(user);
 
             switch (actionType) {

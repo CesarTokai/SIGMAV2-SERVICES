@@ -9,7 +9,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInve
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventoryStockEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

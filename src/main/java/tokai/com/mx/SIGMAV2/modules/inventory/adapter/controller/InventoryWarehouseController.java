@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.inventory.application.controller;
+package tokai.com.mx.SIGMAV2.modules.inventory.adapter.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.users.model;
+package tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence;
 
 public enum ERole {
     ADMINISTRADOR,

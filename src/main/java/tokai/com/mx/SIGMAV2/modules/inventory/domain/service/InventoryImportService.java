@@ -18,7 +18,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImport
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Period;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 
 import java.util.*;
 import java.math.BigDecimal;

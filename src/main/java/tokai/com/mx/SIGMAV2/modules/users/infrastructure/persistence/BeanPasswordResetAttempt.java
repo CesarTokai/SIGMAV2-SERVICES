@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.users.model;
+package tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,9 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
-/**
- * Entidad para rastrear intentos fallidos de validación de código en recuperación de contraseña
- */
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
@@ -26,7 +23,7 @@ public class BeanPasswordResetAttempt {
     private BeanUser user;
 
     @Column(name = "attempt_type", nullable = false)
-    private String attemptType; // "CODE_VALIDATION" o "PASSWORD_VALIDATION"
+    private String attemptType;
 
     @Column(name = "is_successful", nullable = false)
     private boolean isSuccessful;
@@ -40,4 +37,3 @@ public class BeanPasswordResetAttempt {
     @Column(name = "error_message")
     private String errorMessage;
 }
-

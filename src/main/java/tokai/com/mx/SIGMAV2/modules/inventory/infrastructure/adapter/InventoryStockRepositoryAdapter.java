@@ -5,7 +5,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventoryStockRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.mapper.InventoryStockMapper;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventoryStockRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventoryStockEntity;
 
 import java.util.Optional;
 

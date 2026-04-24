@@ -10,8 +10,8 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanR
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.port.input.PasswordRecoveryService;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.ResponsePageRequestRecoveryDTO;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.mapper.PasswordRecoveryMapper;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 public interface  PasswordRecoveryRepository {
     

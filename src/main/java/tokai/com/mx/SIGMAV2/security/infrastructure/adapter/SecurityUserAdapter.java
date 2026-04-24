@@ -3,8 +3,8 @@ package tokai.com.mx.SIGMAV2.security.infrastructure.adapter;
 import org.springframework.stereotype.Component;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 /**
  * Adaptador para el módulo de seguridad

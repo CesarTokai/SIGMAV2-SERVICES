@@ -13,8 +13,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 @Repository
 public interface JpaUserRepository extends JpaRepository<BeanUser, Long> {

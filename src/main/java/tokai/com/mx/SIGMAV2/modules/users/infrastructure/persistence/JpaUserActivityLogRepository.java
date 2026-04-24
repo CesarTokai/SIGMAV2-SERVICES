@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUserActivityLog;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUserActivityLog;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 import java.time.LocalDateTime;
 import java.util.List;
 

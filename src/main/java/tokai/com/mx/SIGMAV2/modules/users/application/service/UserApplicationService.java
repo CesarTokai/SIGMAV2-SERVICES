@@ -187,7 +187,7 @@ public class UserApplicationService implements UserService {
         ValidationUtils.validateEmail(email);
         String normalizedEmail = email.toLowerCase().trim();
         
-        tokai.com.mx.SIGMAV2.modules.users.model.BeanUser user = jpaUserRepository.findByEmail(normalizedEmail)
+        tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser user = jpaUserRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado: " + email));
 
         try {

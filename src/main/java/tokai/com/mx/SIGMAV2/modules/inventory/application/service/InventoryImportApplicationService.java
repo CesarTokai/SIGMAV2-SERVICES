@@ -25,7 +25,7 @@ import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.InventorySnaps
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.ProductRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 
 import java.io.InputStream;
 import java.math.BigDecimal;

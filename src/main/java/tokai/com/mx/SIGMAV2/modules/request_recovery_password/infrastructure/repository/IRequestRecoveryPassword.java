@@ -10,8 +10,8 @@ import org.springframework.stereotype.Repository;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanRequestRecoveryPassword;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.model.BeanRequestStatus;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.ResponsePageRequestRecoveryDTO;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 @Repository
 public interface IRequestRecoveryPassword extends JpaRepository<BeanRequestRecoveryPassword, Long> {

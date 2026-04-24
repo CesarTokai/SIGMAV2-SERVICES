@@ -3,8 +3,8 @@ package tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper;
 import org.springframework.stereotype.Component;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 /**
  * Mapper entre el modelo de dominio y las entidades de infraestructura

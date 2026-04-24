@@ -1,9 +1,7 @@
-package tokai.com.mx.SIGMAV2.modules.inventory.application.controller;
+package tokai.com.mx.SIGMAV2.modules.inventory.adapter.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -59,8 +57,6 @@ public class InventoryController {
         this.periodRepository = periodRepository;
     }
 
-    // ── Stock ─────────────────────────────────────────────────────────────
-
     @GetMapping("/stock")
     public ResponseEntity<InventoryStockDTO> getCurrentStock(
             @RequestParam("productId") Long productId,
@@ -70,8 +66,6 @@ public class InventoryController {
         if (stock == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(mapToStockDTO(stock));
     }
-
-    // ── Importación ───────────────────────────────────────────────────────
 
     @PostMapping("/import")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA')")
@@ -89,21 +83,15 @@ public class InventoryController {
         return ResponseEntity.ok(result);
     }
 
-    // ── Productos ─────────────────────────────────────────────────────────
-
     @GetMapping("/products")
     public ResponseEntity<List<Product>> listProducts() {
         return ResponseEntity.ok(productRepository.findAll());
     }
 
-    // ── Almacenes ─────────────────────────────────────────────────────────
-
     @GetMapping("/warehouses")
     public ResponseEntity<List<Warehouse>> listWarehouses() {
         return ResponseEntity.ok(warehouseRepository.findAll());
     }
-
-    // ── Periodos ──────────────────────────────────────────────────────────
 
     @GetMapping("/all-periods")
     public ResponseEntity<List<Period>> listPeriods() {
@@ -117,8 +105,6 @@ public class InventoryController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
-    // ── Reporte por periodo ───────────────────────────────────────────────
 
     @GetMapping("/period-report")
     public ResponseEntity<List<InventoryPeriodReportDTO>> periodReport(
@@ -149,13 +135,6 @@ public class InventoryController {
         return ResponseEntity.ok(reportList);
     }
 
-    // ── Helpers privados ──────────────────────────────────────────────────
-
-    /**
-     * Construye los criterios de ordenamiento mapeando campos del frontend
-     * a columnas reales de la entidad JPA.
-     * ✅ Fix: ahora ordena por el campo correcto de la tabla, no siempre por productId.
-     */
     private List<Sort.Order> buildSortOrders(String[] sort) {
         List<Sort.Order> orders = new ArrayList<>();
         for (String sortParam : sort) {
@@ -171,22 +150,14 @@ public class InventoryController {
         return orders;
     }
 
-    /**
-     * Mapea nombres de campo del frontend a campos de InventorySnapshotJpaEntity.
-     * Para campos de producto (cveArt, descr, uniMed) se ordena por productId como
-     * aproximación hasta que se implemente un UseCase con JOIN real.
-     */
     private String mapSortField(String field) {
         return switch (field.toLowerCase()) {
             case "existqty", "existencias", "exist_qty" -> "existQty";
             case "status", "estado"                     -> "status";
             case "createdat", "created_at"              -> "createdAt";
-            // Para campos de producto, el orden exacto requeriría un JOIN;
-            // se usa productId como proxy hasta migrar period-report a un UseCase dedicado.
             default -> "productId";
         };
     }
-
 
     private InventoryStockDTO mapToStockDTO(InventoryStock stock) {
         InventoryStockDTO dto = new InventoryStockDTO();

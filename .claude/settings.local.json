@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\model\\\\Label.java\")",
+      "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\service\\\\LabelManagementService.java\")",
+      "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\ports\\\\input\\\\LabelManagementUseCase.java\")",
+      "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\ports\\\\output\\\\LabelRepository.java\")",
+      "Bash(./mvnw compile *)"
+    ]
+  }
+}

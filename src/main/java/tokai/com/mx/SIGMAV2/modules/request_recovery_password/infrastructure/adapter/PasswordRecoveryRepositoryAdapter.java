@@ -12,8 +12,8 @@ import tokai.com.mx.SIGMAV2.modules.request_recovery_password.domain.port.output
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.dto.ResponsePageRequestRecoveryDTO;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.mapper.PasswordRecoveryMapper;
 import tokai.com.mx.SIGMAV2.modules.request_recovery_password.infrastructure.repository.IRequestRecoveryPassword;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserDomainMapper;
 

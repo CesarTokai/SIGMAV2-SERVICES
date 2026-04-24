@@ -20,7 +20,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCo
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
 
 import java.io.BufferedWriter;

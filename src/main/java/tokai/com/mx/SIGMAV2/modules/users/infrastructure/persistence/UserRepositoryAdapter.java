@@ -10,7 +10,7 @@ import tokai.com.mx.SIGMAV2.modules.users.domain.model.Role;
 import tokai.com.mx.SIGMAV2.modules.users.domain.model.User;
 import tokai.com.mx.SIGMAV2.modules.users.domain.port.output.UserRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.mapper.UserMapper;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 import jakarta.persistence.EntityManager;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -118,7 +118,7 @@ public class UserRepositoryAdapter implements UserRepository {
         log.debug("Buscando usuarios por criterios: email={}, role={}, verified={}, status={}", 
                 email, role, verified, status);
         // Convertir Role del dominio a ERole de infraestructura
-        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = role != null ? userMapper.mapToERole(role) : null;
+        tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole eRole = role != null ? userMapper.mapToERole(role) : null;
         return jpaUserRepository.findByCriteria(email, eRole, verified, status, pageable)
                 .map(userMapper::toDomain);
     }
@@ -148,7 +148,7 @@ public class UserRepositoryAdapter implements UserRepository {
     public List<User> findByRole(Role role) {
         log.debug("Buscando usuarios por rol: {}", role);
         // Convertir Role del dominio a ERole de infraestructura
-        tokai.com.mx.SIGMAV2.modules.users.model.ERole eRole = userMapper.mapToERole(role);
+        tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole eRole = userMapper.mapToERole(role);
         return jpaUserRepository.findByRole(eRole)
                 .stream()
                 .map(userMapper::toDomain)

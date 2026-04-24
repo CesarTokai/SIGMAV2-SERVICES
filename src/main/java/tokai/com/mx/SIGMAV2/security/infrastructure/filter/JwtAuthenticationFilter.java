@@ -19,7 +19,7 @@ import tokai.com.mx.SIGMAV2.security.infrastructure.exception.*;
 import tokai.com.mx.SIGMAV2.security.infrastructure.jwt.JwtUtils;
 import tokai.com.mx.SIGMAV2.security.infrastructure.service.JwtBlacklistService;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
-import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
 import tokai.com.mx.SIGMAV2.shared.response.ApiResponse;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.users.model;
+package tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 
@@ -58,7 +58,6 @@ public class BeanUser {
     @Column(name = "last_blocked_at")
     private LocalDateTime lastBlockedAt;
 
-    // ═══ Información Personal (consolidada en users) ═══
     @Column(name = "name")
     private String name;
 
@@ -74,13 +73,12 @@ public class BeanUser {
     @Column(name = "comments", columnDefinition = "LONGTEXT")
     private String comments;
 
-
     @Override
     public String toString() {
         return "BeanUser [id=" + id + ", email=" + email + ", passwordHash=" + passwordHash + ", role=" + role
                 + ", status=" + status + ", isVerified=" + isVerified + ", attempts=" + attempts + ", lastTryAt="
                 + lastTryAt + ", verificationCode=" + verificationCode + ", createdAt=" + createdAt + ", updatedAt="
-                + updatedAt + ", name=" + name + ", firstLastName=" + firstLastName + ", secondLastName=" 
+                + updatedAt + ", name=" + name + ", firstLastName=" + firstLastName + ", secondLastName="
                 + secondLastName + ", phoneNumber=" + phoneNumber + "]";
     }
 
@@ -103,4 +101,3 @@ public class BeanUser {
     public BeanUser() {
     }
 }
-

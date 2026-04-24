@@ -1,4 +1,4 @@
-package tokai.com.mx.SIGMAV2.modules.users.model;
+package tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,10 +23,10 @@ public class BeanUserActivityLog {
     private BeanUser user;
 
     @Column(name = "action_type", nullable = false)
-    private String actionType; // LOGIN, LOGOUT, BLOCKED, UNBLOCKED, DEACTIVATED, ACTIVATED, PASSWORD_CHANGED, FAILED_LOGIN, PASSWORD_RESET_ATTEMPT
+    private String actionType;
 
     @Column(name = "action_details")
-    private String actionDetails; // Detalles adicionales (razón del bloqueo, etc)
+    private String actionDetails;
 
     @Column(name = "ip_address")
     private String ipAddress;
@@ -35,9 +35,8 @@ public class BeanUserActivityLog {
     private LocalDateTime timestamp;
 
     @Column(name = "previous_status")
-    private String previousStatus; // Estado anterior (para cambios de status)
+    private String previousStatus;
 
     @Column(name = "new_status")
-    private String newStatus; // Estado nuevo
+    private String newStatus;
 }
-

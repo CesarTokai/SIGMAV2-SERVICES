@@ -35,3 +35,8 @@ build/
 # Archivos de backup
 *.backup
 *.bak
+
+# Configuración local con secretos (nunca commitear)
+application-local.properties
+*.env
+.env

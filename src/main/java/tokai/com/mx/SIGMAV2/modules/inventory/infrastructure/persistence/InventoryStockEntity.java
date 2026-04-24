@@ -1,11 +1,9 @@
-package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity;
+package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -50,8 +48,8 @@ public class InventoryStockEntity {
     private LocalDateTime updatedAt;
 
     public enum Status {
-        A, // Alta
-        B  // Baja
+        A,
+        B
     }
 
     @PrePersist

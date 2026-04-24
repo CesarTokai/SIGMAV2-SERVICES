@@ -3,7 +3,7 @@ package tokai.com.mx.SIGMAV2.shared.validation;
 import tokai.com.mx.SIGMAV2.shared.exception.InvalidEmailFormatException;
 import tokai.com.mx.SIGMAV2.shared.exception.InvalidRoleException;
 import tokai.com.mx.SIGMAV2.shared.exception.WeakPasswordException;
-import tokai.com.mx.SIGMAV2.modules.users.model.ERole;
+import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.ERole;
 
 import java.util.regex.Pattern;
 

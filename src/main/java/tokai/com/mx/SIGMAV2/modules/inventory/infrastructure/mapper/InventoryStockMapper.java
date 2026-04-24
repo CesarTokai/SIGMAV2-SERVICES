@@ -3,7 +3,7 @@ package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.mapper;
 
 import org.springframework.stereotype.Component;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventoryStockEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 
