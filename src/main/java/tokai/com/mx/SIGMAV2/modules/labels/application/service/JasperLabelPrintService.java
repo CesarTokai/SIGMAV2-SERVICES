@@ -43,7 +43,7 @@ public class JasperLabelPrintService {
      * @return byte[] del PDF generado
      */
     public byte[] generateLabelsPdf(List<Label> labels) {
-        return generateLabelsPdf(labels, false);
+        return generateLabelsPdf(labels, true);
     }
 
     /**

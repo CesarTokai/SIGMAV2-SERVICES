@@ -83,7 +83,9 @@
                 </reportElement>
             </line>
             <image>
-                <reportElement x="60" y="120" width="91" height="89" uuid="81bc9149-c5dc-4645-983a-6b219f710d19" printWhenExpression="new Boolean($F{qrImage1} != null)"/>
+                <reportElement x="60" y="120" width="91" height="89" uuid="81bc9149-c5dc-4645-983a-6b219f710d19">
+                    <printWhenExpression><![CDATA[$F{qrImage1} != null]]></printWhenExpression>
+                </reportElement>
                 <imageExpression><![CDATA[$F{qrImage1}]]></imageExpression>
             </image>
             <staticText>
@@ -108,170 +110,220 @@
                 <text><![CDATA[Codigo y descripcion]]></text>
             </staticText>
             <rectangle>
-                <reportElement x="221" y="17" width="150" height="224" uuid="53268ac8-cffa-436d-b2e6-4bad8a76d1b0" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="221" y="17" width="150" height="224" uuid="53268ac8-cffa-436d-b2e6-4bad8a76d1b0">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <graphicElement>
                     <pen lineWidth="1.0" lineColor="#000000"/>
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="223" y="18" width="52" height="19" uuid="ee8d3c9d-a55d-4c23-adb4-222988901fcf" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="223" y="18" width="52" height="19" uuid="ee8d3c9d-a55d-4c23-adb4-222988901fcf">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="10.5" isBold="false"/>
                 </textElement>
                 <text><![CDATA[N.Marbete:]]></text>
             </staticText>
             <textField>
-                <reportElement x="276" y="17" width="93" height="19" uuid="f8ff8e90-26a9-4049-b830-e426708daa3c" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="276" y="17" width="93" height="19" uuid="f8ff8e90-26a9-4049-b830-e426708daa3c">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="10.5"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{nomMarbete2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="221" y="83" width="150" height="14" uuid="79bb3e36-6d94-4817-8ebb-db3b92507020" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="221" y="83" width="150" height="14" uuid="79bb3e36-6d94-4817-8ebb-db3b92507020">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="9" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{clave2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="221" y="98" width="150" height="14" uuid="41ed6977-cae2-4ce4-afd4-69e537213e23" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="221" y="98" width="150" height="14" uuid="41ed6977-cae2-4ce4-afd4-69e537213e23">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="9" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descr2}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement x="223" y="222" width="53" height="18" uuid="20378f2f-7096-4861-873f-51a629dcc7e7" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="223" y="222" width="53" height="18" uuid="20378f2f-7096-4861-873f-51a629dcc7e7">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="12.5"/>
                 </textElement>
                 <text><![CDATA[Almacen:]]></text>
             </staticText>
             <textField>
-                <reportElement x="276" y="222" width="90" height="18" uuid="705db41e-3059-41b4-82b5-f6edc35167fb" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="276" y="222" width="90" height="18" uuid="705db41e-3059-41b4-82b5-f6edc35167fb">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{almacen2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="335" y="21" width="36" height="11" uuid="ec92bf4c-987a-4513-8701-3ad2b7b181a5" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="335" y="21" width="36" height="11" uuid="ec92bf4c-987a-4513-8701-3ad2b7b181a5">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{fecha2}]]></textFieldExpression>
             </textField>
             <line>
-                <reportElement positionType="FixRelativeToBottom" x="221" y="35" width="150" height="1" uuid="d955fb55-cdca-4984-b1a0-63c792a9e04c" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())">
+                <reportElement positionType="FixRelativeToBottom" x="221" y="35" width="150" height="1" uuid="d955fb55-cdca-4984-b1a0-63c792a9e04c">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
                 </reportElement>
             </line>
             <image>
-                <reportElement x="250" y="120" width="91" height="89" uuid="03e6c78c-387e-47eb-96c8-d84a80ff09e1" printWhenExpression="new Boolean($F{qrImage2} != null)"/>
+                <reportElement x="250" y="120" width="91" height="89" uuid="03e6c78c-387e-47eb-96c8-d84a80ff09e1">
+                    <printWhenExpression><![CDATA[$F{qrImage2} != null]]></printWhenExpression>
+                </reportElement>
                 <imageExpression><![CDATA[$F{qrImage2}]]></imageExpression>
             </image>
             <staticText>
-                <reportElement x="221" y="37" width="150" height="10" uuid="cca588fe-f192-465c-9f5a-db4b873d1df2" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="221" y="37" width="150" height="10" uuid="cca588fe-f192-465c-9f5a-db4b873d1df2">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="7" isBold="true"/>
                 </textElement>
                 <text><![CDATA[TARJETAS PARA INVENTARIO FISICO]]></text>
             </staticText>
             <staticText>
-                <reportElement x="248" y="48" width="94" height="16" uuid="db7a3679-633a-4da8-8275-3409c9575a21" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="248" y="48" width="94" height="16" uuid="db7a3679-633a-4da8-8275-3409c9575a21">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="10.5"/>
                 </textElement>
                 <text><![CDATA[TOKAI DE MEXICO]]></text>
             </staticText>
             <staticText>
-                <reportElement x="256" y="64" width="80" height="17" uuid="84830ea5-32f0-4226-9c36-49a5a5321a94" printWhenExpression="new Boolean(!$F{nomMarbete2}.isEmpty())"/>
+                <reportElement x="256" y="64" width="80" height="17" uuid="84830ea5-32f0-4226-9c36-49a5a5321a94">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete2}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5"/>
                 </textElement>
                 <text><![CDATA[Codigo y descripcion]]></text>
             </staticText>
             <rectangle>
-                <reportElement x="411" y="17" width="150" height="224" uuid="6b14fd2b-0586-4e63-b51f-983c3f3eddc7" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="411" y="17" width="150" height="224" uuid="6b14fd2b-0586-4e63-b51f-983c3f3eddc7">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <graphicElement>
                     <pen lineWidth="1.0" lineColor="#000000"/>
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="413" y="18" width="52" height="19" uuid="9d60f274-7b30-40eb-9d6a-1e242e18fea5" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="413" y="18" width="52" height="19" uuid="9d60f274-7b30-40eb-9d6a-1e242e18fea5">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="10.5" isBold="false"/>
                 </textElement>
                 <text><![CDATA[N.Marbete:]]></text>
             </staticText>
             <textField>
-                <reportElement x="466" y="17" width="93" height="19" uuid="b7776de0-b721-40aa-b8f2-03e77d868bc3" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="466" y="17" width="93" height="19" uuid="b7776de0-b721-40aa-b8f2-03e77d868bc3">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="10.5"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{nomMarbete3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="411" y="83" width="150" height="14" uuid="4be4f3ff-3905-4cf0-81b8-28854a45e65a" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="411" y="83" width="150" height="14" uuid="4be4f3ff-3905-4cf0-81b8-28854a45e65a">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="9" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{clave3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="411" y="98" width="150" height="14" uuid="a5c9ed6b-a9da-4d61-8ddf-ea48a61aecdc" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="411" y="98" width="150" height="14" uuid="a5c9ed6b-a9da-4d61-8ddf-ea48a61aecdc">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="9" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descr3}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement x="413" y="222" width="53" height="18" uuid="fa6cea90-138b-4d24-89ba-6d9a26f62155" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="413" y="222" width="53" height="18" uuid="fa6cea90-138b-4d24-89ba-6d9a26f62155">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="12.5"/>
                 </textElement>
                 <text><![CDATA[Almacen:]]></text>
             </staticText>
             <textField>
-                <reportElement x="466" y="222" width="90" height="18" uuid="338295bf-2d09-4f68-8baf-aa67a4d40562" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="466" y="222" width="90" height="18" uuid="338295bf-2d09-4f68-8baf-aa67a4d40562">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{almacen3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="525" y="21" width="36" height="11" uuid="0a916357-c5b3-4680-bcc0-f5b8cda633b1" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="525" y="21" width="36" height="11" uuid="0a916357-c5b3-4680-bcc0-f5b8cda633b1">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{fecha3}]]></textFieldExpression>
             </textField>
             <line>
-                <reportElement positionType="FixRelativeToBottom" x="411" y="35" width="150" height="1" uuid="7ab5a323-6b5f-453a-a7b7-a4b418e37cd5" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())">
+                <reportElement positionType="FixRelativeToBottom" x="411" y="35" width="150" height="1" uuid="7ab5a323-6b5f-453a-a7b7-a4b418e37cd5">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
                 </reportElement>
             </line>
             <image>
-                <reportElement x="440" y="120" width="91" height="89" uuid="2580e6ba-6465-4e04-9192-5f98c9bbe540" printWhenExpression="new Boolean($F{qrImage3} != null)"/>
+                <reportElement x="440" y="120" width="91" height="89" uuid="2580e6ba-6465-4e04-9192-5f98c9bbe540">
+                    <printWhenExpression><![CDATA[$F{qrImage3} != null]]></printWhenExpression>
+                </reportElement>
                 <imageExpression><![CDATA[$F{qrImage3}]]></imageExpression>
             </image>
             <staticText>
-                <reportElement x="411" y="37" width="150" height="10" uuid="cf780f80-3a56-4228-b00e-7f38646ac1cd" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="411" y="37" width="150" height="10" uuid="cf780f80-3a56-4228-b00e-7f38646ac1cd">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="7" isBold="true"/>
                 </textElement>
                 <text><![CDATA[TARJETAS PARA INVENTARIO FISICO]]></text>
             </staticText>
             <staticText>
-                <reportElement x="438" y="48" width="94" height="16" uuid="3de94eb7-8b4a-451e-baca-3b0865328e37" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="438" y="48" width="94" height="16" uuid="3de94eb7-8b4a-451e-baca-3b0865328e37">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="10.5"/>
                 </textElement>
                 <text><![CDATA[TOKAI DE MEXICO]]></text>
             </staticText>
             <staticText>
-                <reportElement x="446" y="64" width="80" height="17" uuid="44031a4d-fc41-41b8-9318-6fe461b87cb2" printWhenExpression="new Boolean(!$F{nomMarbete3}.isEmpty())"/>
+                <reportElement x="446" y="64" width="80" height="17" uuid="44031a4d-fc41-41b8-9318-6fe461b87cb2">
+                    <printWhenExpression><![CDATA[!$F{nomMarbete3}.isEmpty()]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5"/>
                 </textElement>

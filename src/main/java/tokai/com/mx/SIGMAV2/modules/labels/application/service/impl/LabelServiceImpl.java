@@ -202,7 +202,7 @@ public class LabelServiceImpl implements LabelService {
         }
         labels.sort(Comparator.comparing(Label::getFolio));
 
-        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels, withQR);
+        byte[] pdfBytes = jasperLabelPrintService.generateLabelsPdf(labels, true);
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new InvalidLabelStateException("Error generando PDF");
         }
