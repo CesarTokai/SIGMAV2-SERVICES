@@ -106,7 +106,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), dto.getPeriodId(), userId, roleUpper);
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
         LabelCountEvent eventC1 = events.stream()
@@ -153,7 +153,7 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), dto.getPeriodId(), userId, roleUpper);
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
         LabelCountEvent eventC2 = events.stream()
@@ -209,9 +209,9 @@ public class LabelCountService {
 
     private Label findAndValidateLabelForCount(Long folio, Long periodId, Long warehouseId,
                                                Long userId, String roleUpper) {
-        Optional<Label> optLabel = persistence.findByFolio(folio);
+        Optional<Label> optLabel = persistence.findByFolioAndPeriodId(folio, periodId);
         if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException(String.format("El folio %d no existe en el sistema", folio));
+            throw new LabelNotFoundException(String.format("El folio %d no existe en el periodo %s", folio, periodId));
         }
         Label label = optLabel.get();
 
@@ -244,10 +244,10 @@ public class LabelCountService {
         return label;
     }
 
-    private Label findLabelForUpdate(Long folio, Long userId, String roleUpper) {
-        Optional<Label> optLabel = persistence.findByFolio(folio);
+    private Label findLabelForUpdate(Long folio, Long periodId, Long userId, String roleUpper) {
+        Optional<Label> optLabel = persistence.findByFolioAndPeriodId(folio, periodId);
         if (optLabel.isEmpty()) {
-            throw new LabelNotFoundException("El folio " + folio + " no existe");
+            throw new LabelNotFoundException(String.format("El folio %d no existe en el periodo %s", folio, periodId));
         }
         Label label = optLabel.get();
 

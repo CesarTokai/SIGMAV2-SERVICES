@@ -18,9 +18,9 @@ public class CountEventDTO {
     private BigDecimal countedValue;
 
     /**
-     * Periodo al que se espera que pertenezca el folio (opcional para validación)
-     * Si se proporciona, se valida que el marbete pertenezca a este periodo
+      * Periodo al que pertenece el folio (OBLIGATORIO con PK compuesta folio+periodo)
      */
+    @NotNull(message = "El período es obligatorio")
     private Long periodId;
 
     /**

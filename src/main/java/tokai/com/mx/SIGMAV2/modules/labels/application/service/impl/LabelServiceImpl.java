@@ -141,14 +141,14 @@ public class LabelServiceImpl implements LabelService {
         return labelPrintService.extraordinaryReprint(dto, userId, userRole);
     }
 
-    @Override @Transactional(readOnly = true)
-    public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
-        return labelPrintService.getPrintedLabelPdf(folio, userId, userRole);
+    @Override
+    public byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole) {
+        return labelPrintService.getPrintedLabelPdf(folio, periodId, userId, userRole);
     }
 
-    @Override @Transactional
-    public byte[] reprintSimple(Long folio, Long userId, String userRole) {
-        return labelPrintService.reprintSimple(folio, userId, userRole);
+    @Override
+    public byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole) {
+        return labelPrintService.reprintSimple(folio, periodId, userId, userRole);
     }
 
     @Override @Transactional
@@ -230,8 +230,8 @@ public class LabelServiceImpl implements LabelService {
     }
 
     @Override @Transactional(readOnly = true)
-    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole) {
-        return labelQueryService.getLabelFullDetail(folio, userId, userRole);
+    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole) {
+        return labelQueryService.getLabelFullDetail(folio, periodId, userId, userRole);
     }
 
     @Override @Transactional(readOnly = true)

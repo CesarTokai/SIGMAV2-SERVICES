@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public interface JpaLabelRepository extends JpaRepository<Label, Long> {
+public interface JpaLabelRepository extends JpaRepository<Label, Label.LabelId> {
 
     boolean existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(Long productId, Long warehouseId, Long periodId, Label.State estado);
 
@@ -22,11 +22,21 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     long countByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
 
+    /**
+     * IMPORTANTE: findByFolioBetween ahora puede retornar marbetes de MÚLTIPLES periodos
+     * Úsalo solo cuando realmente necesites buscar por folio sin filtro de periodo
+     * En la mayoría de casos, usa findByFolioAndPeriodId
+     */
     List<Label> findByFolioBetween(Long startFolio, Long endFolio);
 
     List<Label> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);
 
     java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
+    
+    /**
+     * Busca un marbete por su PK compuesta (folio + periodId)
+     */
+    java.util.Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
 
 
     List<Label> findByFolioInAndPeriodIdAndWarehouseId(Collection<Long> folios, Long periodId, Long warehouseId);

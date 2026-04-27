@@ -86,25 +86,27 @@ public interface LabelService {
     tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole);
 
     /**
-     * 🔍 GET /labels/{folio}/pdf
+     * 📄 GET /labels/{folio}/pdf
      * Obtiene el PDF de un marbete ya impreso
      * @param folio ID del folio
+     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario
      * @param userRole Rol del usuario
      * @return byte[] con el PDF del marbete
      */
-    byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole);
+    byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 🔄 POST /labels/{folio}/reprint-simple
      * Reimprimir un marbete ya impreso actualizando solo el timestamp
      * Sin cambiar su estado ni generar nuevos folios
      * @param folio ID del folio
+     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario que reimprimen
      * @param userRole Rol del usuario
      * @return byte[] con el PDF reimprimido
      */
-    byte[] reprintSimple(Long folio, Long userId, String userRole);
+    byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 📋 GET /labels/{folio}/full-info
@@ -113,11 +115,12 @@ public interface LabelService {
      * impresiones, cancelaciones, historial completo, existencias, etc.
      * 
      * @param folio ID del folio del marbete
+     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario consultando
      * @param userRole Rol del usuario
      * @return DTO con toda la información del marbete
      */
-    LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole);
+    LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 📊 GET /labels/full-list

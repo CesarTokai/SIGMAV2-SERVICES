@@ -138,11 +138,12 @@ public class LabelPrintService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
-        log.info("📄 Consultando PDF del marbete folio={}, usuario={}", folio, userId);
+    public byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("📄 Consultando PDF del marbete folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
+
 
         if (label.getEstado() != Label.State.IMPRESO) {
             throw new InvalidLabelStateException(
@@ -161,11 +162,11 @@ public class LabelPrintService {
     }
 
     @Transactional
-    public byte[] reprintSimple(Long folio, Long userId, String userRole) {
-        log.info("🔄 Reimpresión SIMPLE: folio={}, usuario={}", folio, userId);
+    public byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("🔄 Reimpresión SIMPLE: folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
 
         if (label.getEstado() != Label.State.IMPRESO) {
             throw new InvalidLabelStateException(
@@ -214,12 +215,11 @@ public class LabelPrintService {
 
         List<Label> labels = new ArrayList<>();
         for (Long folio : request.getFolios()) {
-            Label label = jpaLabelRepository.findById(folio)
-                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
+            Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, request.getPeriodId())
+                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio + " en periodo " + request.getPeriodId()));
 
-            if (!label.getPeriodId().equals(request.getPeriodId()) ||
-                !label.getWarehouseId().equals(request.getWarehouseId())) {
-                throw new IllegalArgumentException("Folio " + folio + " no pertenece al período/almacén especificado");
+            if (!label.getWarehouseId().equals(request.getWarehouseId())) {
+                throw new IllegalArgumentException("Folio " + folio + " no pertenece al almacén especificado");
             }
             labels.add(label);
         }
@@ -255,14 +255,10 @@ public class LabelPrintService {
         Map<Long, Integer> warehouseCountMap = new java.util.HashMap<>();
 
         for (Long folio : request.getFolios()) {
-            Label label = jpaLabelRepository.findById(folio)
-                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
+            Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, request.getPeriodId())
+                    .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio + " en periodo " + request.getPeriodId()));
 
-            if (!label.getPeriodId().equals(request.getPeriodId())) {
-                throw new IllegalArgumentException(
-                    String.format("Folio %d pertenece al periodo %d, no al %d solicitado",
-                        folio, label.getPeriodId(), request.getPeriodId()));
-            }
+            // Ya no necesitamos validar periodId porque es parte de la PK
             labels.add(label);
             warehouseCountMap.put(label.getWarehouseId(),
                 warehouseCountMap.getOrDefault(label.getWarehouseId(), 0) + 1);

@@ -55,8 +55,8 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     @Override
-    public Optional<Label> findByFolio(Long folio) {
-        return jpaLabelRepository.findById(folio);
+    public Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelRepository.findByFolioAndPeriodId(folio, periodId);
     }
 
     @Override

@@ -79,7 +79,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC1_success() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(false);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
@@ -92,7 +92,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC1_throws_when_C1_already_exists() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
 
         assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "AUXILIAR"))
@@ -102,7 +102,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC1_throws_when_C2_exists_before_C1() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(false);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(true);
 
@@ -113,7 +113,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC1_throws_when_label_not_found() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.empty());
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "AUXILIAR"))
                 .isInstanceOf(LabelNotFoundException.class);
@@ -122,7 +122,7 @@ class LabelCountServiceTest {
     @Test
     void registerCountC1_throws_when_label_not_impreso() {
         impressedLabel.setEstado(Label.State.GENERADO);
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
 
         assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "AUXILIAR"))
                 .isInstanceOf(InvalidLabelStateException.class)
@@ -132,7 +132,7 @@ class LabelCountServiceTest {
     @Test
     void registerCountC1_throws_when_label_is_cancelled() {
         impressedLabel.setEstado(Label.State.CANCELADO);
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
 
         assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "AUXILIAR"))
                 .isInstanceOf(InvalidLabelStateException.class)
@@ -155,7 +155,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC2_success() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
@@ -168,7 +168,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC2_throws_when_C1_not_exists() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(false);
 
         assertThatThrownBy(() -> service.registerCountC2(dto, 1L, "AUXILIAR"))
@@ -178,7 +178,7 @@ class LabelCountServiceTest {
 
     @Test
     void registerCountC2_throws_when_C2_already_exists() {
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(true);
 
@@ -190,7 +190,7 @@ class LabelCountServiceTest {
     @Test
     void registerCountC2_AUXILIAR_DE_CONTEO_bypasses_warehouse_validation() {
         dto.setWarehouseId(null);
-        when(persistence.findByFolio(100L)).thenReturn(Optional.of(impressedLabel));
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
@@ -201,4 +201,5 @@ class LabelCountServiceTest {
         // No debe llamar a validateWarehouseAccess
         verify(warehouseAccessService, never()).validateWarehouseAccess(anyLong(), anyLong(), anyString());
     }
+
 }

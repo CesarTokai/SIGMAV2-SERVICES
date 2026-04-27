@@ -1113,16 +1113,17 @@ public class LabelsController {
      * Solo muestra PDF sin cambiar estados
      * 
      * @param folio ID del folio del marbete
+     * @param periodId ID del periodo
      * @return PDF del marbete
      */
     @GetMapping("/{folio}/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> getPrintedLabelPdf(@PathVariable Long folio) {
+    public ResponseEntity<byte[]> getPrintedLabelPdf(@PathVariable Long folio, @RequestParam Long periodId) {
         Long userId = getUserIdFromToken();
-        log.info("📄 /labels/{folio}/pdf: Obteniendo PDF - folio={}, usuario={}", folio, userId);
+        log.info("📄 /labels/{folio}/pdf: Obteniendo PDF - folio={}, periodo={}, usuario={}", folio, periodId, userId);
         
         try {
-            byte[] pdfBytes = labelService.getPrintedLabelPdf(folio, userId, getUserRoleFromToken());
+            byte[] pdfBytes = labelService.getPrintedLabelPdf(folio, periodId, userId, getUserRoleFromToken());
             
             String filename = String.format("marbete_folio_%d.pdf", folio);
             HttpHeaders headers = new HttpHeaders();
@@ -1150,16 +1151,17 @@ public class LabelsController {
      * Response: PDF reimprimido
      * 
      * @param folio ID del folio del marbete
+     * @param periodId ID del periodo
      * @return PDF reimprimido
      */
     @PostMapping("/{folio}/reprint-simple")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> reprintSimple(@PathVariable Long folio) {
+    public ResponseEntity<byte[]> reprintSimple(@PathVariable Long folio, @RequestParam Long periodId) {
         Long userId = getUserIdFromToken();
-        log.info("🔄 /labels/{folio}/reprint-simple: Reimprimiendo - folio={}, usuario={}", folio, userId);
+        log.info("🔄 /labels/{folio}/reprint-simple: Reimprimiendo - folio={}, periodo={}, usuario={}", folio, periodId, userId);
         
         try {
-            byte[] pdfBytes = labelService.reprintSimple(folio, userId, getUserRoleFromToken());
+            byte[] pdfBytes = labelService.reprintSimple(folio, periodId, userId, getUserRoleFromToken());
             
             String filename = String.format("marbete_folio_%d_REIMPRESION_%d.pdf", folio, System.currentTimeMillis());
             HttpHeaders headers = new HttpHeaders();
@@ -1186,16 +1188,17 @@ public class LabelsController {
      * reimpresiones, cancelaciones, reactivaciones, solicitud de folios, etc.
      * 
      * @param folio ID del folio del marbete
+     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @return DTO con TODA la información del marbete
      */
     @GetMapping("/{folio}/full-info")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> getLabelFullInfo(@PathVariable Long folio) {
+    public ResponseEntity<?> getLabelFullInfo(@PathVariable Long folio, @RequestParam Long periodId) {
         Long userId = getUserIdFromToken();
-        log.info("📋 /labels/{folio}/full-info: Obteniendo información completa - folio={}, usuario={}", folio, userId);
+        log.info("📋 /labels/{folio}/full-info: Obteniendo información completa - folio={}, periodo={}, usuario={}", folio, periodId, userId);
         
         try {
-            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetail(folio, userId, getUserRoleFromToken());
+            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetail(folio, periodId, userId, getUserRoleFromToken());
             
             log.info("✅ Información completa obtenida: folio={}, estado={}, conteos={}/{}", 
                     folio, fullDetail.getEstado(),

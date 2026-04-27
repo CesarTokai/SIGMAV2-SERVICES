@@ -133,12 +133,12 @@ public class LabelCancelService {
 
     @Transactional
     public void cancelLabel(CancelLabelRequestDTO dto, Long userId, String userRole) {
-        log.info("Cancelando marbete folio {} por usuario {} con rol {}", dto.getFolio(), userId, userRole);
+        log.info("Cancelando marbete folio {} periodo {} por usuario {} con rol {}", dto.getFolio(), dto.getPeriodId(), userId, userRole);
         if (dto.getFolio() == null) {
             throw new InvalidLabelStateException("El campo 'folio' es obligatorio");
         }
-        Label label = jpaLabelRepository.findById(dto.getFolio())
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(dto.getFolio(), dto.getPeriodId())
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado en periodo " + dto.getPeriodId()));
 
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
         if (label.getEstado() == Label.State.CANCELADO) throw new LabelAlreadyCancelledException(dto.getFolio());

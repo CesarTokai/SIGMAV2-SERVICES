@@ -10,6 +10,67 @@ El historial de cambios se organiza desde la versión más reciente a la más an
 
 ---
 
+## [1.3.4] - 2026-04-27 — Fix Crítico: PK Compuesta en Marbetes (Multi-Periodo)
+
+### Problema
+Duplicate entry al generar marbetes en un segundo periodo. La tabla `labels` tenía PK simple
+(`folio`) — al iniciar un nuevo periodo, el folio 1 colisionaba con el folio 1 del periodo anterior.
+
+### Causa Raíz
+PK simple `folio` no garantizaba unicidad entre periodos. Necesario: PK compuesta `(folio, id_period)`.
+
+### Cambios en Base de Datos
+- `V1_3_4__Fix_label_primary_key_composite.sql` — Migración idempotente que cambia PK de `(folio)` a `(folio, id_period)`
+- Índices auxiliares: `idx_labels_folio`, `idx_labels_period`
+
+### Cambios en Código
+
+| Archivo | Cambio |
+|---------|--------|
+| `Label.java` | `@IdClass(Label.LabelId.class)` — PK compuesta con `folio` + `periodId` |
+| `JpaLabelRepository` | Tipo `JpaRepository<Label, Label.LabelId>` + método `findByFolioAndPeriodId` |
+| `LabelRepository` (port) | `findByFolio(Long)` eliminado → `findByFolioAndPeriodId(Long, Long)` |
+| `LabelsPersistenceAdapter` | Implementa nuevo método de búsqueda compuesta |
+| `LabelQueryService` | 3 métodos actualizados con `periodId` |
+| `LabelPrintService` | 4 métodos requieren `periodId` |
+| `LabelCancelService` | Cancelación usa PK compuesta |
+| `LabelCountService` | `findAndValidateLabelForCount` y `findLabelForUpdate` usan `findByFolioAndPeriodId` |
+| `LabelService` (interface) | 3 firmas de métodos actualizadas con `periodId` |
+| `LabelsController` | Endpoints PDF/reprint/fullInfo reciben `?periodId=X` como query param |
+| `CountEventDTO` | `periodId` → **`@NotNull`** (antes era opcional) |
+| `UpdateCountDTO` | `periodId` → `@NotNull` incluido |
+| `LabelCountServiceTest` | Tests actualizados: `findByFolio` → `findByFolioAndPeriodId` |
+
+### Impacto en el Flujo
+- Generación de marbetes es **multi-periodo real** — cada periodo tiene su propia secuencia de folios
+- Conteos C1/C2 no pueden cruzarse entre periodos accidentalmente
+- Reportes por periodo son confiables y con trazabilidad completa
+- Cancelación de marbetes afecta solo al periodo correcto
+
+### Breaking Change — Frontend
+**Todas** las llamadas que involucren un folio específico deben incluir `periodId`:
+```json
+// C1 / C2 registro
+{ "folio": 1, "periodId": 2, "countedValue": 10 }
+
+// Actualizar C1 / C2
+{ "folio": 1, "periodId": 2, "countedValue": 12 }
+
+// Imprimir / QR
+{ "folios": [1,2,3], "periodId": 2, "warehouseId": 5 }
+
+// Query params
+GET /labels/{folio}/pdf?periodId=2
+GET /labels/{folio}/full-info?periodId=2
+```
+
+### Estado
+- ✅ Backend corregido y compilando
+- ✅ BD migrada manualmente (V1_3_4 pendiente registrar en Flyway al reiniciar)
+- ⏳ Frontend pendiente actualizar envío de `periodId` en conteos C1/C2
+
+---
+
 ## [1.0.0] - 2026-03-10 — Primera Release Oficial
 
 Esta versión constituye la primera release oficial de SIGMAV2 para entorno de producción.

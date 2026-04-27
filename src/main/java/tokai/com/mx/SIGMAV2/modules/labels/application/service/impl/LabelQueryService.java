@@ -195,9 +195,9 @@ public class LabelQueryService {
     public LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         var builder = LabelStatusResponseDTO.builder().folio(folio);
         try {
-            var optLabel = persistence.findByFolio(folio);
+            var optLabel = persistence.findByFolioAndPeriodId(folio, periodId);
             if (optLabel.isEmpty()) {
-                return builder.estado("NO_EXISTE").impreso(false).mensaje("El folio no existe").build();
+                return builder.estado("NO_EXISTE").impreso(false).mensaje("El folio no existe en el período especificado").build();
             }
             var label = optLabel.get();
             Long actualPeriodId = periodId != null ? periodId : label.getPeriodId();
@@ -267,8 +267,8 @@ public class LabelQueryService {
 
     @Transactional(readOnly = true)
     public LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
 
         // AUXILIAR_DE_CONTEO bypassa validación de almacén
         if (!userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO")) {
@@ -423,10 +423,10 @@ public class LabelQueryService {
     }
 
     @Transactional(readOnly = true)
-    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole) {
-        log.info("📋 Obteniendo información COMPLETA del marbete folio={}", folio);
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("📋 Obteniendo información COMPLETA del marbete folio={} periodo={}", folio, periodId);
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
         LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
@@ -662,9 +662,9 @@ public class LabelQueryService {
         for (int i = 0; i < folios.size(); i++) {
             Long folio = folios.get(i);
             try {
-                Label label = jpaLabelRepository.findById(folio)
-                        .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
-                if (!label.getPeriodId().equals(periodId)) { log.warn("Folio {} no pertenece al período {}", folio, periodId); continue; }
+                Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                        .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio + " en periodo " + periodId));
+                // Ya no necesitamos validar periodId porque es parte de la PK
                 if (warehouseId != null && !label.getWarehouseId().equals(warehouseId)) { log.warn("Folio {} no pertenece al almacén {}", folio, warehouseId); continue; }
 
                 Long effectiveWarehouseId = warehouseId != null ? warehouseId : label.getWarehouseId();

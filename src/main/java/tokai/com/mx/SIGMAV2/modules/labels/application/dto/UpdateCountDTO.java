@@ -26,6 +26,12 @@ public class UpdateCountDTO {
     @Positive(message = "El valor del conteo debe ser mayor a cero")
     private BigDecimal countedValue;
 
+        /**
+     * Periodo al que pertenece el folio (obligatorio con composite key)
+     */
+    @NotNull(message = "El período es obligatorio")
+    private Long periodId;
+
     @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")
     private String observaciones;
 
