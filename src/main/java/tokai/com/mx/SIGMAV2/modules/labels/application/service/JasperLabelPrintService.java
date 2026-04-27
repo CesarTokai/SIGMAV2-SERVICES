@@ -6,11 +6,11 @@ import net.sf.jasperreports.engine.*;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 import org.springframework.stereotype.Service;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.ProductInfoPort;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.ProductInfoPort.ProductInfo;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.WarehouseInfoPort;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.WarehouseInfoPort.WarehouseInfo;
 
 import java.awt.image.BufferedImage;
 import java.time.LocalDate;
@@ -31,8 +31,8 @@ import com.google.zxing.common.BitMatrix;
 @Slf4j
 public class JasperLabelPrintService {
 
-    private final JpaProductRepository productRepository;
-    private final JpaWarehouseRepository warehouseRepository;
+    private final ProductInfoPort productInfoPort;
+    private final WarehouseInfoPort warehouseInfoPort;
     private final JasperReportCacheService reportCacheService;
 
     /**
@@ -61,8 +61,8 @@ public class JasperLabelPrintService {
 
         try {
             // Pre-cargar productos y almacenes para evitar N+1 queries
-            Map<Long, ProductEntity> productsCache = loadProductsCache(labels);
-            Map<Long, WarehouseEntity> warehousesCache = loadWarehousesCache(labels);
+            Map<Long, ProductInfo> productsCache = loadProductsCache(labels);
+            Map<Long, WarehouseInfo> warehousesCache = loadWarehousesCache(labels);
 
             // MEJORA #1: Usar cache de reportes en lugar de compilar cada vez
             JasperReport jasperReport = reportCacheService.getReport(templateName);
@@ -112,37 +112,20 @@ public class JasperLabelPrintService {
     /**
      * Pre-carga todos los productos en un mapa para evitar queries repetidas
      */
-    private Map<Long, ProductEntity> loadProductsCache(List<Label> labels) {
+    private Map<Long, ProductInfo> loadProductsCache(List<Label> labels) {
         Set<Long> productIds = new HashSet<>();
-        for (Label label : labels) {
-            productIds.add(label.getProductId());
-        }
-
-        List<ProductEntity> products = productRepository.findAllById(productIds);
-        Map<Long, ProductEntity> cache = new HashMap<>();
-        for (ProductEntity product : products) {
-            cache.put(product.getIdProduct(), product);
-        }
-
+        for (Label label : labels) productIds.add(label.getProductId());
+        Map<Long, ProductInfo> cache = new HashMap<>();
+        for (ProductInfo p : productInfoPort.findAllById(productIds)) cache.put(p.id(), p);
         log.info("Cache de productos cargado: {} productos", cache.size());
         return cache;
     }
 
-    /**
-     * Pre-carga todos los almacenes en un mapa para evitar queries repetidas
-     */
-    private Map<Long, WarehouseEntity> loadWarehousesCache(List<Label> labels) {
+    private Map<Long, WarehouseInfo> loadWarehousesCache(List<Label> labels) {
         Set<Long> warehouseIds = new HashSet<>();
-        for (Label label : labels) {
-            warehouseIds.add(label.getWarehouseId());
-        }
-
-        List<WarehouseEntity> warehouses = warehouseRepository.findAllById(warehouseIds);
-        Map<Long, WarehouseEntity> cache = new HashMap<>();
-        for (WarehouseEntity warehouse : warehouses) {
-            cache.put(warehouse.getIdWarehouse(), warehouse);
-        }
-
+        for (Label label : labels) warehouseIds.add(label.getWarehouseId());
+        Map<Long, WarehouseInfo> cache = new HashMap<>();
+        for (WarehouseInfo w : warehouseInfoPort.findAllById(warehouseIds)) cache.put(w.id(), w);
         log.info("Cache de almacenes cargado: {} almacenes", cache.size());
         return cache;
     }
@@ -154,8 +137,8 @@ public class JasperLabelPrintService {
      */
     private List<Map<String, Object>> buildDataSource(
             List<Label> labels,
-            Map<Long, ProductEntity> productsCache,
-            Map<Long, WarehouseEntity> warehousesCache,
+            Map<Long, ProductInfo> productsCache,
+            Map<Long, WarehouseInfo> warehousesCache,
             boolean withQR) {
 
         List<Map<String, Object>> dataSource = new ArrayList<>();
@@ -165,8 +148,7 @@ public class JasperLabelPrintService {
         // Pre-procesar todos los marbetes para obtener sus datos
         List<Map<String, String>> labelDataList = new ArrayList<>();
         for (Label label : labels) {
-            // Obtener datos del producto
-            ProductEntity product = productsCache.get(label.getProductId());
+            ProductInfo product = productsCache.get(label.getProductId());
             if (product == null) {
                 log.error("CRÍTICO: Producto no encontrado para folio {}: productId={}",
                     label.getFolio(), label.getProductId());
@@ -176,8 +158,7 @@ public class JasperLabelPrintService {
                         label.getFolio(), label.getProductId()));
             }
 
-            // Obtener datos del almacén
-            WarehouseEntity warehouse = warehousesCache.get(label.getWarehouseId());
+            WarehouseInfo warehouse = warehousesCache.get(label.getWarehouseId());
             if (warehouse == null) {
                 log.error("CRÍTICO: Almacén no encontrado para folio {}: warehouseId={}",
                     label.getFolio(), label.getWarehouseId());
@@ -187,17 +168,16 @@ public class JasperLabelPrintService {
                         label.getFolio(), label.getWarehouseId()));
             }
 
-            // Preparar datos del marbete
             String folio = String.valueOf(label.getFolio());
-            String codigo = product.getCveArt();
-            
-            String descripcion = product.getDescr();
+            String codigo = product.cveArt();
+
+            String descripcion = product.descr();
             if (descripcion != null && descripcion.length() > 40) {
                 descripcion = descripcion.substring(0, 37) + "...";
             }
             descripcion = descripcion != null ? descripcion : "";
-            
-            String almacen = warehouse.getWarehouseKey() + " " + warehouse.getNameWarehouse();
+
+            String almacen = warehouse.warehouseKey() + " " + warehouse.nameWarehouse();
             
             Map<String, String> labelData = new HashMap<>();
             labelData.put("folio", folio);

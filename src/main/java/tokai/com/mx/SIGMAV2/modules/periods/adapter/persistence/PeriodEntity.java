@@ -1,7 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
@@ -9,7 +10,8 @@ import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period.PeriodState;
 
 @Entity(name = "InventoryPeriodEntity")
 @Table(name = "period")
-@Data
+@Getter
+@Setter
 public class PeriodEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

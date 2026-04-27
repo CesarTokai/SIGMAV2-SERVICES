@@ -2,7 +2,8 @@ package tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -13,7 +14,8 @@ import java.time.LocalDateTime;
        uniqueConstraints = @UniqueConstraint(
            columnNames = {"id_product", "id_warehouse", "id_period"}
        ))
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class InventoryStockEntity {

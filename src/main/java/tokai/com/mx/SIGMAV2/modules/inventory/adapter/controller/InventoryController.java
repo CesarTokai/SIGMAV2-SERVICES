@@ -12,14 +12,12 @@ import tokai.com.mx.SIGMAV2.modules.inventory.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.InventoryStock;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Product;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.model.Warehouse;
+import tokai.com.mx.SIGMAV2.modules.inventory.application.service.InventoryQueryApplicationService;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryImportUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.input.InventoryQueryUseCase;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.PeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.ProductRepository;
 import tokai.com.mx.SIGMAV2.modules.inventory.domain.ports.output.WarehouseRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.InventorySnapshotJpaEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaInventorySnapshotRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
 import tokai.com.mx.SIGMAV2.modules.periods.domain.model.Period;
 
 import java.security.Principal;
@@ -34,26 +32,23 @@ public class InventoryController {
 
     private final InventoryQueryUseCase inventoryQueryUseCase;
     private final InventoryImportUseCase inventoryImportUseCase;
+    private final InventoryQueryApplicationService inventoryQueryApplicationService;
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
-    private final JpaInventorySnapshotRepository jpaInventorySnapshotRepository;
-    private final JpaProductRepository jpaProductRepository;
     private final PeriodRepository periodRepository;
 
     public InventoryController(
             InventoryQueryUseCase inventoryQueryUseCase,
             InventoryImportUseCase inventoryImportUseCase,
+            InventoryQueryApplicationService inventoryQueryApplicationService,
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
-            JpaInventorySnapshotRepository jpaInventorySnapshotRepository,
-            JpaProductRepository jpaProductRepository,
             @Qualifier("inventoryPeriodRepositoryAdapter") PeriodRepository periodRepository) {
         this.inventoryQueryUseCase = inventoryQueryUseCase;
         this.inventoryImportUseCase = inventoryImportUseCase;
+        this.inventoryQueryApplicationService = inventoryQueryApplicationService;
         this.productRepository = productRepository;
         this.warehouseRepository = warehouseRepository;
-        this.jpaInventorySnapshotRepository = jpaInventorySnapshotRepository;
-        this.jpaProductRepository = jpaProductRepository;
         this.periodRepository = periodRepository;
     }
 
@@ -111,28 +106,7 @@ public class InventoryController {
             @RequestParam("periodId") Long periodId,
             @RequestParam(value = "warehouseId", required = false) Long warehouseId,
             @RequestParam(value = "search", required = false) String search) {
-
-        List<InventorySnapshotJpaEntity> entities =
-                jpaInventorySnapshotRepository.findByPeriodWithSearchNoPage(periodId, warehouseId, search);
-
-        List<InventoryPeriodReportDTO> reportList = new ArrayList<>();
-        for (InventorySnapshotJpaEntity e : entities) {
-            InventoryPeriodReportDTO dto = new InventoryPeriodReportDTO();
-            jpaProductRepository.findById(e.getProductId()).ifPresentOrElse(pe -> {
-                dto.setCveArt(pe.getCveArt());
-                dto.setDescr(pe.getDescr());
-                dto.setUniMed(pe.getUniMed());
-            }, () -> {
-                dto.setCveArt("N/A");
-                dto.setDescr("Producto no encontrado");
-                dto.setUniMed("-");
-            });
-            dto.setExistQty(e.getExistQty());
-            dto.setStatus(e.getStatus());
-            reportList.add(dto);
-        }
-
-        return ResponseEntity.ok(reportList);
+        return ResponseEntity.ok(inventoryQueryApplicationService.getPeriodReport(periodId, warehouseId, search));
     }
 
     private List<Sort.Order> buildSortOrders(String[] sort) {

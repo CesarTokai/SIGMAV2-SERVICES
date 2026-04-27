@@ -5,7 +5,14 @@
       "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\service\\\\LabelManagementService.java\")",
       "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\ports\\\\input\\\\LabelManagementUseCase.java\")",
       "Bash(rm \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\\\\src\\\\main\\\\java\\\\tokai\\\\com\\\\mx\\\\SIGMAV2\\\\modules\\\\inventory\\\\domain\\\\ports\\\\output\\\\LabelRepository.java\")",
-      "Bash(./mvnw compile *)"
+      "Bash(./mvnw compile *)",
+      "Bash(mvn compile *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(where.exe java 2>$null; [System.Environment]::GetEnvironmentVariable\\(\"JAVA_HOME\", \"Machine\"\\); [System.Environment]::GetEnvironmentVariable\\(\"JAVA_HOME\", \"User\"\\))",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match -join\\(\"Java\",\"Adoptium\",\"Corretto\",\"JDK\",\"jdk\"\\) } | Select-Object FullName)",
+      "Bash(export JAVA_HOME=\"/c/Users/cesarg/.jdks/corretto-21.0.9\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(./mvnw test *)"
     ]
   }
 }

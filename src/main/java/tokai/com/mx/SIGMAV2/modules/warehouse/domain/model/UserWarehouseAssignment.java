@@ -3,7 +3,9 @@ package tokai.com.mx.SIGMAV2.modules.warehouse.domain.model;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
@@ -15,7 +17,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "user_warehouse_assignments")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -37,6 +40,7 @@ public class UserWarehouseAssignment {
     private Long assignedBy;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "created_at")
@@ -48,7 +52,9 @@ public class UserWarehouseAssignment {
     /**
      * Clase para clave primaria compuesta
      */
-    @Data
+    @Getter
+    @Setter
+    @EqualsAndHashCode
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserWarehouseId implements Serializable {

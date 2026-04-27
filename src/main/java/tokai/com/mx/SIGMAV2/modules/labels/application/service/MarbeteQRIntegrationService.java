@@ -3,18 +3,21 @@ package tokai.com.mx.SIGMAV2.modules.labels.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.ProductEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaProductRepository;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.MarbeteReportDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.ProductInfoPort;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.ProductInfoPort.ProductInfo;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.WarehouseInfoPort;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.WarehouseInfoPort.WarehouseInfo;
 import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.WarehouseEntity;
-import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.JpaWarehouseRepository;
 
 import java.awt.image.BufferedImage;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Servicio que integra la generación de QR con los datos de los marbetes.
@@ -33,8 +36,8 @@ public class MarbeteQRIntegrationService {
 
     private final QRGeneratorService qrGeneratorService;
     private final JpaLabelRepository labelRepository;
-    private final JpaProductRepository productRepository;
-    private final JpaWarehouseRepository warehouseRepository;
+    private final ProductInfoPort productInfoPort;
+    private final WarehouseInfoPort warehouseInfoPort;
 
     /**
      * Genera la lista de DTOs con QR para los marbetes de impresión
@@ -55,85 +58,71 @@ public class MarbeteQRIntegrationService {
                 .filter(m -> m.getEstado() != Label.State.GENERADO)
                 .toList();
         
-        List<MarbeteReportDTO> gruposAgrupadosPor3 = new ArrayList<>();
-        
-        // 2. Agrupar de 3 en 3
-        for (int i = 0; i < marbetes.size(); i += 3) {
-            try {
-                Label m1 = marbetes.get(i);
-                Label m2 = (i + 1 < marbetes.size()) ? marbetes.get(i + 1) : null;
-                Label m3 = (i + 2 < marbetes.size()) ? marbetes.get(i + 2) : null;
-                
-                MarbeteReportDTO grupoDTO = agruparTresMarbetes(m1, m2, m3);
-                gruposAgrupadosPor3.add(grupoDTO);
-                
-            } catch (Exception e) {
-                log.error("❌ Error al generar grupo de QR en índice {}: {}", i, e.getMessage());
-            }
-        }
-        
+        List<MarbeteReportDTO> gruposAgrupadosPor3 = buildMarbeteGroups(marbetes);
         log.info("✅ {} grupos de marbetes (3 por fila) procesados con QR", gruposAgrupadosPor3.size());
         return gruposAgrupadosPor3;
     }
 
-    /**
-     * Agrupa 3 marbetes en un solo DTO con campos nomMarbete1-3, clave1-3, etc.
-     * 
-     * @param m1 Primer marbete (izquierda)
-     * @param m2 Segundo marbete (centro) - puede ser null
-     * @param m3 Tercer marbete (derecha) - puede ser null
-     * @return DTO con los 3 marbetes agrupados
-     */
-    private MarbeteReportDTO agruparTresMarbetes(Label m1, Label m2, Label m3) {
-        log.debug("Agrupando 3 marbetes: m1={}, m2={}, m3={}", 
-                  m1 != null ? m1.getFolio() : "null",
-                  m2 != null ? m2.getFolio() : "null",
-                  m3 != null ? m3.getFolio() : "null");
-        
+    private List<MarbeteReportDTO> buildMarbeteGroups(List<Label> labels) {
+        Set<Long> productIds = labels.stream().map(Label::getProductId).collect(Collectors.toSet());
+        Set<Long> warehouseIds = labels.stream().map(Label::getWarehouseId).collect(Collectors.toSet());
+
+        Map<Long, ProductInfo> productCache = productInfoPort.findAllById(productIds).stream()
+                .collect(Collectors.toMap(ProductInfo::id, p -> p));
+        Map<Long, WarehouseInfo> warehouseCache = warehouseInfoPort.findAllById(warehouseIds).stream()
+                .collect(Collectors.toMap(WarehouseInfo::id, w -> w));
+
+        List<MarbeteReportDTO> result = new ArrayList<>();
+        for (int i = 0; i < labels.size(); i += 3) {
+            try {
+                Label m1 = labels.get(i);
+                Label m2 = (i + 1 < labels.size()) ? labels.get(i + 1) : null;
+                Label m3 = (i + 2 < labels.size()) ? labels.get(i + 2) : null;
+                result.add(agruparTresMarbetes(m1, m2, m3, productCache, warehouseCache));
+            } catch (Exception e) {
+                log.error("Error agrupando marbetes en índice {}: {}", i, e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    private MarbeteReportDTO agruparTresMarbetes(Label m1, Label m2, Label m3,
+            Map<Long, ProductInfo> productCache, Map<Long, WarehouseInfo> warehouseCache) {
         MarbeteReportDTO dto = new MarbeteReportDTO();
-        
-        // Marbete 1 (siempre existe)
+
         if (m1 != null) {
-            BufferedImage qr1 = qrGeneratorService.generarQR(String.valueOf(m1.getFolio()));
-            ProductEntity p1 = productRepository.findById(m1.getProductId()).orElse(null);
-            WarehouseEntity w1 = warehouseRepository.findById(m1.getWarehouseId()).orElse(null);
-            
+            ProductInfo p1 = productCache.get(m1.getProductId());
+            WarehouseInfo w1 = warehouseCache.get(m1.getWarehouseId());
             dto.setNomMarbete1(String.valueOf(m1.getFolio()));
-            dto.setClave1(p1 != null ? p1.getCveArt() : "N/A");
-            dto.setDescr1(p1 != null ? p1.getDescr() : "N/A");
-            dto.setAlmacen1(w1 != null ? w1.getNameWarehouse() : "N/A");
+            dto.setClave1(p1 != null ? p1.cveArt() : "N/A");
+            dto.setDescr1(p1 != null ? p1.descr() : "N/A");
+            dto.setAlmacen1(w1 != null ? w1.nameWarehouse() : "N/A");
             dto.setFecha1(m1.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            dto.setQrImage1(qr1);
+            dto.setQrImage1(qrGeneratorService.generarQR(String.valueOf(m1.getFolio())));
         }
-        
-        // Marbete 2 (si existe)
+
         if (m2 != null) {
-            BufferedImage qr2 = qrGeneratorService.generarQR(String.valueOf(m2.getFolio()));
-            ProductEntity p2 = productRepository.findById(m2.getProductId()).orElse(null);
-            WarehouseEntity w2 = warehouseRepository.findById(m2.getWarehouseId()).orElse(null);
-            
+            ProductInfo p2 = productCache.get(m2.getProductId());
+            WarehouseInfo w2 = warehouseCache.get(m2.getWarehouseId());
             dto.setNomMarbete2(String.valueOf(m2.getFolio()));
-            dto.setClave2(p2 != null ? p2.getCveArt() : "N/A");
-            dto.setDescr2(p2 != null ? p2.getDescr() : "N/A");
-            dto.setAlmacen2(w2 != null ? w2.getNameWarehouse() : "N/A");
+            dto.setClave2(p2 != null ? p2.cveArt() : "N/A");
+            dto.setDescr2(p2 != null ? p2.descr() : "N/A");
+            dto.setAlmacen2(w2 != null ? w2.nameWarehouse() : "N/A");
             dto.setFecha2(m2.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            dto.setQrImage2(qr2);
+            dto.setQrImage2(qrGeneratorService.generarQR(String.valueOf(m2.getFolio())));
         }
-        
-        // Marbete 3 (si existe)
+
         if (m3 != null) {
-            BufferedImage qr3 = qrGeneratorService.generarQR(String.valueOf(m3.getFolio()));
-            ProductEntity p3 = productRepository.findById(m3.getProductId()).orElse(null);
-            WarehouseEntity w3 = warehouseRepository.findById(m3.getWarehouseId()).orElse(null);
-            
+            ProductInfo p3 = productCache.get(m3.getProductId());
+            WarehouseInfo w3 = warehouseCache.get(m3.getWarehouseId());
             dto.setNomMarbete3(String.valueOf(m3.getFolio()));
-            dto.setClave3(p3 != null ? p3.getCveArt() : "N/A");
-            dto.setDescr3(p3 != null ? p3.getDescr() : "N/A");
-            dto.setAlmacen3(w3 != null ? w3.getNameWarehouse() : "N/A");
+            dto.setClave3(p3 != null ? p3.cveArt() : "N/A");
+            dto.setDescr3(p3 != null ? p3.descr() : "N/A");
+            dto.setAlmacen3(w3 != null ? w3.nameWarehouse() : "N/A");
             dto.setFecha3(m3.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            dto.setQrImage3(qr3);
+            dto.setQrImage3(qrGeneratorService.generarQR(String.valueOf(m3.getFolio())));
         }
-        
+
         return dto;
     }
 
@@ -147,17 +136,14 @@ public class MarbeteQRIntegrationService {
     public MarbeteReportDTO generarMarbeteConQR(Label label) {
         log.debug("Generando QR para marbete único: {}", label.getFolio());
         
-        // Generar imagen QR usando el folio (número del marbete)
         BufferedImage qrImage = qrGeneratorService.generarQR(String.valueOf(label.getFolio()));
-        
-        // Obtener datos del producto
-        ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-        String clave = product != null ? product.getCveArt() : "N/A";
-        String descripcion = product != null ? product.getDescr() : "N/A";
-        
-        // Obtener datos del almacén
-        WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-        String nombreAlmacen = warehouse != null ? warehouse.getNameWarehouse() : "N/A";
+
+        ProductInfo product = productInfoPort.findById(label.getProductId()).orElse(null);
+        String clave = product != null ? product.cveArt() : "N/A";
+        String descripcion = product != null ? product.descr() : "N/A";
+
+        WarehouseInfo warehouse = warehouseInfoPort.findById(label.getWarehouseId()).orElse(null);
+        String nombreAlmacen = warehouse != null ? warehouse.nameWarehouse() : "N/A";
         String fecha = label.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         
         // Crear DTO usando el nuevo formato (en posición 1)
@@ -185,44 +171,25 @@ public class MarbeteQRIntegrationService {
     public List<MarbeteReportDTO> generarMarbetesEspecificosConQR(List<Long> folios, Long periodId, Long warehouseId) {
         log.info("Generando {} marbetes específicos con QR (agrupados de 3 en 3)", folios.size());
         
-        List<Label> marbetesObtenidos = new ArrayList<>();
-        
-        for (Long folio : folios) {
-            try {
-                Label label = labelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId)
-                    .orElse(null);
-                    
-                if (label != null) {
-                    // Sólo incluir si no está en estado GENERADO (no imprimir)
-                    if (label.getEstado() != Label.State.GENERADO) {
-                        marbetesObtenidos.add(label);
-                    } else {
-                        log.warn("Marbete {} está en estado GENERADO — se omite de impresión", folio);
+        List<Label> marbetesObtenidos = labelRepository
+                .findByFolioInAndPeriodIdAndWarehouseId(folios, periodId, warehouseId)
+                .stream()
+                .filter(m -> {
+                    if (m.getEstado() == Label.State.GENERADO) {
+                        log.warn("Marbete {} está en estado GENERADO — se omite de impresión", m.getFolio());
+                        return false;
                     }
-                } else {
-                    log.warn("Marbete no encontrado: folio={}, periodId={}, warehouseId={}", folio, periodId, warehouseId);
-                }
-            } catch (Exception e) {
-                log.error("Error procesando marbete folio {}: {}", folio, e.getMessage());
-            }
-        }
-        
-        // Agrupar de 3 en 3
-        List<MarbeteReportDTO> resultado = new ArrayList<>();
-        for (int i = 0; i < marbetesObtenidos.size(); i += 3) {
-            try {
-                Label m1 = marbetesObtenidos.get(i);
-                Label m2 = (i + 1 < marbetesObtenidos.size()) ? marbetesObtenidos.get(i + 1) : null;
-                Label m3 = (i + 2 < marbetesObtenidos.size()) ? marbetesObtenidos.get(i + 2) : null;
-                
-                resultado.add(agruparTresMarbetes(m1, m2, m3));
-                
-            } catch (Exception e) {
-                log.error("Error agrupando marbetes en índice {}: {}", i, e.getMessage());
-            }
-        }
-        
-        return resultado;
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        Set<Long> requestedFolios = new java.util.HashSet<>(folios);
+        Set<Long> foundFolios = marbetesObtenidos.stream().map(Label::getFolio).collect(Collectors.toSet());
+        requestedFolios.stream()
+                .filter(f -> !foundFolios.contains(f))
+                .forEach(f -> log.warn("Marbete no encontrado: folio={}, periodId={}, warehouseId={}", f, periodId, warehouseId));
+
+        return buildMarbeteGroups(marbetesObtenidos);
     }
 
     /**
@@ -236,14 +203,12 @@ public class MarbeteQRIntegrationService {
         
         BufferedImage barcodeImage = qrGeneratorService.generarCodigoBarras(String.valueOf(label.getFolio()));
         
-        // Obtener datos del producto
-        ProductEntity product = productRepository.findById(label.getProductId()).orElse(null);
-        String clave = product != null ? product.getCveArt() : "N/A";
-        String descripcion = product != null ? product.getDescr() : "N/A";
-        
-        // Obtener datos del almacén
-        WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId()).orElse(null);
-        String nombreAlmacen = warehouse != null ? warehouse.getNameWarehouse() : "N/A";
+        ProductInfo product = productInfoPort.findById(label.getProductId()).orElse(null);
+        String clave = product != null ? product.cveArt() : "N/A";
+        String descripcion = product != null ? product.descr() : "N/A";
+
+        WarehouseInfo warehouse = warehouseInfoPort.findById(label.getWarehouseId()).orElse(null);
+        String nombreAlmacen = warehouse != null ? warehouse.nameWarehouse() : "N/A";
         String fecha = label.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         
         // Crear DTO usando el nuevo formato (en posición 1)

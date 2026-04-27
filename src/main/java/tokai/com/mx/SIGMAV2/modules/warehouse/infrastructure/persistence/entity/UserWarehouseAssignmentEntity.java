@@ -1,7 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
@@ -10,7 +11,8 @@ import java.time.LocalDateTime;
            columnNames = {"user_id", "warehouse_id"},
            name = "uk_user_warehouse"
        ))
-@Data
+@Getter
+@Setter
 public class UserWarehouseAssignmentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

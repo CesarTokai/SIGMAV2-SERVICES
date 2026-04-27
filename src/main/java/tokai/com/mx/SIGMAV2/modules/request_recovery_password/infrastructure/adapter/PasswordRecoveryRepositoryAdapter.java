@@ -71,7 +71,6 @@ public class PasswordRecoveryRepositoryAdapter implements PasswordRecoveryReposi
 
     @Override
     public PasswordRecoveryMapper save(PasswordRecoveryService request) {
-        // Por ahora retornamos null, se puede implementar más tarde
-        return null;
+        throw new UnsupportedOperationException("save() no implementado en PasswordRecoveryRepositoryAdapter");
     }
 }

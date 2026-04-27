@@ -1,7 +1,8 @@
 package tokai.com.mx.SIGMAV2.modules.labels.domain.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
@@ -11,7 +12,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "labels_cancelled")
-@Data
+@Getter
+@Setter
 public class LabelCancelled {
 
     @Id

@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
+
 /**
  * Controlador REST principal para la gestión avanzada de almacenes.
  * Permite listar, crear, actualizar, eliminar y asignar almacenes a usuarios,
@@ -464,11 +465,6 @@ public class MainWarehouseController {
         return userService.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado: " + email))
                 .getId();
-    }
-
-    // Mantengo el método extractUserIdFromAuthentication solo como utilidad (no usado)
-    private Long extractUserIdFromAuthentication(Authentication auth) {
-        return null;
     }
 
     private boolean hasRole(String role) {
