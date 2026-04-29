@@ -12,7 +12,8 @@
       "PowerShell(Get-ChildItem \"C:\\\\Program Files\" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match -join\\(\"Java\",\"Adoptium\",\"Corretto\",\"JDK\",\"jdk\"\\) } | Select-Object FullName)",
       "Bash(export JAVA_HOME=\"/c/Users/cesarg/.jdks/corretto-21.0.9\")",
       "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
-      "Bash(./mvnw test *)"
+      "Bash(./mvnw test *)",
+      "Bash(git add *)"
     ]
   }
 }

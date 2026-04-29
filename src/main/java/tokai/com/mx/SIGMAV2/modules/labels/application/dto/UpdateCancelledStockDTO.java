@@ -9,6 +9,9 @@ public class UpdateCancelledStockDTO {
     @NotNull(message = "El folio es requerido")
     private Long folio;
 
+    @NotNull(message = "El periodId es requerido")
+    private Long periodId;
+
     @NotNull(message = "Las existencias son requeridas")
     private Integer existenciasActuales;
 

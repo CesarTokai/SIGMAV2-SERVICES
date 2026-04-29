@@ -94,12 +94,20 @@ public class LabelsController {
     @PostMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC1(@Valid @RequestBody CountEventDTO dto) {
+        log.info("📥 CONTROLLER registerCountC1: folio={}, comment='{}' (length={}, isEmpty={})",
+            dto.getFolio(), dto.getComment(),
+            (dto.getComment() != null ? dto.getComment().length() : "null"),
+            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.registerCountC1(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC2(@Valid @RequestBody CountEventDTO dto) {
+        log.info("📥 CONTROLLER registerCountC2: folio={}, comment='{}' (length={}, isEmpty={})",
+            dto.getFolio(), dto.getComment(),
+            (dto.getComment() != null ? dto.getComment().length() : "null"),
+            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
@@ -107,7 +115,10 @@ public class LabelsController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
-        log.info("Actualizando C1: folio={}, usuario={}", dto.getFolio(), userId);
+        log.info("📥 CONTROLLER updateCountC1: folio={}, comment='{}' (length={}, isEmpty={})",
+            dto.getFolio(), dto.getComment(),
+            (dto.getComment() != null ? dto.getComment().length() : "null"),
+            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
@@ -115,7 +126,10 @@ public class LabelsController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
-        log.info("Actualizando C2: folio={}, usuario={}", dto.getFolio(), userId);
+        log.info("📥 CONTROLLER updateCountC2: folio={}, comment='{}' (length={}, isEmpty={})",
+            dto.getFolio(), dto.getComment(),
+            (dto.getComment() != null ? dto.getComment().length() : "null"),
+            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.updateCountC2(dto, userId, getUserRoleFromToken()));
     }
 
@@ -1113,7 +1127,8 @@ public class LabelsController {
      * Solo muestra PDF sin cambiar estados
      * 
      * @param folio ID del folio del marbete
-     * @param periodId ID del periodo
+     * @param periodId ID del peri
+     *                 eodo
      * @return PDF del marbete
      */
     @GetMapping("/{folio}/pdf")

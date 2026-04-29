@@ -20,8 +20,9 @@ public class CancelLabelRequestDTO {
     @NotNull(message = "El folio es obligatorio")
     private Long folio;
 
-    // Opcionales: se obtienen del marbete si no se proporcionan
+    @NotNull(message = "El periodId es obligatorio")
     private Long periodId;
+
     private Long warehouseId;
 
     @Size(max = 500, message = "El motivo de cancelación no puede exceder 500 caracteres")

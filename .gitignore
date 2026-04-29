@@ -40,3 +40,6 @@ build/
 application-local.properties
 *.env
 .env
+graphify-out/
+src/main/java/**/graphify-out/
+.graphify_python

@@ -66,9 +66,10 @@ class LabelCancelServiceTest {
     void cancelLabel_changes_state_to_cancelled() {
         CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
         dto.setFolio(100L);
+        dto.setPeriodId(1L);
         dto.setMotivoCancelacion("Prueba");
 
-        when(jpaLabelRepository.findById(100L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelRepository.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L)).thenReturn(List.of());
         when(inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(anyLong(), anyLong(), anyLong()))
                 .thenReturn(Optional.empty());
@@ -84,8 +85,9 @@ class LabelCancelServiceTest {
         impressedLabel.setEstado(Label.State.CANCELADO);
         CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
         dto.setFolio(100L);
+        dto.setPeriodId(1L);
 
-        when(jpaLabelRepository.findById(100L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelRepository.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
 
         assertThatThrownBy(() -> service.cancelLabel(dto, 1L, "ADMINISTRADOR"))
                 .isInstanceOf(LabelAlreadyCancelledException.class);
@@ -95,8 +97,9 @@ class LabelCancelServiceTest {
     void cancelLabel_throws_when_folio_not_found() {
         CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
         dto.setFolio(999L);
+        dto.setPeriodId(1L);
 
-        when(jpaLabelRepository.findById(999L)).thenReturn(Optional.empty());
+        when(jpaLabelRepository.findByFolioAndPeriodId(999L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cancelLabel(dto, 1L, "ADMINISTRADOR"))
                 .isInstanceOf(LabelNotFoundException.class);
@@ -106,6 +109,7 @@ class LabelCancelServiceTest {
     void cancelLabel_throws_when_folio_null() {
         CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
         dto.setFolio(null);
+        dto.setPeriodId(1L);
 
         assertThatThrownBy(() -> service.cancelLabel(dto, 1L, "ADMINISTRADOR"))
                 .isInstanceOf(InvalidLabelStateException.class)
@@ -116,9 +120,10 @@ class LabelCancelServiceTest {
     void cancelLabel_saves_cancelled_with_reason() {
         CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
         dto.setFolio(100L);
+        dto.setPeriodId(1L);
         dto.setMotivoCancelacion("Producto dañado");
 
-        when(jpaLabelRepository.findById(100L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelRepository.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
         when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L)).thenReturn(List.of());
         when(inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(anyLong(), anyLong(), anyLong()))
                 .thenReturn(Optional.empty());
@@ -130,12 +135,32 @@ class LabelCancelServiceTest {
         assertThat(captor.getValue().getMotivoCancelacion()).isEqualTo("Producto dañado");
     }
 
+    @Test
+    void cancelLabel_preserves_period_in_cancelled_record() {
+        CancelLabelRequestDTO dto = new CancelLabelRequestDTO();
+        dto.setFolio(100L);
+        dto.setPeriodId(1L);
+
+        when(jpaLabelRepository.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L)).thenReturn(List.of());
+        when(inventoryStockRepository.findByProductIdProductAndWarehouseIdWarehouseAndPeriodId(anyLong(), anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
+
+        service.cancelLabel(dto, 1L, "ADMINISTRADOR");
+
+        ArgumentCaptor<LabelCancelled> captor = ArgumentCaptor.forClass(LabelCancelled.class);
+        verify(jpaLabelCancelledRepository).save(captor.capture());
+        assertThat(captor.getValue().getPeriodId()).isEqualTo(1L);
+        assertThat(captor.getValue().getFolio()).isEqualTo(100L);
+    }
+
     // ── updateCancelledStock ───────────────────────────────────────────────
 
     @Test
     void updateCancelledStock_reactivates_when_existencias_positive() {
         UpdateCancelledStockDTO dto = new UpdateCancelledStockDTO();
         dto.setFolio(100L);
+        dto.setPeriodId(1L);
         dto.setExistenciasActuales(5);
 
         LabelCancelled cancelled = new LabelCancelled();
@@ -145,7 +170,7 @@ class LabelCancelServiceTest {
         cancelled.setPeriodId(1L);
         cancelled.setReactivado(false);
 
-        when(persistence.findCancelledByFolio(100L)).thenReturn(Optional.of(cancelled));
+        when(persistence.findCancelledByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(cancelled));
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
         when(warehouseRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -160,6 +185,7 @@ class LabelCancelServiceTest {
     void updateCancelledStock_does_not_reactivate_when_existencias_zero() {
         UpdateCancelledStockDTO dto = new UpdateCancelledStockDTO();
         dto.setFolio(100L);
+        dto.setPeriodId(1L);
         dto.setExistenciasActuales(0);
 
         LabelCancelled cancelled = new LabelCancelled();
@@ -169,7 +195,7 @@ class LabelCancelServiceTest {
         cancelled.setPeriodId(1L);
         cancelled.setReactivado(false);
 
-        when(persistence.findCancelledByFolio(100L)).thenReturn(Optional.of(cancelled));
+        when(persistence.findCancelledByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(cancelled));
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
         when(warehouseRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -183,8 +209,9 @@ class LabelCancelServiceTest {
     void updateCancelledStock_throws_when_cancelled_not_found() {
         UpdateCancelledStockDTO dto = new UpdateCancelledStockDTO();
         dto.setFolio(999L);
+        dto.setPeriodId(1L);
 
-        when(persistence.findCancelledByFolio(999L)).thenReturn(Optional.empty());
+        when(persistence.findCancelledByFolioAndPeriodId(999L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateCancelledStock(dto, 1L, "ADMINISTRADOR"))
                 .isInstanceOf(LabelNotFoundException.class);

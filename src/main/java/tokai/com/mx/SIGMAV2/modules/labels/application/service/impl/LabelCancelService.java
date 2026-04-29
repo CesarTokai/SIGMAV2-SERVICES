@@ -84,8 +84,8 @@ public class LabelCancelService {
 
     @Transactional
     public LabelCancelledDTO updateCancelledStock(UpdateCancelledStockDTO dto, Long userId, String userRole) {
-        LabelCancelled cancelled = persistence.findCancelledByFolio(dto.getFolio())
-                .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado: folio " + dto.getFolio()));
+        LabelCancelled cancelled = persistence.findCancelledByFolioAndPeriodId(dto.getFolio(), dto.getPeriodId())
+                .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado: folio " + dto.getFolio() + " periodo " + dto.getPeriodId()));
 
         warehouseAccessService.validateWarehouseAccess(userId, cancelled.getWarehouseId(), userRole);
         cancelled.setExistenciasActuales(dto.getExistenciasActuales());

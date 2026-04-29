@@ -44,6 +44,9 @@ public class LabelCountService {
         validateRole(userRole, "registrar C1",
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
+        log.debug("registerCountC1: DTO comment='{}', isEmpty={}",
+            dto.getComment(), (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
+
         String roleUpper = userRole.toUpperCase();
         Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
 
@@ -57,7 +60,7 @@ public class LabelCountService {
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false, dto.getComment());
         
         // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -70,6 +73,9 @@ public class LabelCountService {
     public LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole) {
         validateRole(userRole, "registrar C2",
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
+
+        log.debug("registerCountC2: DTO comment='{}', isEmpty={}",
+            dto.getComment(), (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
 
         String roleUpper = userRole.toUpperCase();
         Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
@@ -84,13 +90,7 @@ public class LabelCountService {
         }
 
          LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
-         LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
-         
-         // Agregar comentario si se proporciona
-         if (dto.getComment() != null && !dto.getComment().trim().isEmpty()) {
-             result.setComment(dto.getComment().trim());
-             jpaLabelCountEventRepository.save(result);
-         }
+         LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true, dto.getComment());
          
          // Registrar en historial con periodId y warehouseId del marbete
          String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
