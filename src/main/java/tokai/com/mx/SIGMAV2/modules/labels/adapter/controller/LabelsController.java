@@ -104,32 +104,20 @@ public class LabelsController {
     @PostMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC2(@Valid @RequestBody CountEventDTO dto) {
-        log.info("📥 CONTROLLER registerCountC2: folio={}, comment='{}' (length={}, isEmpty={})",
-            dto.getFolio(), dto.getComment(),
-            (dto.getComment() != null ? dto.getComment().length() : "null"),
-            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PutMapping("/counts/c1/update")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody CountEventDTO dto) {
         Long userId = getUserIdFromToken();
-        log.info("📥 CONTROLLER updateCountC1: folio={}, comment='{}' (length={}, isEmpty={})",
-            dto.getFolio(), dto.getComment(),
-            (dto.getComment() != null ? dto.getComment().length() : "null"),
-            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
     @PutMapping("/counts/c2/update")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody CountEventDTO dto) {
         Long userId = getUserIdFromToken();
-        log.info("📥 CONTROLLER updateCountC2: folio={}, comment='{}' (length={}, isEmpty={})",
-            dto.getFolio(), dto.getComment(),
-            (dto.getComment() != null ? dto.getComment().length() : "null"),
-            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.updateCountC2(dto, userId, getUserRoleFromToken()));
     }
 

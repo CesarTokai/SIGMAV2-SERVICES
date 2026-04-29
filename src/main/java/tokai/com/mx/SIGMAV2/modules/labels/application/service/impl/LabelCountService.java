@@ -100,7 +100,7 @@ public class LabelCountService {
     }
 
     @Transactional
-    public LabelCountEvent updateCountC1(UpdateCountDTO dto, Long userId, String userRole) {
+    public LabelCountEvent updateCountC1(CountEventDTO dto, Long userId, String userRole) {
         log.info("Actualizando conteo C1 para folio {}", dto.getFolio());
         validateRole(userRole, "actualizar C1",
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
@@ -119,15 +119,13 @@ public class LabelCountService {
          eventC1.setCountedValue(dto.getCountedValue());
          eventC1.setUpdatedAt(LocalDateTime.now());
          eventC1.setUpdatedBy(userId);
-         
-         // Actualizar comentario si se proporciona
+
          if (dto.getComment() != null && !dto.getComment().trim().isEmpty()) {
              eventC1.setComment(dto.getComment().trim());
          }
 
          LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
-         
-         // Registrar actualización en historial con periodId y warehouseId correctos
+
          String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
          countHistoryService.recordCountUpdate(
              userId,
@@ -140,14 +138,14 @@ public class LabelCountService {
              label.getWarehouseId(),
              label.getPeriodId()
          );
-         
+
          log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                  dto.getFolio(), valorAnterior, dto.getCountedValue(), userId);
          return updated;
     }
 
     @Transactional
-    public LabelCountEvent updateCountC2(UpdateCountDTO dto, Long userId, String userRole) {
+    public LabelCountEvent updateCountC2(CountEventDTO dto, Long userId, String userRole) {
         log.info("Actualizando conteo C2 para folio {}", dto.getFolio());
         validateRole(userRole, "actualizar C2",
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");

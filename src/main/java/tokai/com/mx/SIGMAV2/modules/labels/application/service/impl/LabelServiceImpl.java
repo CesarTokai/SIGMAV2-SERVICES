@@ -181,12 +181,12 @@ public class LabelServiceImpl implements LabelService {
     }
 
     @Override @Transactional
-    public LabelCountEvent updateCountC1(UpdateCountDTO dto, Long userId, String userRole) {
+    public LabelCountEvent updateCountC1(CountEventDTO dto, Long userId, String userRole) {
         return labelCountService.updateCountC1(dto, userId, userRole);
     }
 
     @Override @Transactional
-    public LabelCountEvent updateCountC2(UpdateCountDTO dto, Long userId, String userRole) {
+    public LabelCountEvent updateCountC2(CountEventDTO dto, Long userId, String userRole) {
         return labelCountService.updateCountC2(dto, userId, userRole);
     }
 

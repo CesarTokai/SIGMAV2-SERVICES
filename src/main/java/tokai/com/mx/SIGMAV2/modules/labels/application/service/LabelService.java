@@ -38,9 +38,9 @@ public interface LabelService {
     LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole);
 
     // Métodos para actualizar conteos existentes
-    LabelCountEvent updateCountC1(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
+    LabelCountEvent updateCountC1(CountEventDTO dto, Long userId, String userRole);
 
-    LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
+    LabelCountEvent updateCountC2(CountEventDTO dto, Long userId, String userRole);
 
     List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
 
