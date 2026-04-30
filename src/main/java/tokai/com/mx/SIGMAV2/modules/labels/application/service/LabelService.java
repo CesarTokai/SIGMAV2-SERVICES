@@ -200,4 +200,17 @@ public interface LabelService {
      * @return byte[] PDF con los marbetes y sus códigos QR
      */
     byte[] printSelectedLabelsWithQR(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
+
+    /**
+     * 📋 GET /labels/{folio}/full-info — SIN PARÁMETROS
+     * Obtiene TODA la información de un marbete usando SOLO el folio (escaneo QR)
+     * No requiere periodId ni warehouseId — el marbete ya tiene esa información registrada
+     * 📱 MOBILE API: Ideal para escaneo de código QR en móvil
+     *
+     * @param folio Número del folio (del QR escaneado)
+     * @param userId ID del usuario consultando
+     * @param userRole Rol del usuario
+     * @return DTO con TODA la información del marbete (completo y detallado)
+     */
+    LabelFullDetailDTO getLabelFullDetailByFolioOnly(Long folio, Long userId, String userRole);
  }

@@ -106,6 +106,19 @@ public interface JpaLabelRepository extends JpaRepository<Label, Label.LabelId> 
      */
     @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId ORDER BY l.folio ASC")
     List<Label> findAllLabelsByPeriodAndWarehouseForDistribution(@Param("periodId") Long periodId,
-                                                                  @Param("warehouseId") Long warehouseId);
+                                                                   @Param("warehouseId") Long warehouseId);
+
+    /**
+     * 📱 MOBILE: Busca marbete por folio SOLAMENTE (sin filtro de período).
+     * Retorna el marbete más reciente si existe en múltiples períodos.
+     * Útil para escaneo de QR en móvil.
+     */
+    @Query("SELECT l FROM Label l WHERE l.folio = :folio ORDER BY l.periodId DESC LIMIT 1")
+    java.util.Optional<Label> findByFolioOnly(@Param("folio") Long folio);
+
+    /**
+     * 📱 MOBILE: Busca TODAS las instancias de un folio en todos los períodos.
+     */
+    List<Label> findByFolio(Long folio);
 }
 

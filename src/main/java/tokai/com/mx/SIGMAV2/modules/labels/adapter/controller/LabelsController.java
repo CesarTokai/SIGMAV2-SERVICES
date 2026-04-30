@@ -198,8 +198,74 @@ public class LabelsController {
 
     @GetMapping("/by-folio/{folio}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelStatusResponseDTO> getLabelByFolio(@PathVariable Long folio) {
-        return ResponseEntity.ok(labelService.getLabelStatus(folio, null, null, getUserIdFromToken(), getUserRoleFromToken()));
+    public ResponseEntity<LabelStatusResponseDTO> getLabelByFolio(@PathVariable Long folio, 
+            @RequestParam Long periodId, @RequestParam(required = false) Long warehouseId) {
+        return ResponseEntity.ok(labelService.getLabelStatus(folio, periodId, warehouseId, getUserIdFromToken(), getUserRoleFromToken()));
+    }
+
+    /**
+     * 📱 MOBILE QR SCANNER ENDPOINT
+     * GET /api/sigmav2/labels/mobile/folio/{folio}
+     * 
+     * Obtiene TODA la información del marbete usando SOLO el folio (escaneo QR)
+     * NO requiere periodId ni warehouseId — el marbete ya tiene esa información registrada
+     * 
+     * @param folio Número del folio (del código QR escaneado)
+     * @return JSON con toda la información del marbete:
+     *   - Datos del marbete, usuario que lo registró, producto, almacén, período
+     *   - Conteos C1/C2 (valores, fechas, usuarios, comentarios, historial completo)
+     *   - Impresiones (primeras, reimpresiones, historial)
+     *   - Cancelación (si aplica)
+     *   - Resumen de estado y próximas acciones
+     * 
+     * @throws 404 si el folio no existe en ningún período
+     * @throws 403 si el usuario no tiene acceso al almacén del marbete
+     */
+    @GetMapping("/mobile/folio/{folio}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> getMobileQRLabelInfo(@PathVariable Long folio) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+        
+        log.info("📱 [MOBILE QR SCAN] Consultando folio={}, usuario={}, rol={}", folio, userId, userRole);
+        
+        try {
+            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetailByFolioOnly(folio, userId, userRole);
+            
+            log.info("✅ Información completa obtenida para móvil: folio={}, período={}, almacén={}, estado={}", 
+                    folio, fullDetail.getPeriodId(), fullDetail.getWarehouseId(), fullDetail.getEstado());
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Información completa del marbete folio " + folio,
+                    "data", fullDetail,
+                    "timestamp", LocalDateTime.now()
+            ));
+            
+        } catch (LabelNotFoundException e) {
+            log.warn("❌ Marbete no encontrado en ningún período: folio={}", folio);
+            return ResponseEntity.status(404).body(Map.of(
+                    "success", false,
+                    "error", "Marbete no encontrado",
+                    "message", e.getMessage(),
+                    "folio", folio
+            ));
+        } catch (SecurityException | IllegalArgumentException e) {
+            log.warn("❌ Acceso denegado al marbete folio={}: {}", folio, e.getMessage());
+            return ResponseEntity.status(403).body(Map.of(
+                    "success", false,
+                    "error", "Acceso denegado",
+                    "message", "No tienes acceso al almacén de este marbete: " + e.getMessage(),
+                    "folio", folio
+            ));
+        } catch (Exception e) {
+            log.error("❌ Error al obtener información del folio {}: {}", folio, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "error", "Error interno del servidor",
+                    "message", e.getMessage()
+            ));
+        }
     }
 
     @PostMapping("/cancel")

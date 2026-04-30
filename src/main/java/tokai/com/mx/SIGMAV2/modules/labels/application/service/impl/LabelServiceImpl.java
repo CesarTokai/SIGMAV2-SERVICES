@@ -240,6 +240,11 @@ public class LabelServiceImpl implements LabelService {
     }
 
     @Override @Transactional(readOnly = true)
+    public LabelFullDetailDTO getLabelFullDetailByFolioOnly(Long folio, Long userId, String userRole) {
+        return labelQueryService.getLabelFullDetailByFolioOnly(folio, userId, userRole);
+    }
+
+    @Override @Transactional(readOnly = true)
     public List<LabelDetailForPrintDTO> getSelectedLabelsInfo(List<Long> folios, Long periodId, Long warehouseId, Long userId, String userRole) {
         return labelQueryService.getSelectedLabelsInfo(folios, periodId, warehouseId, userId, userRole);
     }

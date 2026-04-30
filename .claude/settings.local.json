@@ -13,7 +13,9 @@
       "Bash(export JAVA_HOME=\"/c/Users/cesarg/.jdks/corretto-21.0.9\")",
       "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
       "Bash(./mvnw test *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.\\(java|ts\\)$\")"
     ]
   }
 }

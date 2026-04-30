@@ -428,9 +428,36 @@ public class LabelQueryService {
         Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        return buildFullDetail(label);
+    }
+
+    /**
+     * 📱 MOBILE: Obtiene información COMPLETA del marbete usando SOLO el folio
+     * No requiere periodId — busca el marbete registrado (asume que está en un período vigente)
+     */
+    @Transactional(readOnly = true)
+    public LabelFullDetailDTO getLabelFullDetailByFolioOnly(Long folio, Long userId, String userRole) {
+        log.info("📱 [MOBILE QR] Obteniendo información COMPLETA del marbete folio={} (SIN período)", folio);
+        
+        Label label = jpaLabelRepository.findByFolioOnly(folio)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        
+        // Validar acceso al almacén del marbete encontrado
+        warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
+        
+        log.info("✅ Marbete encontrado en período={}, almacén={}", label.getPeriodId(), label.getWarehouseId());
+        return buildFullDetail(label);
+    }
+
+    /**
+     * Método auxiliar para construir el DTO completo de información del marbete
+     * (Reutilizado por ambos métodos: getLabelFullDetail y getLabelFullDetailByFolioOnly)
+     */
+    private LabelFullDetailDTO buildFullDetail(Label label) {
+        log.debug("Construyendo DTO completo para folio={}", label.getFolio());
 
         LabelFullDetailDTO.LabelFullDetailDTOBuilder builder = LabelFullDetailDTO.builder();
-        builder.folio(folio).estado(label.getEstado() != null ? label.getEstado().name() : "DESCONOCIDO")
+        builder.folio(label.getFolio()).estado(label.getEstado() != null ? label.getEstado().name() : "DESCONOCIDO")
                 .createdAt(label.getCreatedAt()).impresoAt(label.getImpresoAt());
 
         builder.createdByUserId(label.getCreatedBy());
@@ -465,7 +492,7 @@ public class LabelQueryService {
         } catch (Exception e) { log.warn("No se pudo obtener existencias: {}", e.getMessage()); }
 
         // Conteos
-        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
         List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
         BigDecimal c1 = null, c2 = null;
         LocalDateTime c1Fecha = null, c2Fecha = null;
@@ -551,7 +578,7 @@ public class LabelQueryService {
         }
 
         // Cancelación
-        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(folio);
+        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(label.getFolio());
         if (cancelledOpt.isPresent()) {
             LabelCancelled cancelled = cancelledOpt.get();
             builder.cancelado(true).canceladoAt(cancelled.getCanceladoAt()).canceladoPorUserId(cancelled.getCanceladoBy())
@@ -602,7 +629,7 @@ public class LabelQueryService {
         }
         builder.resumenEstado(resumen).proximoAccion(proximoAccion).warnings(warnings);
 
-        log.info("✅ Información completa obtenida para folio {}", folio);
+        log.info("✅ Información completa obtenida para folio {}", label.getFolio());
         return builder.build();
     }
 
