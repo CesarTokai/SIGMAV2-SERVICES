@@ -258,6 +258,15 @@ public class LabelsController {
                     "message", "No tienes acceso al almacén de este marbete: " + e.getMessage(),
                     "folio", folio
             ));
+        } catch (RuntimeException e) {
+            // Validaciones de estado/secuencia en mobile QR (generado, C2 sin C1, etc)
+            log.warn("❌ Validación fallida en escaneo QR: folio={}, razón={}", folio, e.getMessage());
+            return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "error", "Validación fallida",
+                    "message", e.getMessage(),
+                    "folio", folio
+            ));
         } catch (Exception e) {
             log.error("❌ Error al obtener información del folio {}: {}", folio, e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of(

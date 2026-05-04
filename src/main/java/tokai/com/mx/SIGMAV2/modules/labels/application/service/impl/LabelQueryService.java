@@ -438,13 +438,37 @@ public class LabelQueryService {
     @Transactional(readOnly = true)
     public LabelFullDetailDTO getLabelFullDetailByFolioOnly(Long folio, Long userId, String userRole) {
         log.info("📱 [MOBILE QR] Obteniendo información COMPLETA del marbete folio={} (SIN período)", folio);
-        
+
         Label label = jpaLabelRepository.findByFolioOnly(folio)
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
-        
+
         // Validar acceso al almacén del marbete encontrado
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
-        
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // VALIDACIONES PARA MOBILE QR SCANNER
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // 1️⃣ Rechazar si estado = GENERADO (no impreso)
+        // Razón: No existe etiqueta física con QR para escanear
+        if (label.getEstado() == Label.State.GENERADO) {
+            log.warn("❌ Intento de escaneo en marbete NO IMPRESO: folio={}", folio);
+            throw new RuntimeException("Marbete no impreso - no existe etiqueta con código QR para escanear");
+        }
+
+        // 2️⃣ Rechazar si C2 existe sin C1
+        // Razón: Violación de secuencia (C1 debe registrarse primero)
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+        boolean hasC1 = countEvents.stream().anyMatch(e -> e.getCountNumber() == 1);
+        boolean hasC2 = countEvents.stream().anyMatch(e -> e.getCountNumber() == 2);
+        if (hasC2 && !hasC1) {
+            log.warn("❌ Violación de secuencia: C2 sin C1 en folio={}", folio);
+            throw new RuntimeException("Conteo inválido - debe registrar C1 (primer conteo) antes de C2");
+        }
+
+        // ✅ Si está CANCELADO, devolver normalmente (con flag en DTO)
+        // La app móvil verá estado=CANCELADO y mostrará advertencia
+
         log.info("✅ Marbete encontrado en período={}, almacén={}", label.getPeriodId(), label.getWarehouseId());
         return buildFullDetail(label);
     }

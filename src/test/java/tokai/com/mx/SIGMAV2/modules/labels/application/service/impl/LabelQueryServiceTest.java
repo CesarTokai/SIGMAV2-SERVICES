@@ -269,6 +269,80 @@ class LabelQueryServiceTest {
         verify(warehouseAccessService, never()).validateWarehouseAccess(anyLong(), anyLong(), anyString());
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // TDD: Mobile QR Scanner Endpoint Validations
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void getLabelFullDetailByFolioOnly_rechaza_estado_GENERADO_no_impreso() {
+        Label label = new Label();
+        label.setFolio(folio);
+        label.setEstado(Label.State.GENERADO);  // NO impreso
+        label.setPeriodId(periodId);
+        label.setWarehouseId(warehouseId);
+
+        when(jpaLabelRepository.findByFolioOnly(folio))
+                .thenReturn(Optional.of(label));
+
+        assertThatThrownBy(() -> service.getLabelFullDetailByFolioOnly(folio, userId, userRole))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("No impreso");
+    }
+
+    @Test
+    void getLabelFullDetailByFolioOnly_devuelve_cancelado_con_flag() {
+        Label label = new Label();
+        label.setFolio(folio);
+        label.setEstado(Label.State.CANCELADO);
+        label.setPeriodId(periodId);
+        label.setWarehouseId(warehouseId);
+        label.setProductId(productId);
+        label.setCreatedBy(userId);
+
+        when(jpaLabelRepository.findByFolioOnly(folio))
+                .thenReturn(Optional.of(label));
+        when(productRepository.findById(productId))
+                .thenReturn(Optional.of(createProductEntity(productId, "PROD001", "Producto")));
+        when(warehouseRepository.findById(warehouseId))
+                .thenReturn(Optional.of(createWarehouseEntity(warehouseId, "Almacén")));
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.empty());
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio))
+                .thenReturn(Collections.emptyList());
+
+        LabelFullDetailDTO result = service.getLabelFullDetailByFolioOnly(folio, userId, userRole);
+
+        assertThat(result)
+                .isNotNull()
+                .hasFieldOrPropertyWithValue("estado", "CANCELADO");
+    }
+
+    @Test
+    void getLabelFullDetailByFolioOnly_rechaza_C2_sin_C1() {
+        Label label = new Label();
+        label.setFolio(folio);
+        label.setEstado(Label.State.IMPRESO);
+        label.setPeriodId(periodId);
+        label.setWarehouseId(warehouseId);
+        label.setProductId(productId);
+        label.setCreatedBy(userId);
+
+        LabelCountEvent c2Event = new LabelCountEvent();
+        c2Event.setCountNumber(2);
+        c2Event.setCountedValue(java.math.BigDecimal.valueOf(50));
+        c2Event.setFolio(folio);
+        c2Event.setUserId(userId);
+
+        when(jpaLabelRepository.findByFolioOnly(folio))
+                .thenReturn(Optional.of(label));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio))
+                .thenReturn(List.of(c2Event));  // Solo C2, sin C1
+
+        assertThatThrownBy(() -> service.getLabelFullDetailByFolioOnly(folio, userId, userRole))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("C1");
+    }
+
     // Helper methods
     private WarehouseEntity createWarehouseEntity(Long id, String name) {
         WarehouseEntity warehouse = new WarehouseEntity();
