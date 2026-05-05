@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.CountEventDTO;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.*;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
@@ -190,6 +189,7 @@ public class LabelCountService {
                  dto.getFolio(), oldValue, dto.getCountedValue(), userId);
          return updated;
     }
+
 
     // ── helpers privados ────────────────────────────────────────────────────
 

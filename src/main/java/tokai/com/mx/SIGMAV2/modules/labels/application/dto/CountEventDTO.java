@@ -36,8 +36,7 @@ public class CountEventDTO {
     @Positive(message = "El valor del conteo debe ser mayor a cero")
     private BigDecimal countedValue;
 
-    @NotNull(message = "El período es obligatorio")
-    private Long periodId;
+    private Long periodId;  // Opcional: si no viene, se obtiene del folio en BD
 
     private Long warehouseId;
 

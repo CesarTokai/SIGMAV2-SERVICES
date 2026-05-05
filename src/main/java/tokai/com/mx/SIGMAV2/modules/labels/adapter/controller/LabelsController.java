@@ -277,6 +277,103 @@ public class LabelsController {
         }
     }
 
+    /**
+     * 📱 MOBILE: Actualizar conteo C1
+     * PUT /api/sigmav2/labels/mobile/counts/c1/update
+     * 
+     * La app móvil obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}
+     * y los manda de vuelta aquí para identificar el marbete exacto (regla de negocio:
+     * el mismo folio puede existir en diferentes periodos).
+     */
+    @PutMapping("/mobile/counts/c1/update")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> updateCountC1ForMobile(
+            @RequestParam Long folio,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId,
+            @RequestParam java.math.BigDecimal countedValue,
+            @RequestParam(required = false) String comment) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("📱 [MOBILE C1] Actualizando conteo: folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
+
+        try {
+            CountEventDTO dto = new CountEventDTO();
+            dto.setFolio(folio);
+            dto.setPeriodId(periodId);
+            dto.setWarehouseId(warehouseId);
+            dto.setCountedValue(countedValue);
+            dto.setComment(comment);
+            dto.setOperation(CountEventDTO.Operation.UPDATE);
+
+            LabelCountEvent updated = labelService.updateCountC1(dto, userId, userRole);
+            log.info("✅ Conteo C1 actualizado (MÓVIL): folio={}", folio);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Conteo C1 actualizado correctamente",
+                    "data", updated,
+                    "timestamp", LocalDateTime.now()
+            ));
+        } catch (LabelNotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
+        } catch (Exception e) {
+            log.error("❌ Error al actualizar C1 móvil: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 📱 MOBILE: Actualizar conteo C2
+     * PUT /api/sigmav2/labels/mobile/counts/c2/update
+     * 
+     * La app móvil obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}
+     * y los manda de vuelta aquí para identificar el marbete exacto.
+     */
+    @PutMapping("/mobile/counts/c2/update")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> updateCountC2ForMobile(
+            @RequestParam Long folio,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId,
+            @RequestParam java.math.BigDecimal countedValue,
+            @RequestParam(required = false) String comment) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("📱 [MOBILE C2] Actualizando conteo: folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
+
+        try {
+            CountEventDTO dto = new CountEventDTO();
+            dto.setFolio(folio);
+            dto.setPeriodId(periodId);
+            dto.setWarehouseId(warehouseId);
+            dto.setCountedValue(countedValue);
+            dto.setComment(comment);
+            dto.setOperation(CountEventDTO.Operation.UPDATE);
+
+            LabelCountEvent updated = labelService.updateCountC2(dto, userId, userRole);
+            log.info("✅ Conteo C2 actualizado (MÓVIL): folio={}", folio);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Conteo C2 actualizado correctamente",
+                    "data", updated,
+                    "timestamp", LocalDateTime.now()
+            ));
+        } catch (LabelNotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
+        } catch (Exception e) {
+            log.error("❌ Error al actualizar C2 móvil: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<Void> cancelLabel(@Valid @RequestBody CancelLabelRequestDTO dto) {
