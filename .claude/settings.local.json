@@ -20,7 +20,15 @@
       "Bash(Get-ChildItem -Path \"src\" -Recurse -Filter \"Label.java\" -ErrorAction SilentlyContinue)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESENVOLVIMENTO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelCountIntegrationTest 2>&1 | Select-Object -Last 200)",
-      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelCountIntegrationTest 2>&1 | Select-Object -Last 100})"
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelCountIntegrationTest 2>&1 | Select-Object -Last 100})",
+      "Bash(git commit -m ' *)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 80)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 100)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 50)",
+      "PowerShell(tail *)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 60)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelQueryAndCaptureIntegrationTest 2>&1 | Select-Object -Last 25)"
     ]
   }
 }
