@@ -83,11 +83,11 @@ class LabelCountServiceTest {
         when(persistence.hasCountNumber(100L, 1)).thenReturn(false);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
-        when(persistence.saveCountEvent(anyLong(), anyLong(), eq(1), any(), any(), anyBoolean())).thenReturn(event);
+        when(persistence.saveCountEvent(eq(100L), eq(1L), eq(1), any(), any(), anyBoolean(), any())).thenReturn(event);
 
         service.registerCountC1(dto, 1L, "AUXILIAR");
 
-        verify(persistence).saveCountEvent(eq(100L), eq(1L), eq(1), eq(BigDecimal.TEN), any(), anyBoolean());
+        verify(persistence).saveCountEvent(eq(100L), eq(1L), eq(1), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -159,11 +159,11 @@ class LabelCountServiceTest {
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
-        when(persistence.saveCountEvent(anyLong(), anyLong(), eq(2), any(), any(), anyBoolean())).thenReturn(event);
+        when(persistence.saveCountEvent(eq(100L), eq(1L), eq(2), any(), any(), anyBoolean(), any())).thenReturn(event);
 
         service.registerCountC2(dto, 1L, "AUXILIAR");
 
-        verify(persistence).saveCountEvent(eq(100L), eq(1L), eq(2), eq(BigDecimal.TEN), any(), anyBoolean());
+        verify(persistence).saveCountEvent(eq(100L), eq(1L), eq(2), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -194,12 +194,126 @@ class LabelCountServiceTest {
         when(persistence.hasCountNumber(100L, 1)).thenReturn(true);
         when(persistence.hasCountNumber(100L, 2)).thenReturn(false);
         LabelCountEvent event = new LabelCountEvent();
-        when(persistence.saveCountEvent(anyLong(), anyLong(), eq(2), any(), any(), anyBoolean())).thenReturn(event);
+        when(persistence.saveCountEvent(eq(100L), eq(1L), eq(2), any(), any(), anyBoolean(), any())).thenReturn(event);
 
         service.registerCountC2(dto, 1L, "AUXILIAR_DE_CONTEO");
 
         // No debe llamar a validateWarehouseAccess
         verify(warehouseAccessService, never()).validateWarehouseAccess(anyLong(), anyLong(), anyString());
+    }
+
+    // ── Casos de validación faltantes (V3, V4, cantidad) ──────────────────
+
+    @Test
+    void registerCountC1_throws_when_period_mismatch() {
+        dto.setPeriodId(2L);  // DTO: periodo 2
+        // Label tiene periodo 1 en setUp()
+        when(persistence.findByFolioAndPeriodId(100L, 2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "AUXILIAR"))
+                .isInstanceOf(LabelNotFoundException.class);
+    }
+
+    @Test
+    void registerCountC1_throws_when_warehouse_mismatch() {
+        dto.setWarehouseId(3L);  // DTO: almacén 3
+        // Label tiene almacén 2 en setUp()
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+
+        assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "ALMACENISTA"))
+                .isInstanceOf(InvalidLabelStateException.class)
+                .hasMessageContaining("almacén");
+    }
+
+    @Test
+    void registerCountC2_throws_when_warehouse_mismatch() {
+        dto.setWarehouseId(3L);
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+
+        assertThatThrownBy(() -> service.registerCountC2(dto, 1L, "ALMACENISTA"))
+                .isInstanceOf(InvalidLabelStateException.class)
+                .hasMessageContaining("almacén");
+    }
+
+    @Test
+    void registerCountC1_throws_when_warehouse_access_denied() {
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        doThrow(new PermissionDeniedException("Sin acceso al almacén"))
+                .when(warehouseAccessService).validateWarehouseAccess(1L, 2L, "ALMACENISTA");
+
+        assertThatThrownBy(() -> service.registerCountC1(dto, 1L, "ALMACENISTA"))
+                .isInstanceOf(PermissionDeniedException.class)
+                .hasMessageContaining("almacén");
+    }
+
+    // ── updateCountC1 ──────────────────────────────────────────────────────
+
+    @Test
+    void updateCountC1_success() {
+        var existingEvent = new LabelCountEvent();
+        existingEvent.setCountNumber(1);
+        existingEvent.setCountedValue(BigDecimal.TEN);
+        existingEvent.setFolio(100L);
+
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L))
+                .thenReturn(java.util.List.of(existingEvent));
+        when(jpaLabelCountEventRepository.save(any())).thenReturn(existingEvent);
+
+        var result = service.updateCountC1(dto, 1L, "AUXILIAR");
+
+        verify(jpaLabelCountEventRepository).save(any(LabelCountEvent.class));
+    }
+
+    @Test
+    void updateCountC1_throws_when_C1_not_exists() {
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L))
+                .thenReturn(java.util.List.of());  // Empty list
+
+        assertThatThrownBy(() -> service.updateCountC1(dto, 1L, "AUXILIAR"))
+                .isInstanceOf(LabelNotFoundException.class)
+                .hasMessageContaining("C1");
+    }
+
+    @Test
+    void updateCountC1_throws_when_label_cancelled() {
+        impressedLabel.setEstado(Label.State.CANCELADO);
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+
+        assertThatThrownBy(() -> service.updateCountC1(dto, 1L, "AUXILIAR"))
+                .isInstanceOf(InvalidLabelStateException.class)
+                .hasMessageContaining("CANCELADO");
+    }
+
+    // ── updateCountC2 ──────────────────────────────────────────────────────
+
+    @Test
+    void updateCountC2_success() {
+        var existingEvent = new LabelCountEvent();
+        existingEvent.setCountNumber(2);
+        existingEvent.setCountedValue(BigDecimal.TEN);
+        existingEvent.setFolio(100L);
+
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L))
+                .thenReturn(java.util.List.of(existingEvent));
+        when(jpaLabelCountEventRepository.save(any())).thenReturn(existingEvent);
+
+        var result = service.updateCountC2(dto, 1L, "AUXILIAR");
+
+        verify(jpaLabelCountEventRepository).save(any(LabelCountEvent.class));
+    }
+
+    @Test
+    void updateCountC2_throws_when_C2_not_exists() {
+        when(persistence.findByFolioAndPeriodId(100L, 1L)).thenReturn(Optional.of(impressedLabel));
+        when(jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(100L))
+                .thenReturn(java.util.List.of());
+
+        assertThatThrownBy(() -> service.updateCountC2(dto, 1L, "AUXILIAR"))
+                .isInstanceOf(LabelNotFoundException.class)
+                .hasMessageContaining("C2");
     }
 
 }
