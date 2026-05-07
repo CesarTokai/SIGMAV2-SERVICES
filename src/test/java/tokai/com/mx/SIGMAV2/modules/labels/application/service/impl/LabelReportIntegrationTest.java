@@ -67,6 +67,32 @@ class LabelReportIntegrationTest {
                 .isInstanceOf(PermissionDeniedException.class);
     }
 
+    @Test
+    void getDistributionReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getDistributionReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getDistributionReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getDistributionReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
+    }
+
     // ───────────────────── LABEL LIST REPORT ─────────────────────
 
     @Test
@@ -91,6 +117,32 @@ class LabelReportIntegrationTest {
 
         assertThatThrownBy(() -> labelService.getLabelListReport(filter, 1L, "AUXILIAR"))
                 .isInstanceOf(PermissionDeniedException.class);
+    }
+
+    @Test
+    void getLabelListReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getLabelListReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getLabelListReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getLabelListReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
     }
 
     // ───────────────────── PENDING LABELS REPORT ─────────────────────
@@ -119,6 +171,32 @@ class LabelReportIntegrationTest {
                 .isInstanceOf(PermissionDeniedException.class);
     }
 
+    @Test
+    void getPendingLabelsReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getPendingLabelsReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getPendingLabelsReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getPendingLabelsReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
+    }
+
     // ───────────────────── DIFFERENCES REPORT ─────────────────────
 
     @Test
@@ -143,6 +221,32 @@ class LabelReportIntegrationTest {
 
         assertThatThrownBy(() -> labelService.getDifferencesReport(filter, 1L, "AUXILIAR"))
                 .isInstanceOf(PermissionDeniedException.class);
+    }
+
+    @Test
+    void getDifferencesReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getDifferencesReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getDifferencesReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getDifferencesReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
     }
 
     // ───────────────────── CANCELLED LABELS REPORT ─────────────────────
@@ -171,6 +275,32 @@ class LabelReportIntegrationTest {
                 .isInstanceOf(PermissionDeniedException.class);
     }
 
+    @Test
+    void getCancelledLabelsReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getCancelledLabelsReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getCancelledLabelsReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getCancelledLabelsReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
+    }
+
     // ───────────────────── COMPARATIVE REPORT ─────────────────────
 
     @Test
@@ -195,6 +325,32 @@ class LabelReportIntegrationTest {
 
         assertThatThrownBy(() -> labelService.getComparativeReport(filter, 1L, "AUXILIAR"))
                 .isInstanceOf(PermissionDeniedException.class);
+    }
+
+    @Test
+    void getComparativeReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getComparativeReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getComparativeReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getComparativeReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
     }
 
     // ───────────────────── WAREHOUSE DETAIL REPORT ─────────────────────
@@ -223,6 +379,32 @@ class LabelReportIntegrationTest {
                 .isInstanceOf(PermissionDeniedException.class);
     }
 
+    @Test
+    void getWarehouseDetailReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getWarehouseDetailReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getWarehouseDetailReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getWarehouseDetailReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
+    }
+
     // ───────────────────── PRODUCT DETAIL REPORT ─────────────────────
 
     @Test
@@ -247,6 +429,32 @@ class LabelReportIntegrationTest {
 
         assertThatThrownBy(() -> labelService.getProductDetailReport(filter, 1L, "AUXILIAR"))
                 .isInstanceOf(PermissionDeniedException.class);
+    }
+
+    @Test
+    void getProductDetailReport_success_with_invalid_period() {
+        ReportFilterDTO filter = new ReportFilterDTO();
+        filter.setPeriodId(999L);
+        filter.setWarehouseId(1L);
+
+        List<?> result = labelService.getProductDetailReport(filter, 1L, "AUXILIAR");
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void getProductDetailReport_success_with_valid_roles() {
+        String[] validRoles = {"ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO"};
+
+        for (String role : validRoles) {
+            ReportFilterDTO filter = new ReportFilterDTO();
+            filter.setPeriodId(1L);
+            filter.setWarehouseId(1L);
+
+            List<?> result = labelService.getProductDetailReport(filter, 1L, role);
+
+            assertThat(result).isNotNull();
+        }
     }
 
 }

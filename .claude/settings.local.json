@@ -33,7 +33,8 @@
       "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelPrintIntegrationTest 2>&1 | Select-Object -Last 35)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelReprintIntegrationTest 2>&1 | Select-Object -Last 30)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelReportIntegrationTest 2>&1 | Select-Object -Last 30)",
-      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelReportIntegrationTest 2>&1 | Select-Object -Last 25)"
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Users\\\\cesarg\\\\.jdks\\\\corretto-21.0.9\"; cd \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-SERVICES\"; .\\\\mvnw test -Dtest=LabelReportIntegrationTest 2>&1 | Select-Object -Last 25)",
+      "Bash(export JAVA_HOME=\"C:/Users/cesarg/.jdks/corretto-21.0.9\")"
     ]
   }
 }
