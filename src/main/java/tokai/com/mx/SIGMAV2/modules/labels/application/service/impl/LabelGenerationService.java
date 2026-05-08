@@ -116,17 +116,17 @@ public class LabelGenerationService {
                 labelRequest = existing.get();
                 log.info("📋 Reutilizando LabelRequest existente (ID: {}) para producto {}",
                         labelRequest.getIdLabelRequest(), product.getProductId());
-                // Actualizar solo foliosGenerados — NO sobrescribir requestedLabels
-                // requestedLabels conserva el valor original solicitado
-                labelRequest.setFoliosGenerados(cantidad);
+                // requestedLabels conserva el valor original solicitado (copias)
+                // foliosGenerados = 1 porque solo se genera UN folio único
+                labelRequest.setFoliosGenerados(1);
                 persistence.save(labelRequest);
             } else {
                 labelRequest = new LabelRequest();
                 labelRequest.setProductId(product.getProductId());
                 labelRequest.setWarehouseId(dto.getWarehouseId());
                 labelRequest.setPeriodId(dto.getPeriodId());
-                labelRequest.setRequestedLabels(cantidad);
-                labelRequest.setFoliosGenerados(cantidad);
+                labelRequest.setRequestedLabels(cantidad); // copias solicitadas
+                labelRequest.setFoliosGenerados(1);        // siempre 1 folio único
                 labelRequest.setCreatedBy(userId);
                 labelRequest.setCreatedAt(now);
                 labelRequest = persistence.save(labelRequest);
@@ -135,28 +135,27 @@ public class LabelGenerationService {
             }
 
 
-            long[] range = persistence.allocateFolioRange(dto.getPeriodId(), cantidad);
+            // Se asigna UN único folio por producto; 'copies' indica cuántas impresiones físicas.
+            long[] range = persistence.allocateFolioRange(dto.getPeriodId(), 1);
+            long folioUnico = range[0];
 
-            List<Label> labels = new ArrayList<>(cantidad);
-            for (long folio = range[0]; folio <= range[1]; folio++) {
-                Label label = new Label();
-                label.setFolio(folio);
-                label.setLabelRequestId(labelRequest.getIdLabelRequest());
-                label.setPeriodId(dto.getPeriodId());
-                label.setWarehouseId(dto.getWarehouseId());
-                label.setProductId(product.getProductId());
-                label.setEstado(Label.State.GENERADO);
-                label.setCreatedBy(userId);
-                label.setCreatedAt(now);
-                label.setComment(product.getComment()); // Comentario individual por marbete
-                labels.add(label);
-            }
+            Label label = new Label();
+            label.setFolio(folioUnico);
+            label.setLabelRequestId(labelRequest.getIdLabelRequest());
+            label.setPeriodId(dto.getPeriodId());
+            label.setWarehouseId(dto.getWarehouseId());
+            label.setProductId(product.getProductId());
+            label.setCopies(cantidad); // cuántas impresiones físicas de este folio
+            label.setEstado(Label.State.GENERADO);
+            label.setCreatedBy(userId);
+            label.setCreatedAt(now);
+            label.setComment(product.getComment());
 
-            persistence.saveAll(labels);
-            totalGenerados += cantidad;
+            persistence.saveAll(List.of(label));
+            totalGenerados += 1; // 1 folio único generado
 
-            log.info("✅ Producto {}: {} marbetes (folios {}-{}) con QR asignados a LabelRequest {}",
-                    product.getProductId(), cantidad, range[0], range[1], labelRequest.getIdLabelRequest());
+            log.info("✅ Producto {}: folio {} ({} copias) asignado a LabelRequest {}",
+                    product.getProductId(), folioUnico, cantidad, labelRequest.getIdLabelRequest());
         }
 
         log.info("✅ Total generado: {} marbetes", totalGenerados);

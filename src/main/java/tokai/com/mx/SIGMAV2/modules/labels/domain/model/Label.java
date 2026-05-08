@@ -39,6 +39,14 @@ public class Label {
     @Column(name = "impreso_at")
     private LocalDateTime impresoAt;
 
+    /**
+     * Número de copias físicas a imprimir de este marbete.
+     * El folio es ÚNICO; copies indica cuántas veces se imprime la misma etiqueta.
+     * Default: 1 (una sola copia).
+     */
+    @Column(nullable = false)
+    private Integer copies = 1;
+
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 

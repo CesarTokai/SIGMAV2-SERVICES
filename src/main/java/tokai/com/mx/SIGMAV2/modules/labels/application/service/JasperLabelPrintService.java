@@ -145,7 +145,8 @@ public class JasperLabelPrintService {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String fechaActual = LocalDate.now().format(dateFormatter);
 
-        // Pre-procesar todos los marbetes para obtener sus datos
+        // Pre-procesar todos los marbetes para obtener sus datos.
+        // Cada Label se repite 'copies' veces en la lista para generar las copias físicas.
         List<Map<String, String>> labelDataList = new ArrayList<>();
         for (Label label : labels) {
             ProductInfo product = productsCache.get(label.getProductId());
@@ -178,21 +179,20 @@ public class JasperLabelPrintService {
             descripcion = descripcion != null ? descripcion : "";
 
             String almacen = warehouse.warehouseKey() + " " + warehouse.nameWarehouse();
-            
+
             Map<String, String> labelData = new HashMap<>();
             labelData.put("folio", folio);
             labelData.put("codigo", codigo);
             labelData.put("descripcion", descripcion);
             labelData.put("almacen", almacen);
             labelData.put("fecha", fechaActual);
-            
-            // Generar QR si es necesario
-            if (withQR) {
-                BufferedImage qrImage = generateQRCode(folio);
-                labelData.put("_qrImage", qrImage.toString()); // Usar toString() como placeholder
+
+            // Agregar tantas veces como copias solicite el marbete
+            int copies = (label.getCopies() != null && label.getCopies() > 0) ? label.getCopies() : 1;
+            log.debug("Folio {} → {} copia(s) en PDF", folio, copies);
+            for (int c = 0; c < copies; c++) {
+                labelDataList.add(labelData);
             }
-            
-            labelDataList.add(labelData);
         }
 
         if (withQR) {

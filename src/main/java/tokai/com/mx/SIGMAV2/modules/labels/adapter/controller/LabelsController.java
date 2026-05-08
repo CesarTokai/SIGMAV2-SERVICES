@@ -278,6 +278,106 @@ public class LabelsController {
     }
 
     /**
+     * 📱 MOBILE: Registrar conteo C1 por primera vez
+     * POST /api/sigmav2/labels/mobile/counts/c1/register
+     *
+     * Usar cuando el AUXILIAR_DE_CONTEO registra C1 por primera vez en un marbete.
+     * La app obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}.
+     */
+    @PostMapping("/mobile/counts/c1/register")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> registerCountC1ForMobile(
+            @RequestParam Long folio,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId,
+            @RequestParam java.math.BigDecimal countedValue,
+            @RequestParam(required = false) String comment) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("📱 [MOBILE C1 REGISTER] folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
+
+        try {
+            CountEventDTO dto = new CountEventDTO();
+            dto.setFolio(folio);
+            dto.setPeriodId(periodId);
+            dto.setWarehouseId(warehouseId);
+            dto.setCountedValue(countedValue);
+            dto.setComment(comment);
+
+            LabelCountEvent result = labelService.registerCountC1(dto, userId, userRole);
+            log.info("✅ Conteo C1 registrado (MÓVIL): folio={}", folio);
+
+            return ResponseEntity.status(201).body(Map.of(
+                    "success", true,
+                    "message", "Conteo C1 registrado correctamente",
+                    "data", result,
+                    "timestamp", LocalDateTime.now()
+            ));
+        } catch (LabelNotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException e) {
+            return ResponseEntity.status(409).body(Map.of("success", false, "error", "Conteo duplicado", "message", e.getMessage(), "folio", folio));
+        } catch (Exception e) {
+            log.error("❌ Error al registrar C1 móvil: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 📱 MOBILE: Registrar conteo C2 por primera vez
+     * POST /api/sigmav2/labels/mobile/counts/c2/register
+     *
+     * Usar cuando el AUXILIAR_DE_CONTEO registra C2 por primera vez (requiere C1 previo).
+     * La app obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}.
+     */
+    @PostMapping("/mobile/counts/c2/register")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<?> registerCountC2ForMobile(
+            @RequestParam Long folio,
+            @RequestParam Long periodId,
+            @RequestParam Long warehouseId,
+            @RequestParam java.math.BigDecimal countedValue,
+            @RequestParam(required = false) String comment) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        log.info("📱 [MOBILE C2 REGISTER] folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
+
+        try {
+            CountEventDTO dto = new CountEventDTO();
+            dto.setFolio(folio);
+            dto.setPeriodId(periodId);
+            dto.setWarehouseId(warehouseId);
+            dto.setCountedValue(countedValue);
+            dto.setComment(comment);
+
+            LabelCountEvent result = labelService.registerCountC2(dto, userId, userRole);
+            log.info("✅ Conteo C2 registrado (MÓVIL): folio={}", folio);
+
+            return ResponseEntity.status(201).body(Map.of(
+                    "success", true,
+                    "message", "Conteo C2 registrado correctamente",
+                    "data", result,
+                    "timestamp", LocalDateTime.now()
+            ));
+        } catch (LabelNotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException e) {
+            return ResponseEntity.status(409).body(Map.of("success", false, "error", "Conteo duplicado", "message", e.getMessage(), "folio", folio));
+        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Secuencia inválida", "message", "Debe registrar C1 antes de C2", "folio", folio));
+        } catch (Exception e) {
+            log.error("❌ Error al registrar C2 móvil: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
+        }
+    }
+
+    /**
      * 📱 MOBILE: Actualizar conteo C1
      * PUT /api/sigmav2/labels/mobile/counts/c1/update
      * 
