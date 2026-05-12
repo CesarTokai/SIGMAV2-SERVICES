@@ -502,6 +502,14 @@ public class LabelsController {
         return ResponseEntity.ok(labels);
     }
 
+    @PostMapping("/available-folio-numbers")
+    @PreAuthorize("hasAnyRole('ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<AvailableFolioDTO>> getAvailableFolios(@Valid @RequestBody AvailableFoliosRequestDTO dto) {
+        log.info("📋 Consultando folios disponibles para periodo: {}", dto.getPeriodId());
+        List<AvailableFolioDTO> folios = labelService.getAvailableFolios(dto.getPeriodId(), getUserIdFromToken(), getUserRoleFromToken());
+        return ResponseEntity.ok(folios);
+    }
+
     // ── Reportes JSON ────────────────────────────────────────────────────
     @PostMapping("/reports/distribution")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")

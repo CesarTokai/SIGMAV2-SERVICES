@@ -202,6 +202,19 @@ public interface LabelService {
     byte[] printSelectedLabelsWithQR(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
 
     /**
+     * 📋 GET /labels/available-folio-numbers
+     * Obtiene la lista de folios disponibles para conteo en el período,
+     * filtrados automáticamente por los almacenes asignados al usuario.
+     * Muestra si cada folio tiene C1 y/o C2 registrados.
+     * 
+     * @param periodId ID del periodo
+     * @param userId ID del usuario consultando
+     * @param userRole Rol del usuario (ALMACENISTA, AUXILIAR_DE_CONTEO)
+     * @return Lista de folios disponibles con información de conteos
+     */
+    List<AvailableFolioDTO> getAvailableFolios(Long periodId, Long userId, String userRole);
+
+    /**
      * 📋 GET /labels/{folio}/full-info — SIN PARÁMETROS
      * Obtiene TODA la información de un marbete usando SOLO el folio (escaneo QR)
      * No requiere periodId ni warehouseId — el marbete ya tiene esa información registrada

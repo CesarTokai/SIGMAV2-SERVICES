@@ -230,6 +230,11 @@ public class LabelServiceImpl implements LabelService {
     }
 
     @Override @Transactional(readOnly = true)
+    public List<AvailableFolioDTO> getAvailableFolios(Long periodId, Long userId, String userRole) {
+        return labelQueryService.getAvailableFolios(periodId, userId, userRole);
+    }
+
+    @Override @Transactional(readOnly = true)
     public LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole) {
         return labelQueryService.getLabelFullDetail(folio, periodId, userId, userRole);
     }

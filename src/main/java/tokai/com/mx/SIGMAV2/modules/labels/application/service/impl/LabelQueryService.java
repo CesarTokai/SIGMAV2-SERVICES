@@ -16,6 +16,7 @@ import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.*;
 import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
 import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.JpaUserRepository;
 import tokai.com.mx.SIGMAV2.modules.warehouse.application.service.WarehouseAccessService;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.UserWarehouseService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,6 +38,7 @@ public class LabelQueryService {
 
     private final LabelsPersistenceAdapter persistence;
     private final WarehouseAccessService warehouseAccessService;
+    private final UserWarehouseService userWarehouseService;
     private final JpaProductRepository productRepository;
     private final JpaWarehouseRepository warehouseRepository;
     private final JpaInventoryStockRepository inventoryStockRepository;
@@ -898,5 +900,112 @@ public class LabelQueryService {
             case "almacen", "nombrealmacen" -> Comparator.comparing(LabelFullDetailDTO::getNombreAlmacen, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
             default -> Comparator.comparing(LabelFullDetailDTO::getFolio);
         };
+    }
+
+    /**
+     * Obtiene folios disponibles para conteo en el período, filtrados automáticamente
+     * por los almacenes asignados al usuario.
+     * 
+     * Solo tiene en cuenta ALMACENISTA y AUXILIAR_DE_CONTEO.
+     * Otros roles necesitan pasar warehouseId explícitamente.
+     */
+    @Transactional(readOnly = true)
+    public List<AvailableFolioDTO> getAvailableFolios(Long periodId, Long userId, String userRole) {
+        String roleUpper = userRole != null ? userRole.toUpperCase() : "";
+        
+        Set<Long> warehouseIds = new HashSet<>();
+        
+        // Obtener almacenes según el rol
+        if ("ALMACENISTA".equals(roleUpper)) {
+            var assignments = userWarehouseService.findAssignmentsByUserId(userId);
+            warehouseIds.addAll(
+                assignments.stream()
+                    .map(a -> a.getWarehouseId())
+                    .collect(Collectors.toList())
+            );
+            if (warehouseIds.isEmpty()) {
+                log.warn("ALMACENISTA {} no tiene almacenes asignados", userId);
+                return new ArrayList<>();
+            }
+        } else if ("AUXILIAR_DE_CONTEO".equals(roleUpper)) {
+            // AUXILIAR_DE_CONTEO ve todos los almacenes
+            var allWarehouses = warehouseRepository.findAll();
+            warehouseIds.addAll(
+                allWarehouses.stream()
+                    .map(WarehouseEntity::getIdWarehouse)
+                    .collect(Collectors.toList())
+            );
+        } else {
+            // Otros roles no tienen acceso a este endpoint
+            log.warn("Rol {} no autorizado para getAvailableFolios", userRole);
+            return new ArrayList<>();
+        }
+
+        // Obtener todos los marbetes impresos en este período
+        List<Label> allLabels = jpaLabelRepository.findImpresosForCountByPeriod(periodId);
+        
+        // Filtrar solo por los almacenes asignados
+        List<Label> labels = allLabels.stream()
+            .filter(l -> warehouseIds.contains(l.getWarehouseId()))
+            .collect(Collectors.toList());
+        
+        if (labels.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Cargar eventos de conteo en batch
+        List<Long> folios = labels.stream().map(Label::getFolio).toList();
+        Map<Long, List<LabelCountEvent>> countsByFolio = jpaLabelCountEventRepository
+            .findByFolioInOrderByFolioAscCountNumberAsc(folios).stream()
+            .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
+
+        // Cargar almacenes
+        Map<Long, WarehouseEntity> warehouseMap = warehouseRepository.findAllById(warehouseIds)
+            .stream()
+            .collect(Collectors.toMap(WarehouseEntity::getIdWarehouse, w -> w));
+
+        // Cargar productos
+        Set<Long> productIds = labels.stream().map(Label::getProductId).collect(Collectors.toSet());
+        Map<Long, ProductEntity> productMap = productRepository.findAllById(productIds)
+            .stream()
+            .collect(Collectors.toMap(ProductEntity::getIdProduct, p -> p));
+
+        // Construir DTOs
+        List<AvailableFolioDTO> result = new ArrayList<>();
+        for (Label label : labels) {
+            ProductEntity product = productMap.get(label.getProductId());
+            if (product == null) continue;
+
+            WarehouseEntity warehouse = warehouseMap.get(label.getWarehouseId());
+            if (warehouse == null) continue;
+
+            List<LabelCountEvent> events = countsByFolio.getOrDefault(label.getFolio(), List.of());
+            
+            // Determinar si tiene C1 y C2
+            boolean tieneC1 = false;
+            boolean tieneC2 = false;
+            for (LabelCountEvent event : events) {
+                if (event.getCountNumber() == 1) tieneC1 = true;
+                if (event.getCountNumber() == 2) tieneC2 = true;
+            }
+
+            AvailableFolioDTO dto = AvailableFolioDTO.builder()
+                .folio(label.getFolio())
+                .nombreAlmacen(warehouse.getNameWarehouse())
+                .claveProducto(product.getCveArt())
+                .descripcionProducto(product.getDescr())
+                .unidadMedida(product.getUniMed())
+                .tieneC1(tieneC1)
+                .tieneC2(tieneC2)
+                .estado(label.getEstado() != null ? label.getEstado().name() : "ACTIVO")
+                .impreso(label.getImpresoAt() != null)
+                .build();
+            
+            result.add(dto);
+        }
+
+        // Ordenar por folio
+        result.sort(Comparator.comparing(AvailableFolioDTO::getFolio));
+        return result;
     }
 }
