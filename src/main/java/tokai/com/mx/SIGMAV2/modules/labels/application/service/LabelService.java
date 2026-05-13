@@ -38,9 +38,9 @@ public interface LabelService {
     LabelCountEvent registerCountC2(CountEventDTO dto, Long userId, String userRole);
 
     // Métodos para actualizar conteos existentes
-    LabelCountEvent updateCountC1(CountEventDTO dto, Long userId, String userRole);
+    LabelCountEvent updateCountC1(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
 
-    LabelCountEvent updateCountC2(CountEventDTO dto, Long userId, String userRole);
+    LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
 
     List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
 
@@ -86,27 +86,25 @@ public interface LabelService {
     tokai.com.mx.SIGMAV2.modules.labels.application.dto.GenerateFileResponseDTO generateInventoryFile(Long periodId, Long userId, String userRole);
 
     /**
-     * 📄 GET /labels/{folio}/pdf
+     * 🔍 GET /labels/{folio}/pdf
      * Obtiene el PDF de un marbete ya impreso
      * @param folio ID del folio
-     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario
      * @param userRole Rol del usuario
      * @return byte[] con el PDF del marbete
      */
-    byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole);
+    byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole);
 
     /**
      * 🔄 POST /labels/{folio}/reprint-simple
      * Reimprimir un marbete ya impreso actualizando solo el timestamp
      * Sin cambiar su estado ni generar nuevos folios
      * @param folio ID del folio
-     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario que reimprimen
      * @param userRole Rol del usuario
      * @return byte[] con el PDF reimprimido
      */
-    byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole);
+    byte[] reprintSimple(Long folio, Long userId, String userRole);
 
     /**
      * 📋 GET /labels/{folio}/full-info
@@ -115,12 +113,11 @@ public interface LabelService {
      * impresiones, cancelaciones, historial completo, existencias, etc.
      * 
      * @param folio ID del folio del marbete
-     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @param userId ID del usuario consultando
      * @param userRole Rol del usuario
      * @return DTO con toda la información del marbete
      */
-    LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole);
+    LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole);
 
     /**
      * 📊 GET /labels/full-list
@@ -173,57 +170,6 @@ public interface LabelService {
      * @throws IllegalArgumentException si los marbetes están en diferentes periodos
      */
     byte[] printSelectedLabelsAutoWarehouse(PrintSelectedLabelsAutoWarehouseDTO request, Long userId, String userRole);
+}
 
-    /**
-     * 📊 GET /labels/report/with-comments
-     * Reporte de Marbetes con Comentarios de Conteos
-     * Retorna lista de marbetes con:
-     * - Información del producto y almacén
-     * - Conteos C1 y C2 con sus comentarios
-     * - Análisis de diferencias
-     * 
-     * @param filter DTO con filtros (periodId, warehouseId)
-     * @param userId ID del usuario consultando
-     * @param userRole Rol del usuario
-     * @return Lista de marbetes con comentarios de conteos
-     */
-    List<LabelWithCommentsReportDTO> getLabelListWithComments(ReportFilterDTO filter, Long userId, String userRole);
 
-    /**
-     * 🖨️ POST /labels/print-selected-with-qr
-     * Imprime marbetes específicos CON QR
-     * El usuario proporciona los folios y se genera PDF con QR incluido
-     * 
-     * @param request DTO con folios a imprimir
-     * @param userId ID del usuario
-     * @param userRole Rol del usuario
-     * @return byte[] PDF con los marbetes y sus códigos QR
-     */
-    byte[] printSelectedLabelsWithQR(PrintSelectedLabelsRequestDTO request, Long userId, String userRole);
-
-    /**
-     * 📋 GET /labels/available-folio-numbers
-     * Obtiene la lista de folios disponibles para conteo en el período,
-     * filtrados automáticamente por los almacenes asignados al usuario.
-     * Muestra si cada folio tiene C1 y/o C2 registrados.
-     * 
-     * @param periodId ID del periodo
-     * @param userId ID del usuario consultando
-     * @param userRole Rol del usuario (ALMACENISTA, AUXILIAR_DE_CONTEO)
-     * @return Lista de folios disponibles con información de conteos
-     */
-    List<AvailableFolioDTO> getAvailableFolios(Long periodId, Long userId, String userRole);
-
-    /**
-     * 📋 GET /labels/{folio}/full-info — SIN PARÁMETROS
-     * Obtiene TODA la información de un marbete usando SOLO el folio (escaneo QR)
-     * No requiere periodId ni warehouseId — el marbete ya tiene esa información registrada
-     * 📱 MOBILE API: Ideal para escaneo de código QR en móvil
-     *
-     * @param folio Número del folio (del QR escaneado)
-     * @param userId ID del usuario consultando
-     * @param userRole Rol del usuario
-     * @return DTO con TODA la información del marbete (completo y detallado)
-     */
-    LabelFullDetailDTO getLabelFullDetailByFolioOnly(Long folio, Long userId, String userRole);
- }

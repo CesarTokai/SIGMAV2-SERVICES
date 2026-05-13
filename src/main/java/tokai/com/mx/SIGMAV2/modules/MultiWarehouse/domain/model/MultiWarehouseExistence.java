@@ -1,8 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.MultiWarehouse.domain.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import java.math.BigDecimal;
 
 @Entity
@@ -10,8 +9,7 @@ import java.math.BigDecimal;
         indexes = {
                 @Index(name = "idx_warehouse_product", columnList = "warehouse_id,product_code")
         })
-@Getter
-@Setter
+@Data
 public class MultiWarehouseExistence {
 
     @Id

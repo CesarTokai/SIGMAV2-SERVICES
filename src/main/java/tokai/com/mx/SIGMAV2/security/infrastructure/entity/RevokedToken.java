@@ -2,8 +2,7 @@ package tokai.com.mx.SIGMAV2.security.infrastructure.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
@@ -13,8 +12,7 @@ import java.time.Instant;
     @Index(name = "idx_revoked_jti", columnList = "jti"),
     @Index(name = "idx_expires_at", columnList = "expiresAt")
 })
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class RevokedToken {

@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public interface JpaLabelRepository extends JpaRepository<Label, Label.LabelId> {
+public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     boolean existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(Long productId, Long warehouseId, Long periodId, Label.State estado);
 
@@ -22,21 +22,11 @@ public interface JpaLabelRepository extends JpaRepository<Label, Label.LabelId> 
 
     long countByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
 
-    /**
-     * IMPORTANTE: findByFolioBetween ahora puede retornar marbetes de MÚLTIPLES periodos
-     * Úsalo solo cuando realmente necesites buscar por folio sin filtro de periodo
-     * En la mayoría de casos, usa findByFolioAndPeriodId
-     */
     List<Label> findByFolioBetween(Long startFolio, Long endFolio);
 
     List<Label> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);
 
     java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
-    
-    /**
-     * Busca un marbete por su PK compuesta (folio + periodId)
-     */
-    java.util.Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
 
 
     List<Label> findByFolioInAndPeriodIdAndWarehouseId(Collection<Long> folios, Long periodId, Long warehouseId);
@@ -106,19 +96,6 @@ public interface JpaLabelRepository extends JpaRepository<Label, Label.LabelId> 
      */
     @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId ORDER BY l.folio ASC")
     List<Label> findAllLabelsByPeriodAndWarehouseForDistribution(@Param("periodId") Long periodId,
-                                                                   @Param("warehouseId") Long warehouseId);
-
-    /**
-     * 📱 MOBILE: Busca marbete por folio SOLAMENTE (sin filtro de período).
-     * Retorna el marbete más reciente si existe en múltiples períodos.
-     * Útil para escaneo de QR en móvil.
-     */
-    @Query("SELECT l FROM Label l WHERE l.folio = :folio ORDER BY l.periodId DESC LIMIT 1")
-    java.util.Optional<Label> findByFolioOnly(@Param("folio") Long folio);
-
-    /**
-     * 📱 MOBILE: Busca TODAS las instancias de un folio en todos los períodos.
-     */
-    List<Label> findByFolio(Long folio);
+                                                                  @Param("warehouseId") Long warehouseId);
 }
 

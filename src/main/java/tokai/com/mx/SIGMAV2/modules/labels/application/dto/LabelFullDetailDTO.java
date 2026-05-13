@@ -25,7 +25,6 @@ public class LabelFullDetailDTO {
     // ═══════════════════════════════════════════════════════════════
     private Long folio;
     private String estado;
-    private String comment;     // Comentario individual del marbete
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime impresoAt;
@@ -76,7 +75,6 @@ public class LabelFullDetailDTO {
     private String conteo1UsuarioEmail;
     private String conteo1UsuarioNombre;
     private Integer conteo1Intentos;
-    private String conteo1Comentario;
 
     private BigDecimal conteo2Valor;
     private LocalDateTime conteo2Fecha;
@@ -84,7 +82,6 @@ public class LabelFullDetailDTO {
     private String conteo2UsuarioEmail;
     private String conteo2UsuarioNombre;
     private Integer conteo2Intentos;
-    private String conteo2Comentario;
 
     private BigDecimal diferencia;
     private String diferenciaPorcentaje;
@@ -153,7 +150,6 @@ public class LabelFullDetailDTO {
         private String recordedByNombre;
         private String action; // "CREATED", "UPDATED"
         private String description;
-        private String comment; // Comentario del evento de conteo
     }
 
     /**

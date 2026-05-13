@@ -94,10 +94,6 @@ public class LabelsController {
     @PostMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<LabelCountEvent> registerCountC1(@Valid @RequestBody CountEventDTO dto) {
-        log.info("📥 CONTROLLER registerCountC1: folio={}, comment='{}' (length={}, isEmpty={})",
-            dto.getFolio(), dto.getComment(),
-            (dto.getComment() != null ? dto.getComment().length() : "null"),
-            (dto.getComment() != null ? dto.getComment().isEmpty() : "null"));
         return ResponseEntity.ok(labelService.registerCountC1(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
@@ -107,17 +103,19 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.registerCountC2(dto, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
-    @PutMapping("/counts/c1/update")
+    @PutMapping("/counts/c1")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody CountEventDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC1(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
+        log.info("Actualizando C1: folio={}, usuario={}", dto.getFolio(), userId);
         return ResponseEntity.ok(labelService.updateCountC1(dto, userId, getUserRoleFromToken()));
     }
 
-    @PutMapping("/counts/c2/update")
+    @PutMapping("/counts/c2")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody CountEventDTO dto) {
+    public ResponseEntity<LabelCountEvent> updateCountC2(@Valid @RequestBody UpdateCountDTO dto) {
         Long userId = getUserIdFromToken();
+        log.info("Actualizando C2: folio={}, usuario={}", dto.getFolio(), userId);
         return ResponseEntity.ok(labelService.updateCountC2(dto, userId, getUserRoleFromToken()));
     }
 
@@ -198,280 +196,8 @@ public class LabelsController {
 
     @GetMapping("/by-folio/{folio}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<LabelStatusResponseDTO> getLabelByFolio(@PathVariable Long folio, 
-            @RequestParam Long periodId, @RequestParam(required = false) Long warehouseId) {
-        return ResponseEntity.ok(labelService.getLabelStatus(folio, periodId, warehouseId, getUserIdFromToken(), getUserRoleFromToken()));
-    }
-
-    /**
-     * 📱 MOBILE QR SCANNER ENDPOINT
-     * GET /api/sigmav2/labels/mobile/folio/{folio}
-     * 
-     * Obtiene TODA la información del marbete usando SOLO el folio (escaneo QR)
-     * NO requiere periodId ni warehouseId — el marbete ya tiene esa información registrada
-     * 
-     * @param folio Número del folio (del código QR escaneado)
-     * @return JSON con toda la información del marbete:
-     *   - Datos del marbete, usuario que lo registró, producto, almacén, período
-     *   - Conteos C1/C2 (valores, fechas, usuarios, comentarios, historial completo)
-     *   - Impresiones (primeras, reimpresiones, historial)
-     *   - Cancelación (si aplica)
-     *   - Resumen de estado y próximas acciones
-     * 
-     * @throws 404 si el folio no existe en ningún período
-     * @throws 403 si el usuario no tiene acceso al almacén del marbete
-     */
-    @GetMapping("/mobile/folio/{folio}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> getMobileQRLabelInfo(@PathVariable Long folio) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        
-        log.info("📱 [MOBILE QR SCAN] Consultando folio={}, usuario={}, rol={}", folio, userId, userRole);
-        
-        try {
-            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetailByFolioOnly(folio, userId, userRole);
-            
-            log.info("✅ Información completa obtenida para móvil: folio={}, período={}, almacén={}, estado={}", 
-                    folio, fullDetail.getPeriodId(), fullDetail.getWarehouseId(), fullDetail.getEstado());
-            
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Información completa del marbete folio " + folio,
-                    "data", fullDetail,
-                    "timestamp", LocalDateTime.now()
-            ));
-            
-        } catch (LabelNotFoundException e) {
-            log.warn("❌ Marbete no encontrado en ningún período: folio={}", folio);
-            return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "error", "Marbete no encontrado",
-                    "message", e.getMessage(),
-                    "folio", folio
-            ));
-        } catch (SecurityException | IllegalArgumentException e) {
-            log.warn("❌ Acceso denegado al marbete folio={}: {}", folio, e.getMessage());
-            return ResponseEntity.status(403).body(Map.of(
-                    "success", false,
-                    "error", "Acceso denegado",
-                    "message", "No tienes acceso al almacén de este marbete: " + e.getMessage(),
-                    "folio", folio
-            ));
-        } catch (RuntimeException e) {
-            // Validaciones de estado/secuencia en mobile QR (generado, C2 sin C1, etc)
-            log.warn("❌ Validación fallida en escaneo QR: folio={}, razón={}", folio, e.getMessage());
-            return ResponseEntity.status(400).body(Map.of(
-                    "success", false,
-                    "error", "Validación fallida",
-                    "message", e.getMessage(),
-                    "folio", folio
-            ));
-        } catch (Exception e) {
-            log.error("❌ Error al obtener información del folio {}: {}", folio, e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "error", "Error interno del servidor",
-                    "message", e.getMessage()
-            ));
-        }
-    }
-
-    /**
-     * 📱 MOBILE: Registrar conteo C1 por primera vez
-     * POST /api/sigmav2/labels/mobile/counts/c1/register
-     *
-     * Usar cuando el AUXILIAR_DE_CONTEO registra C1 por primera vez en un marbete.
-     * La app obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}.
-     */
-    @PostMapping("/mobile/counts/c1/register")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> registerCountC1ForMobile(
-            @RequestParam Long folio,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId,
-            @RequestParam java.math.BigDecimal countedValue,
-            @RequestParam(required = false) String comment) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("📱 [MOBILE C1 REGISTER] folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
-
-        try {
-            CountEventDTO dto = new CountEventDTO();
-            dto.setFolio(folio);
-            dto.setPeriodId(periodId);
-            dto.setWarehouseId(warehouseId);
-            dto.setCountedValue(countedValue);
-            dto.setComment(comment);
-
-            LabelCountEvent result = labelService.registerCountC1(dto, userId, userRole);
-            log.info("✅ Conteo C1 registrado (MÓVIL): folio={}", folio);
-
-            return ResponseEntity.status(201).body(Map.of(
-                    "success", true,
-                    "message", "Conteo C1 registrado correctamente",
-                    "data", result,
-                    "timestamp", LocalDateTime.now()
-            ));
-        } catch (LabelNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException e) {
-            return ResponseEntity.status(409).body(Map.of("success", false, "error", "Conteo duplicado", "message", e.getMessage(), "folio", folio));
-        } catch (Exception e) {
-            log.error("❌ Error al registrar C1 móvil: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
-        }
-    }
-
-    /**
-     * 📱 MOBILE: Registrar conteo C2 por primera vez
-     * POST /api/sigmav2/labels/mobile/counts/c2/register
-     *
-     * Usar cuando el AUXILIAR_DE_CONTEO registra C2 por primera vez (requiere C1 previo).
-     * La app obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}.
-     */
-    @PostMapping("/mobile/counts/c2/register")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> registerCountC2ForMobile(
-            @RequestParam Long folio,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId,
-            @RequestParam java.math.BigDecimal countedValue,
-            @RequestParam(required = false) String comment) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("📱 [MOBILE C2 REGISTER] folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
-
-        try {
-            CountEventDTO dto = new CountEventDTO();
-            dto.setFolio(folio);
-            dto.setPeriodId(periodId);
-            dto.setWarehouseId(warehouseId);
-            dto.setCountedValue(countedValue);
-            dto.setComment(comment);
-
-            LabelCountEvent result = labelService.registerCountC2(dto, userId, userRole);
-            log.info("✅ Conteo C2 registrado (MÓVIL): folio={}", folio);
-
-            return ResponseEntity.status(201).body(Map.of(
-                    "success", true,
-                    "message", "Conteo C2 registrado correctamente",
-                    "data", result,
-                    "timestamp", LocalDateTime.now()
-            ));
-        } catch (LabelNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.DuplicateCountException e) {
-            return ResponseEntity.status(409).body(Map.of("success", false, "error", "Conteo duplicado", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.CountSequenceException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Secuencia inválida", "message", "Debe registrar C1 antes de C2", "folio", folio));
-        } catch (Exception e) {
-            log.error("❌ Error al registrar C2 móvil: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
-        }
-    }
-
-    /**
-     * 📱 MOBILE: Actualizar conteo C1
-     * PUT /api/sigmav2/labels/mobile/counts/c1/update
-     * 
-     * La app móvil obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}
-     * y los manda de vuelta aquí para identificar el marbete exacto (regla de negocio:
-     * el mismo folio puede existir en diferentes periodos).
-     */
-    @PutMapping("/mobile/counts/c1/update")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> updateCountC1ForMobile(
-            @RequestParam Long folio,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId,
-            @RequestParam java.math.BigDecimal countedValue,
-            @RequestParam(required = false) String comment) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("📱 [MOBILE C1] Actualizando conteo: folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
-
-        try {
-            CountEventDTO dto = new CountEventDTO();
-            dto.setFolio(folio);
-            dto.setPeriodId(periodId);
-            dto.setWarehouseId(warehouseId);
-            dto.setCountedValue(countedValue);
-            dto.setComment(comment);
-            dto.setOperation(CountEventDTO.Operation.UPDATE);
-
-            LabelCountEvent updated = labelService.updateCountC1(dto, userId, userRole);
-            log.info("✅ Conteo C1 actualizado (MÓVIL): folio={}", folio);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Conteo C1 actualizado correctamente",
-                    "data", updated,
-                    "timestamp", LocalDateTime.now()
-            ));
-        } catch (LabelNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
-        } catch (Exception e) {
-            log.error("❌ Error al actualizar C1 móvil: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
-        }
-    }
-
-    /**
-     * 📱 MOBILE: Actualizar conteo C2
-     * PUT /api/sigmav2/labels/mobile/counts/c2/update
-     * 
-     * La app móvil obtiene periodId y warehouseId del endpoint /mobile/folio/{folio}
-     * y los manda de vuelta aquí para identificar el marbete exacto.
-     */
-    @PutMapping("/mobile/counts/c2/update")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> updateCountC2ForMobile(
-            @RequestParam Long folio,
-            @RequestParam Long periodId,
-            @RequestParam Long warehouseId,
-            @RequestParam java.math.BigDecimal countedValue,
-            @RequestParam(required = false) String comment) {
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-
-        log.info("📱 [MOBILE C2] Actualizando conteo: folio={}, periodo={}, almacen={}, usuario={}", folio, periodId, warehouseId, userId);
-
-        try {
-            CountEventDTO dto = new CountEventDTO();
-            dto.setFolio(folio);
-            dto.setPeriodId(periodId);
-            dto.setWarehouseId(warehouseId);
-            dto.setCountedValue(countedValue);
-            dto.setComment(comment);
-            dto.setOperation(CountEventDTO.Operation.UPDATE);
-
-            LabelCountEvent updated = labelService.updateCountC2(dto, userId, userRole);
-            log.info("✅ Conteo C2 actualizado (MÓVIL): folio={}", folio);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Conteo C2 actualizado correctamente",
-                    "data", updated,
-                    "timestamp", LocalDateTime.now()
-            ));
-        } catch (LabelNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Folio no encontrado", "message", e.getMessage(), "folio", folio));
-        } catch (tokai.com.mx.SIGMAV2.modules.labels.application.exception.InvalidLabelStateException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "error", "Validación fallida", "message", e.getMessage(), "folio", folio));
-        } catch (Exception e) {
-            log.error("❌ Error al actualizar C2 móvil: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Error interno", "message", e.getMessage()));
-        }
+    public ResponseEntity<LabelStatusResponseDTO> getLabelByFolio(@PathVariable Long folio) {
+        return ResponseEntity.ok(labelService.getLabelStatus(folio, null, null, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
     @PostMapping("/cancel")
@@ -500,14 +226,6 @@ public class LabelsController {
     public ResponseEntity<List<LabelForCountDTO>> getLabelsForCountList(@Valid @RequestBody LabelCountListRequestDTO dto) {
         List<LabelForCountDTO> labels = labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), getUserIdFromToken(), getUserRoleFromToken());
         return ResponseEntity.ok(labels);
-    }
-
-    @PostMapping("/available-folio-numbers")
-    @PreAuthorize("hasAnyRole('ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<AvailableFolioDTO>> getAvailableFolios(@Valid @RequestBody AvailableFoliosRequestDTO dto) {
-        log.info("📋 Consultando folios disponibles para periodo: {}", dto.getPeriodId());
-        List<AvailableFolioDTO> folios = labelService.getAvailableFolios(dto.getPeriodId(), getUserIdFromToken(), getUserRoleFromToken());
-        return ResponseEntity.ok(folios);
     }
 
     // ── Reportes JSON ────────────────────────────────────────────────────
@@ -565,127 +283,6 @@ public class LabelsController {
     public ResponseEntity<List<ProductDetailReportDTO>> getProductDetailReport(
             @Valid @RequestBody ReportFilterDTO filter) {
         return ResponseEntity.ok(labelService.getProductDetailReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
-    }
-
-    /**
-     * 📊 GET /api/sigmav2/labels/reports/with-comments
-     * Reporte de Marbetes con Comentarios de Conteos
-     * Retorna lista de marbetes con:
-     * - Información del producto y almacén
-     * - Conteos C1 y C2 con sus comentarios
-     * - Análisis de diferencias
-     * 
-     * Body:
-     * {
-     *   "periodId": 1,
-     *   "warehouseId": 5
-     * }
-     * 
-     * Response: List<LabelWithCommentsReportDTO>
-     */
-    @PostMapping("/reports/with-comments")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<LabelWithCommentsReportDTO>> getLabelListWithComments(
-            @Valid @RequestBody ReportFilterDTO filter) {
-        log.info("📊 Reporte de marbetes con comentarios - periodo={}, almacén={}", 
-                filter.getPeriodId(), filter.getWarehouseId());
-        List<LabelWithCommentsReportDTO> result = labelService.getLabelListWithComments(
-                filter, getUserIdFromToken(), getUserRoleFromToken());
-        log.info("✅ Reporte generado: {} marbetes", result.size());
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * 📄 PDF de Marbetes con Comentarios - Almacén Específico
-     * POST /api/sigmav2/labels/reports/with-comments/pdf
-     * 
-     * Genera un PDF con todos los marbetes que tienen comentarios en conteos C1 o C2
-     * para un almacén específico en un período determinado.
-     * 
-     * Body:
-     * {
-     *   "periodId": 1,
-     *   "warehouseId": 5
-     * }
-     */
-    @PostMapping("/reports/with-comments/pdf")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> generateLabelWithCommentsPdf(
-            @Valid @RequestBody ReportFilterDTO filter) {
-        log.info("📄 Generando PDF marbetes con comentarios - período={}, almacén={}", 
-                filter.getPeriodId(), filter.getWarehouseId());
-        
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        
-        List<LabelWithCommentsReportDTO> data = labelService.getLabelListWithComments(
-                filter, userId, userRole);
-        
-        if (data.isEmpty()) {
-            log.warn("No hay marbetes con comentarios para generar PDF");
-            return ResponseEntity.status(404).body(new byte[0]);
-        }
-        
-        byte[] pdfBytes = jasperReportPdfService.generateLabelWithCommentsPdf(data);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(
-                org.springframework.http.ContentDisposition.attachment()
-                        .filename("Reporte_Marbetes_Comentarios_" + filter.getPeriodId() + ".pdf")
-                        .build());
-        headers.setContentLength(pdfBytes.length);
-        
-        log.info("✓ PDF generado: {} KB", pdfBytes.length / 1024);
-        return ResponseEntity.ok().headers(headers).body(pdfBytes);
-    }
-
-    /**
-     * 📄 PDF de Marbetes con Comentarios - Todos los Almacenes
-     * POST /api/sigmav2/labels/reports/with-comments/all/pdf
-     * 
-     * Genera un PDF con todos los marbetes que tienen comentarios en conteos C1 o C2
-     * para TODOS los almacenes en un período determinado.
-     * 
-     * Body:
-     * {
-     *   "periodId": 1
-     * }
-     */
-    @PostMapping("/reports/with-comments/all/pdf")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<byte[]> generateLabelWithCommentsAllWarehousesPdf(
-            @Valid @RequestBody ReportFilterDTO filter) {
-        log.info("📄 Generando PDF marbetes con comentarios - TODOS los almacenes, período={}", 
-                filter.getPeriodId());
-        
-        Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
-        
-        ReportFilterDTO allWarehousesFilter = new ReportFilterDTO();
-        allWarehousesFilter.setPeriodId(filter.getPeriodId());
-        allWarehousesFilter.setWarehouseId(null);
-        
-        List<LabelWithCommentsReportDTO> data = labelService.getLabelListWithComments(
-                allWarehousesFilter, userId, userRole);
-        
-        if (data.isEmpty()) {
-            log.warn("No hay marbetes con comentarios para generar PDF");
-            return ResponseEntity.status(404).body(new byte[0]);
-        }
-        
-        byte[] pdfBytes = jasperReportPdfService.generateLabelWithCommentsPdf(data);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(
-                org.springframework.http.ContentDisposition.attachment()
-                        .filename("Reporte_Marbetes_Comentarios_TodosAlmacenes_" + filter.getPeriodId() + ".pdf")
-                        .build());
-        headers.setContentLength(pdfBytes.length);
-        
-        log.info("✓ PDF generado (todos los almacenes): {} KB", pdfBytes.length / 1024);
-        return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 
     @PostMapping("/generate-file")
@@ -936,32 +533,34 @@ public class LabelsController {
      * 🎯 POST /labels/print-with-qr
      * Genera e imprime marbetes CON códigos QR incrustados en el PDF
      * 
-     * Request: { "periodId": 1, "warehouseId": 5, "withQR": true }
+     * Request: { "periodId": 1, "warehouseId": 5 }
      * Response: PDF con todos los marbetes + QR
      */
     @PostMapping("/print-with-qr")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
     public ResponseEntity<byte[]> printLabelsWithQR(@Valid @RequestBody PrintRequestDTO dto) {
         Long userId = getUserIdFromToken();
-        String userRole = getUserRoleFromToken();
         
         log.info("🎯 /print-with-qr: Generando marbetes CON QR - usuario={}, periodo={}, almacén={}", 
                  userId, dto.getPeriodId(), dto.getWarehouseId());
         
         try {
-            // Establecer flag withQR
-            dto.setWithQR(true);
-            
-            // Llamar al método unified printLabels() que detecta la rama QR
-            byte[] pdfBytes = labelService.printLabels(dto, userId, userRole);
+            // Generar marbetes con QR incluido
+            List<MarbeteReportDTO> marbetesConQR = marbeteQRIntegrationService.generarMarbetesConQR(
+                dto.getPeriodId(),
+                dto.getWarehouseId()
+            );
 
-            if (pdfBytes == null || pdfBytes.length == 0) {
-                log.warn("⚠️ Error: PDF vacío generado para período={}, almacén={}",
+            if (marbetesConQR.isEmpty()) {
+                log.warn("⚠️ No hay marbetes para generar período={}, almacén={}",
                          dto.getPeriodId(), dto.getWarehouseId());
-                return ResponseEntity.status(500).build();
+                return ResponseEntity.notFound().build();
             }
 
-            log.info("✅ PDF con QR generado: {} bytes", pdfBytes.length);
+            // Generar PDF con la plantilla que incluye QR
+            byte[] pdfBytes = generarPDFConQR(marbetesConQR);
+
+            log.info("✅ PDF con QR generado: {} marbetes, {} bytes", marbetesConQR.size(), pdfBytes.length);
 
             return buildPdfResponse(pdfBytes, dto.getPeriodId(), dto.getWarehouseId(), "marbetes_con_qr");
             
@@ -1395,18 +994,16 @@ public class LabelsController {
      * Solo muestra PDF sin cambiar estados
      * 
      * @param folio ID del folio del marbete
-     * @param periodId ID del peri
-     *                 eodo
      * @return PDF del marbete
      */
     @GetMapping("/{folio}/pdf")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> getPrintedLabelPdf(@PathVariable Long folio, @RequestParam Long periodId) {
+    public ResponseEntity<byte[]> getPrintedLabelPdf(@PathVariable Long folio) {
         Long userId = getUserIdFromToken();
-        log.info("📄 /labels/{folio}/pdf: Obteniendo PDF - folio={}, periodo={}, usuario={}", folio, periodId, userId);
+        log.info("📄 /labels/{folio}/pdf: Obteniendo PDF - folio={}, usuario={}", folio, userId);
         
         try {
-            byte[] pdfBytes = labelService.getPrintedLabelPdf(folio, periodId, userId, getUserRoleFromToken());
+            byte[] pdfBytes = labelService.getPrintedLabelPdf(folio, userId, getUserRoleFromToken());
             
             String filename = String.format("marbete_folio_%d.pdf", folio);
             HttpHeaders headers = new HttpHeaders();
@@ -1434,17 +1031,16 @@ public class LabelsController {
      * Response: PDF reimprimido
      * 
      * @param folio ID del folio del marbete
-     * @param periodId ID del periodo
      * @return PDF reimprimido
      */
     @PostMapping("/{folio}/reprint-simple")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> reprintSimple(@PathVariable Long folio, @RequestParam Long periodId) {
+    public ResponseEntity<byte[]> reprintSimple(@PathVariable Long folio) {
         Long userId = getUserIdFromToken();
-        log.info("🔄 /labels/{folio}/reprint-simple: Reimprimiendo - folio={}, periodo={}, usuario={}", folio, periodId, userId);
+        log.info("🔄 /labels/{folio}/reprint-simple: Reimprimiendo - folio={}, usuario={}", folio, userId);
         
         try {
-            byte[] pdfBytes = labelService.reprintSimple(folio, periodId, userId, getUserRoleFromToken());
+            byte[] pdfBytes = labelService.reprintSimple(folio, userId, getUserRoleFromToken());
             
             String filename = String.format("marbete_folio_%d_REIMPRESION_%d.pdf", folio, System.currentTimeMillis());
             HttpHeaders headers = new HttpHeaders();
@@ -1471,17 +1067,16 @@ public class LabelsController {
      * reimpresiones, cancelaciones, reactivaciones, solicitud de folios, etc.
      * 
      * @param folio ID del folio del marbete
-     * @param periodId ID del periodo (requerido para buscar el marbete)
      * @return DTO con TODA la información del marbete
      */
     @GetMapping("/{folio}/full-info")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<?> getLabelFullInfo(@PathVariable Long folio, @RequestParam Long periodId) {
+    public ResponseEntity<?> getLabelFullInfo(@PathVariable Long folio) {
         Long userId = getUserIdFromToken();
-        log.info("📋 /labels/{folio}/full-info: Obteniendo información completa - folio={}, periodo={}, usuario={}", folio, periodId, userId);
+        log.info("📋 /labels/{folio}/full-info: Obteniendo información completa - folio={}, usuario={}", folio, userId);
         
         try {
-            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetail(folio, periodId, userId, getUserRoleFromToken());
+            LabelFullDetailDTO fullDetail = labelService.getLabelFullDetail(folio, userId, getUserRoleFromToken());
             
             log.info("✅ Información completa obtenida: folio={}, estado={}, conteos={}/{}", 
                     folio, fullDetail.getEstado(),
@@ -1696,52 +1291,6 @@ public class LabelsController {
             return ResponseEntity.status(400).build();
         } catch (Exception e) {
             log.error("❌ Error al imprimir marbetes: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).build();
-        }
-    }
-
-    /**
-     * 🎯 POST /labels/print-selected-with-qr
-     * Imprime marbetes específicos CON QR (similar a print-selected pero con códigos QR)
-     * 
-     * Request: {
-     *   "folios": [1, 142, 200],
-     *   "periodId": 1,
-     *   "warehouseId": 40
-     * }
-     * 
-     * Response: PDF binario con los marbetes y sus códigos QR incluidos
-     */
-    @PostMapping("/print-selected-with-qr")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
-    public ResponseEntity<byte[]> printSelectedLabelsWithQR(
-            @RequestBody PrintSelectedLabelsRequestDTO request) {
-        
-        Long userId = getUserIdFromToken();
-        log.info("🎯 /labels/print-selected-with-qr: Imprimiendo {} marbetes CON QR - usuario={}", 
-                request.getFolios().size(), userId);
-        
-        try {
-            byte[] pdfBytes = labelService.printSelectedLabelsWithQR(request, userId, getUserRoleFromToken());
-            
-            String filename = String.format("marbetes_qr_seleccionados_%d.pdf", System.currentTimeMillis());
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(
-                    org.springframework.http.ContentDisposition.attachment()
-                            .filename(filename).build());
-            headers.setContentLength(pdfBytes.length);
-            
-            log.info("✅ Impresión CON QR completada: {} marbetes, {} KB", 
-                    request.getFolios().size(), pdfBytes.length / 1024);
-            
-            return ResponseEntity.ok().headers(headers).body(pdfBytes);
-            
-        } catch (IllegalArgumentException e) {
-            log.warn("❌ Error en parámetros: {}", e.getMessage());
-            return ResponseEntity.status(400).build();
-        } catch (Exception e) {
-            log.error("❌ Error al imprimir marbetes con QR: {}", e.getMessage(), e);
             return ResponseEntity.status(500).build();
         }
     }

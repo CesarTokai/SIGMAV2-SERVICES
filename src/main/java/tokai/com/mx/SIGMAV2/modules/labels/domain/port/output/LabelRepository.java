@@ -9,14 +9,7 @@ public interface LabelRepository {
 
     Label save(Label label);
 
-    /**
-     * Busca un marbete por su clave primaria compuesta (folio + periodId)
-     * 
-     * @param folio Número de folio
-     * @param periodId ID del periodo
-     * @return Optional con el marbete si existe
-     */
-    Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
+    Optional<Label> findByFolio(Long folio);
 
     List<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId, int offset, int limit);
 

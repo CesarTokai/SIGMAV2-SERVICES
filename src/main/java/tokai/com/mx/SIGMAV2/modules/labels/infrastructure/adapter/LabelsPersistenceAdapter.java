@@ -38,13 +38,12 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
     private final JpaLabelRepository jpaLabelRepository;
     private final JpaLabelRequestRepository jpaLabelRequestRepository;
+    private final JpaLabelFolioSequenceRepository jpaLabelFolioSequenceRepository;
     private final JpaLabelGenerationBatchRepository jpaLabelGenerationBatchRepository;
     private final JpaLabelPrintRepository jpaLabelPrintRepository;
+    private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
-
-    private final CountEventPersistenceAdapter countEventAdapter;
-    private final CancelledLabelPersistenceAdapter cancelledLabelAdapter;
-    private final FolioSequencePersistenceAdapter folioSequenceAdapter;
+    private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
 
     @Override
     public Label save(Label label) {
@@ -56,8 +55,8 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     @Override
-    public Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId) {
-        return jpaLabelRepository.findByFolioAndPeriodId(folio, periodId);
+    public Optional<Label> findByFolio(Long folio) {
+        return jpaLabelRepository.findById(folio);
     }
 
     @Override
@@ -100,8 +99,24 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return jpaLabelRepository.existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(productId, warehouseId, periodId, Label.State.GENERADO);
     }
 
-    public long[] allocateFolioRange(Long periodId, int quantity) {
-        return folioSequenceAdapter.allocateFolioRange(periodId, quantity);
+    // Operaciones de secuencia y generación (helpers usados por el servicio)
+    @Transactional
+    public synchronized long[] allocateFolioRange(Long periodId, int quantity) {
+        // Bloqueo PESSIMISTIC_WRITE se aplica en el repositorio JPA via findById con @Lock
+        Optional<LabelFolioSequence> opt = jpaLabelFolioSequenceRepository.findById(periodId);
+        LabelFolioSequence seq;
+        if (opt.isPresent()) {
+            seq = opt.get();
+        } else {
+            seq = new LabelFolioSequence();
+            seq.setPeriodId(periodId);
+            seq.setUltimoFolio(0L);
+        }
+        long primer = seq.getUltimoFolio() + 1;
+        long ultimo = seq.getUltimoFolio() + quantity;
+        seq.setUltimoFolio(ultimo);
+        jpaLabelFolioSequenceRepository.save(seq);
+        return new long[]{primer, ultimo};
     }
 
     @Transactional
@@ -165,14 +180,11 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         }
 
         log.info("Creados {} objetos LabelCancelled en memoria, procediendo a guardar en BD...", cancelledLabels.size());
-        // Usar adapter para guardar batch
-        for (LabelCancelled lc : cancelledLabels) {
-            cancelledLabelAdapter.save(lc);
-        }
+        jpaLabelCancelledRepository.saveAll(cancelledLabels);
         log.info("Guardados {} marbetes cancelados en la base de datos exitosamente", cancelledLabels.size());
 
         // Verificar que se guardaron
-        long count = cancelledLabelAdapter.countByPeriodAndWarehouseAndReactivado(periodId, warehouseId, false);
+        long count = jpaLabelCancelledRepository.countByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, false);
         log.info("Verificación: Total de marbetes cancelados en BD para periodId={}, warehouseId={}: {}", periodId, warehouseId, count);
         log.info("=== saveLabelsBatchAsCancelled FIN ===");
     }
@@ -247,28 +259,40 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
             .collect(Collectors.toList());
     }
 
-    public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal, String comment) {
-        return countEventAdapter.saveCountEvent(folio, userId, countNumber, countedValue, roleAtTime, isFinal, comment);
+    @Transactional
+    public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
+        LabelCountEvent ev = new LabelCountEvent();
+        ev.setFolio(folio);
+        ev.setUserId(userId);
+        ev.setCountNumber(countNumber);
+        ev.setCountedValue(countedValue);
+        ev.setRoleAtTime(roleAtTime);
+        ev.setIsFinal(isFinal != null ? isFinal : false);
+        ev.setCreatedAt(LocalDateTime.now());
+        return jpaLabelCountEventRepository.save(ev);
     }
 
+    // Helpers para conteos
     public boolean hasCountNumber(Long folio, Integer countNumber) {
-        return countEventAdapter.hasCountNumber(folio, countNumber);
+        return jpaLabelCountEventRepository.existsByFolioAndCountNumber(folio, countNumber);
     }
 
     public long countEventsForFolio(Long folio) {
-        return countEventAdapter.countEventsForFolio(folio);
+        return jpaLabelCountEventRepository.countByFolio(folio);
     }
 
     public java.util.Optional<LabelCountEvent> findLatestCountEvent(Long folio) {
-        return countEventAdapter.findLatestCountEvent(folio);
+        return jpaLabelCountEventRepository.findTopByFolioOrderByCreatedAtDesc(folio);
     }
 
     public java.util.List<LabelCountEvent> findAllCountEvents(Long folio) {
-        return countEventAdapter.findAllCountEvents(folio);
+        return jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
     }
 
+    // Método para obtener el último periodo creado (ordenado por fecha descendente)
     public Optional<Long> findLastCreatedPeriodId() {
-        return folioSequenceAdapter.findLastCreatedPeriodId();
+        return jpaPeriodRepository.findLatestPeriod()
+                .map(periodEntity -> periodEntity.getId());
     }
 
     public List<LabelPrint> findLabelPrintsByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
@@ -283,20 +307,18 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return prints;
     }
 
+    // Métodos para marbetes cancelados
     public List<LabelCancelled> findCancelledByPeriodAndWarehouse(Long periodId, Long warehouseId, Boolean reactivado) {
-        return cancelledLabelAdapter.findByPeriodAndWarehouse(periodId, warehouseId, reactivado);
+        return jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, reactivado);
     }
 
     public Optional<LabelCancelled> findCancelledByFolio(Long folio) {
-        return cancelledLabelAdapter.findByFolio(folio);
+        return jpaLabelCancelledRepository.findByFolio(folio);
     }
 
-    public Optional<LabelCancelled> findCancelledByFolioAndPeriodId(Long folio, Long periodId) {
-        return cancelledLabelAdapter.findByFolioAndPeriodId(folio, periodId);
-    }
-
+    @Transactional
     public LabelCancelled saveCancelled(LabelCancelled cancelled) {
-        return cancelledLabelAdapter.save(cancelled);
+        return jpaLabelCancelledRepository.save(cancelled);
     }
 
     // Método para obtener marbetes de un producto específico
@@ -427,4 +449,5 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return errores;
     }
 }
+
 

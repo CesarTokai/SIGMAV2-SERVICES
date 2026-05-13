@@ -1,8 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.labels.domain.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
@@ -11,10 +10,8 @@ import java.time.LocalDateTime;
  * Los conteos C1/C2 son eliminados al cancelar para evitar incongruencias en reportes.
  */
 @Entity
-@Table(name = "labels_cancelled",
-    uniqueConstraints = @UniqueConstraint(name = "uk_cancelled_folio_period", columnNames = {"folio", "id_period"}))
-@Getter
-@Setter
+@Table(name = "labels_cancelled")
+@Data
 public class LabelCancelled {
 
     @Id
@@ -22,7 +19,7 @@ public class LabelCancelled {
     @Column(name = "id_label_cancelled")
     private Long idLabelCancelled;
 
-    @Column(name = "folio", nullable = false)
+    @Column(name = "folio", nullable = false, unique = true)
     private Long folio;
 
     @Column(name = "id_label_request", nullable = true)

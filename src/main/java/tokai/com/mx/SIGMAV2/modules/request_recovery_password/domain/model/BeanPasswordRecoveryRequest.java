@@ -14,15 +14,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import tokai.com.mx.SIGMAV2.modules.users.infrastructure.persistence.BeanUser;
+import tokai.com.mx.SIGMAV2.modules.users.model.BeanUser;
 
 @NoArgsConstructor
 @AllArgsConstructor  
-@Getter
-@Setter
+@Data
 @Entity
 @Table(name = "request_recovery_password")
 public class BeanPasswordRecoveryRequest {

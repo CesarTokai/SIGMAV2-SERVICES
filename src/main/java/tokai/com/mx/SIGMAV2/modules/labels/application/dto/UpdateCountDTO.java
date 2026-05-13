@@ -26,19 +26,7 @@ public class UpdateCountDTO {
     @Positive(message = "El valor del conteo debe ser mayor a cero")
     private BigDecimal countedValue;
 
-    /**
-     * Periodo al que pertenece el folio (opcional: se obtiene del folio en BD)
-     */
-    private Long periodId;
-
     @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")
     private String observaciones;
-
-    /**
-     * Comentario opcional para actualizar (máx 600 caracteres)
-     * Si no se proporciona, se mantiene el comentario anterior
-     */
-    @Size(max = 600, message = "El comentario no puede exceder 600 caracteres")
-    private String comment;
 }
 

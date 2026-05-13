@@ -13,7 +13,6 @@ import net.sf.jasperreports.export.SimplePdfExporterConfiguration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.reports.*;
-import tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelWithCommentsReportDTO;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
@@ -85,11 +84,6 @@ public class JasperReportPdfService {
     public byte[] generateProductDetailPdf(List<ProductDetailReportDTO> data) {
         log.info("Generando PDF producto-detalle — {} registros", data.size());
         return buildPdf("detalle_producto_marbetes", data, baseParams());
-    }
-
-    public byte[] generateLabelWithCommentsPdf(List<LabelWithCommentsReportDTO> data) {
-        log.info("Generando PDF marbetes con comentarios — {} registros", data.size());
-        return buildPdf("marbetes_comentarios", data, baseParams());
     }
 
     // ═══════════════════════════════════════════════════════════════════
