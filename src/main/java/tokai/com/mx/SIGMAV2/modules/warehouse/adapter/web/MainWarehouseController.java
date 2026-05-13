@@ -1,0 +1,505 @@
+package tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto.*;
+import tokai.com.mx.SIGMAV2.modules.warehouse.application.security.WarehouseAccessValidator;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.exception.WarehouseAccessDeniedException;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.exception.WarehouseNotFoundException;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.Warehouse;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.model.UserWarehouseAssignment;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.UserWarehouseService;
+import tokai.com.mx.SIGMAV2.modules.warehouse.domain.port.input.WarehouseService;
+import tokai.com.mx.SIGMAV2.modules.users.domain.port.input.UserService;
+import tokai.com.mx.SIGMAV2.modules.warehouse.infrastructure.persistence.UserWarehouseRepository;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+
+/**
+ * Controlador REST principal para la gestión avanzada de almacenes.
+ * Permite listar, crear, actualizar, eliminar y asignar almacenes a usuarios,
+ * aplicando lógica de negocio y validaciones de acceso.
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/sigmav2/warehouses")
+@RequiredArgsConstructor
+public class MainWarehouseController {
+
+
+
+    private final WarehouseService warehouseService;
+    private final UserWarehouseService userWarehouseService;
+    private final UserService userService;
+    private final WarehouseAccessValidator accessValidator;
+    private final UserWarehouseRepository userWarehouseRepository;
+
+    // ============ CRUD DE ALMACENES ============
+
+    /**
+     * Listar almacenes con búsqueda y paginación
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<Map<String, Object>> getAllWarehouses(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "25") int size,
+            @RequestParam(value = "sortBy", defaultValue = "warehouseKey") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir,
+            @RequestParam(value = "search", required = false) String search) {
+
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? 
+                    Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+            
+            // Normalizar parámetro search: si viene "false" o "null" (strings) lo tratamos como ausente
+            String normalizedSearch = (search == null) ? null : search.trim();
+            if (normalizedSearch != null) {
+                if (normalizedSearch.equalsIgnoreCase("false") || normalizedSearch.equalsIgnoreCase("null") || normalizedSearch.isEmpty()) {
+                    normalizedSearch = null;
+                }
+            }
+            log.debug("normalizedSearch='{}' (original='{}')", normalizedSearch, search);
+
+            Page<Warehouse> warehouses;
+            
+            // Si es ADMINISTRADOR, ve todos; otros solo ven sus almacenes asignados
+            if (hasRole("ADMINISTRADOR")) {
+                warehouses = (normalizedSearch != null)
+                    ? warehouseService.findAllWithSearch(normalizedSearch, pageable)
+                    : warehouseService.findAllWarehouses(pageable);
+            } else {
+                // Filtrar por almacenes asignados al usuario
+                warehouses = warehouseService.findWarehousesByUserId(currentUserId, pageable);
+            }
+            // Defensa: si por alguna razón el servicio retornó null, evitar NPE y devolver error controlado
+            if (warehouses == null) {
+                log.error("WarehouseService devolvió null al solicitar lista de almacenes (pageable={} search={})", pageable, search);
+                return handleError("Error interno: no se pudo obtener la lista de almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
+            List<WarehouseResponseDTO> warehouseDTOs = warehouses.getContent().stream()
+                    .map(this::mapToResponseDTO)
+                    .collect(Collectors.toList());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", warehouseDTOs);
+            response.put("pagination", Map.of(
+                "currentPage", warehouses.getNumber(),
+                "totalPages", warehouses.getTotalPages(),
+                "totalElements", warehouses.getTotalElements(),
+                "pageSize", warehouses.getSize(),
+                "hasNext", warehouses.hasNext(),
+                "hasPrevious", warehouses.hasPrevious()
+            ));
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error al listar almacenes: {}", e.getMessage(), e);
+            return handleError("Error interno al listar almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener almacén por ID
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<Map<String, Object>> getWarehouseById(@PathVariable Long id) {
+        log.info("Obteniendo almacén ID: {}", id);
+        
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            Warehouse warehouse = warehouseService.findByIdWarehouse(id)
+                    .orElseThrow(() -> new WarehouseNotFoundException(id));
+            
+            // Verificar acceso si no es administrador
+            if (!hasRole("ADMINISTRADOR")) {
+                accessValidator.validateAccess(currentUserId, id);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", mapToResponseDTO(warehouse));
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (WarehouseNotFoundException e) {
+            return handleError("Almacén no encontrado", HttpStatus.NOT_FOUND);
+        } catch (WarehouseAccessDeniedException e) {
+            return handleError("No tienes acceso a este almacén", HttpStatus.FORBIDDEN);
+        } catch (Exception e) {
+            log.error("Error al obtener almacén: {}", e.getMessage(), e);
+            return handleError("Error interno al obtener el almacén", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Crear nuevo almacén (Solo ADMINISTRADOR)
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> createWarehouse(@Valid @RequestBody WarehouseCreateDTO dto) {
+        log.info("Creando almacén con clave: {}", dto.getWarehouseKey());
+        
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            Warehouse warehouse = warehouseService.createWarehouse(dto, currentUserId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Almacén creado exitosamente");
+            response.put("data", mapToResponseDTO(warehouse));
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (IllegalArgumentException e) {
+            return handleError(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Manejar violaciones de unicidad
+            String message = "Ya existe un almacén con esa clave o nombre";
+            if (e.getMessage().contains("uk_warehouse_key") || e.getMessage().contains("uk_wh_key")) {
+                message = "Ya existe un almacén con la clave: " + dto.getWarehouseKey();
+            } else if (e.getMessage().contains("uk_warehouse_name")) {
+                message = "Ya existe un almacén con el nombre: " + dto.getNameWarehouse();
+            }
+            return handleError(message, HttpStatus.CONFLICT);
+        } catch (Exception e) {
+            log.error("Error al crear almacén: {}", e.getMessage(), e);
+            return handleError("Error interno al crear el almacén", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Actualizar almacén (Solo ADMINISTRADOR)
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> updateWarehouse(
+            @PathVariable Long id, 
+            @Valid @RequestBody WarehouseUpdateDTO dto) {
+        
+        log.info("Actualizando almacén ID: {}", id);
+        
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            Warehouse warehouse = warehouseService.updateWarehouse(id, dto, currentUserId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Almacén actualizado exitosamente");
+            response.put("data", mapToResponseDTO(warehouse));
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            return handleError(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (WarehouseNotFoundException e) {
+            return handleError("Almacén no encontrado", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Error al actualizar almacén: {}", e.getMessage(), e);
+            return handleError("Error interno al actualizar el almacén", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    /**
+     * Eliminar almacén (Solo ADMINISTRADOR)
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> deleteWarehouse(@PathVariable Long id) {
+        log.info("Eliminando almacén ID: {}", id);
+
+        try {
+            Long currentUserId = getCurrentUserId();
+
+            warehouseService.deleteWarehouse(id, currentUserId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Almacén eliminado exitosamente");
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalStateException e) {
+            return handleError("No se puede eliminar, almacén en uso", HttpStatus.CONFLICT);
+        } catch (IllegalArgumentException e) {
+            // Capturar específicamente el caso de almacén ya eliminado
+            return handleError(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (WarehouseNotFoundException e) {
+            return handleError("Almacén no encontrado", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Error al eliminar almacén: {}", e.getMessage(), e);
+            return handleError("Error interno al eliminar el almacén", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ============ ASIGNACIÓN USUARIO-ALMACÉN ============
+
+    /**
+     * Obtener almacenes asignados a un usuario
+     */
+    @GetMapping("/users/{userId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA')")
+    public ResponseEntity<Map<String, Object>> getUserWarehouses(@PathVariable Long userId) {
+        log.info("Obteniendo almacenes del usuario ID: {}", userId);
+        
+        try {
+            List<UserWarehouseAssignment> assignments = userWarehouseService.findAssignmentsByUserId(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", assignments);
+            response.put("total", assignments.size());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error al obtener almacenes del usuario: {}", e.getMessage(), e);
+            return handleError("Error interno al obtener los almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Asignar almacenes a un usuario (Solo ADMINISTRADOR)
+     */
+    @PostMapping("/users/{userId}/assign")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> assignWarehouses(
+            @PathVariable Long userId,
+            @Valid @RequestBody AssignWarehousesDTO dto) {
+        
+        log.info("Asignando {} almacenes al usuario ID: {}", dto.getWarehouseIds().size(), userId);
+        
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            List<UserWarehouseAssignment> assignments = userWarehouseService.assignWarehouses(userId, dto, currentUserId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Almacenes asignados exitosamente");
+            response.put("data", assignments);
+            response.put("total", assignments.size());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            return handleError(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (WarehouseNotFoundException e) {
+            return handleError("Uno o más almacenes no fueron encontrados", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Error al asignar almacenes: {}", e.getMessage(), e);
+            return handleError("Error interno al asignar almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Revocar acceso a un almacén específico (Solo ADMINISTRADOR)
+     */
+    @DeleteMapping("/users/{userId}/warehouses/{warehouseId}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> revokeWarehouse(
+            @PathVariable Long userId,
+            @PathVariable Long warehouseId) {
+        
+        log.info("Revocando acceso del usuario {} al almacén {}", userId, warehouseId);
+        
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            userWarehouseService.revokeWarehouse(userId, warehouseId, currentUserId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Acceso al almacén revocado exitosamente");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalStateException e) {
+            return handleError(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (WarehouseAccessDeniedException e) {
+            return handleError("La asignación no existe", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Error al revocar acceso: {}", e.getMessage(), e);
+            return handleError("Error interno al revocar el acceso", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener mis almacenes asignados
+     */
+    @GetMapping("/my-warehouses")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','ALMACENISTA','AUXILIAR','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<Map<String, Object>> getMyWarehouses() {
+        try {
+            Long currentUserId = getCurrentUserId();
+            
+            List<Warehouse> warehouses = warehouseService.findWarehousesByUserId(currentUserId);
+            List<WarehouseResponseDTO> warehouseDTOs = warehouses.stream()
+                    .map(this::mapToResponseDTO)
+                    .collect(Collectors.toList());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", warehouseDTOs);
+            response.put("total", warehouseDTOs.size());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error al obtener mis almacenes: {}", e.getMessage(), e);
+            return handleError("Error interno al obtener los almacenes", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener usuarios con almacenes asignados (para UI de asignación)
+     */
+    @GetMapping("/users-with-assignments")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Map<String, Object>> getUsersWithAssignments(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "userId") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc") String sortDir) {
+
+        log.info("Obteniendo usuarios con almacenes asignados - page: {}, size: {}", page, size);
+
+        try {
+            // Validar que sortBy sea un campo válido
+            String validSortBy = "userId";
+            if (sortBy != null && (sortBy.equals("warehousesCount") || sortBy.equals("userId"))) {
+                validSortBy = sortBy;
+            }
+
+            Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, validSortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            // Obtener página de usuarios con almacenes asignados desde user_warehouses
+            var assignmentsPage = userWarehouseRepository.findUsersWithWarehouses(pageable);
+
+            List<Map<String, Object>> users = assignmentsPage.getContent().stream()
+                    .map(projection -> {
+                        Map<String, Object> userMap = new HashMap<>();
+                        userMap.put("userId", projection.getUserId());
+                        userMap.put("warehousesCount", projection.getWarehousesCount());
+
+                        // Obtener IDs de almacenes del usuario
+                        List<Long> warehouseIds = userWarehouseRepository.findByUserIdWithActiveWarehouses(projection.getUserId())
+                                .stream()
+                                .map(uw -> uw.getWarehouse().getId())
+                                .collect(Collectors.toList());
+                        userMap.put("warehouseIds", warehouseIds);
+
+                        // Obtener información del usuario si está disponible
+                        userService.findById(projection.getUserId()).ifPresent(user -> {
+                            userMap.put("email", user.getEmail());
+                            userMap.put("role", user.getRole().name());
+                            userMap.put("status", user.isStatus());
+                        });
+
+                        return userMap;
+                    })
+                    .collect(Collectors.toList());
+
+            // Si no hay resultados, hacer un log informativo
+            if (assignmentsPage.getTotalElements() == 0) {
+                log.warn("No se encontraron usuarios con almacenes asignados. " +
+                        "Verifique que existan registros en la tabla user_warehouses");
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", users);
+            response.put("totalElements", assignmentsPage.getTotalElements());
+            response.put("totalPages", assignmentsPage.getTotalPages());
+            response.put("currentPage", assignmentsPage.getNumber());
+            response.put("pageSize", assignmentsPage.getSize());
+            response.put("hasNext", assignmentsPage.hasNext());
+            response.put("hasPrevious", assignmentsPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error al obtener usuarios con almacenes asignados: {}", e.getMessage(), e);
+            return handleError("Error interno al obtener usuarios", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ============ MÉTODOS UTILITARIOS ============
+
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Usuario no autenticado");
+        }
+
+        String email = auth.getName();
+        // Buscar el usuario por email para obtener su ID real
+        return userService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado: " + email))
+                .getId();
+    }
+
+    // Mantengo el método extractUserIdFromAuthentication solo como utilidad (no usado)
+    private Long extractUserIdFromAuthentication(Authentication auth) {
+        return null;
+    }
+
+    private boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + role));
+    }
+
+    private WarehouseResponseDTO mapToResponseDTO(Warehouse warehouse) {
+        WarehouseResponseDTO dto = new WarehouseResponseDTO();
+        dto.setId(warehouse.getId());
+        dto.setWarehouseKey(warehouse.getWarehouseKey());
+        dto.setNameWarehouse(warehouse.getNameWarehouse());
+        dto.setObservations(warehouse.getObservations());
+        dto.setCreatedAt(warehouse.getCreatedAt());
+        dto.setUpdatedAt(warehouse.getUpdatedAt());
+        dto.setDeletedAt(warehouse.getDeletedAt());
+        dto.setDeleted(warehouse.isDeleted());
+        // Conteo de usuarios asignados (convertir null a 0)
+        Integer count = warehouse.getAssignedUsersCount() == null ? 0 : warehouse.getAssignedUsersCount().intValue();
+        dto.setAssignedUsersCount(count);
+        // Los correos del creador/actualizador no están disponibles aquí; se dejan nulos por ahora.
+        return dto;
+    }
+
+
+    private ResponseEntity<Map<String, Object>> handleError(String message, HttpStatus status) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", message);
+        return ResponseEntity.status(status).body(response);
+    }
+}
+
