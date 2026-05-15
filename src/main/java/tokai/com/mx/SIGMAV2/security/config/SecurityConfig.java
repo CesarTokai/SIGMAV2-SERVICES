@@ -42,7 +42,7 @@ public class SecurityConfig {
     private final JpaUserRepository jpaUserRepository;
 
     public SecurityConfig(JwtUtils jwtUtils, JwtBlacklistService jwtBlacklistService,
-                         TokenRevocationService tokenRevocationService, JpaUserRepository jpaUserRepository) {
+                          TokenRevocationService tokenRevocationService, JpaUserRepository jpaUserRepository) {
         this.jwtUtils = jwtUtils;
         this.jwtBlacklistService = jwtBlacklistService;
         this.tokenRevocationService = tokenRevocationService;
@@ -76,10 +76,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://74.208.167.90",
+                "http://localhost",
+                "http://localhost:80",
+                "http://localhost:5173",
+                "http://s2_frontend"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
