@@ -89,22 +89,24 @@ public interface LabelService {
      * 🔍 GET /labels/{folio}/pdf
      * Obtiene el PDF de un marbete ya impreso
      * @param folio ID del folio
+     * @param periodId ID del periodo
      * @param userId ID del usuario
      * @param userRole Rol del usuario
      * @return byte[] con el PDF del marbete
      */
-    byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole);
+    byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 🔄 POST /labels/{folio}/reprint-simple
      * Reimprimir un marbete ya impreso actualizando solo el timestamp
      * Sin cambiar su estado ni generar nuevos folios
      * @param folio ID del folio
+     * @param periodId ID del periodo
      * @param userId ID del usuario que reimprimen
      * @param userRole Rol del usuario
      * @return byte[] con el PDF reimprimido
      */
-    byte[] reprintSimple(Long folio, Long userId, String userRole);
+     byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 📋 GET /labels/{folio}/full-info

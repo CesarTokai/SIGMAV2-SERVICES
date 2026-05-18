@@ -28,6 +28,17 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
 
+    /**
+     * Buscar marbete por folio y periodo (sin restricción de almacén).
+     */
+    java.util.Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
+
+    /**
+     * Buscar marbete únicamente por folio (útil para escaneo QR sin conocer período).
+     */
+    @Query("SELECT l FROM Label l WHERE l.folio = :folio ORDER BY l.periodId DESC")
+    java.util.Optional<Label> findByFolioOnly(@Param("folio") Long folio);
+
 
     List<Label> findByFolioInAndPeriodIdAndWarehouseId(Collection<Long> folios, Long periodId, Long warehouseId);
 

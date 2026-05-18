@@ -316,6 +316,10 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return jpaLabelCancelledRepository.findByFolio(folio);
     }
 
+    public Optional<LabelCancelled> findCancelledByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelCancelledRepository.findByFolioAndPeriodId(folio, periodId);
+    }
+
     @Transactional
     public LabelCancelled saveCancelled(LabelCancelled cancelled) {
         return jpaLabelCancelledRepository.save(cancelled);
@@ -324,6 +328,13 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     // Método para obtener marbetes de un producto específico
     public List<Label> findByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
         return jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
+    }
+
+    /**
+     * Busca un marbete específico por folio y periodo (sin restricción de almacén).
+     */
+    public Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelRepository.findByFolioAndPeriodId(folio, periodId);
     }
 
     /**

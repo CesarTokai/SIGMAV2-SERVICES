@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 class LabelReportIntegrationTest {
 
     @Autowired private LabelService labelService;
-    @MockBean private WarehouseAccessService warehouseAccessService;
+    @MockitoBean private WarehouseAccessService warehouseAccessService;
 
     @BeforeEach
     void setUp() {

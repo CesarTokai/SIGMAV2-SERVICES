@@ -36,6 +36,7 @@ public class UserWarehouseAssignment {
     @Column(name = "assigned_by")
     private Long assignedBy;
 
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

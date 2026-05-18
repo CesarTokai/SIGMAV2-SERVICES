@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.*;
+import tokai.com.mx.SIGMAV2.modules.inventory.infrastructure.persistence.entity.InventoryStockEntity;
 import tokai.com.mx.SIGMAV2.modules.labels.application.dto.*;
 import tokai.com.mx.SIGMAV2.modules.labels.application.exception.LabelNotFoundException;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.*;

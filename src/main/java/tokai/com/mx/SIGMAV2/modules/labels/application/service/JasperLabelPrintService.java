@@ -31,7 +31,7 @@ public class JasperLabelPrintService {
 
     /**
      * Genera un PDF con los marbetes especificados usando la plantilla JRXML
-     * REFACTORIZADO: Usa cache de reportes para evitar compilación repetida
+     * REFACTORIZADO: Usa cache de reportes en lugar de compilar cada vez
      *
      * @param labels Lista de marbetes a imprimir
      * @return byte[] del PDF generado
@@ -87,6 +87,13 @@ public class JasperLabelPrintService {
             log.error("Error generando PDF con JasperReports", e);
             throw new RuntimeException("Error generando PDF de marbetes: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Sobrecarga que acepta un flag withQR (el QR se maneja en servicios específicos).
+     */
+    public byte[] generateLabelsPdf(List<Label> labels, boolean withQR) {
+        return generateLabelsPdf(labels);
     }
 
 
@@ -197,4 +204,3 @@ public class JasperLabelPrintService {
         return dataSource;
     }
 }
-

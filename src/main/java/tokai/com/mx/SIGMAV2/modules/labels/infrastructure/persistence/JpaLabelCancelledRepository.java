@@ -12,6 +12,8 @@ public interface JpaLabelCancelledRepository extends JpaRepository<LabelCancelle
 
     Optional<LabelCancelled> findByFolio(Long folio);
 
+    Optional<LabelCancelled> findByFolioAndPeriodId(Long folio, Long periodId);
+
     List<LabelCancelled> findByPeriodIdAndWarehouseIdAndReactivado(Long periodId, Long warehouseId, Boolean reactivado);
 
     List<LabelCancelled> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);

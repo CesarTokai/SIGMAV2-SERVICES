@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,7 +32,7 @@ class LabelCountIntegrationTest {
 
     @Autowired private LabelCountService service;
     @Autowired private JpaLabelRepository labelRepository;
-    @MockBean private WarehouseAccessService warehouseAccessService;
+    @MockitoBean private WarehouseAccessService warehouseAccessService;
 
     private Label testLabel;
     private CountEventDTO dto;

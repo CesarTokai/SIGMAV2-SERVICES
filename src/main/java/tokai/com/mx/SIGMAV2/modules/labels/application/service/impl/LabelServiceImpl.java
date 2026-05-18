@@ -845,11 +845,11 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
-        log.info("📄 Consultando PDF del marbete folio={}, usuario={}", folio, userId);
+    public byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("📄 Consultando PDF del marbete folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
 
         // Validar que esté impreso
         if (label.getEstado() != Label.State.IMPRESO) {
@@ -873,11 +873,11 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public byte[] reprintSimple(Long folio, Long userId, String userRole) {
-        log.info("🔄 Reimpresión SIMPLE: folio={}, usuario={}", folio, userId);
+    public byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("🔄 Reimpresión SIMPLE: folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en periodo " + periodId));
 
         // Validar que esté impreso
         if (label.getEstado() != Label.State.IMPRESO) {
