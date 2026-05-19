@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(npm run *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\cesarg\\\\Documents\\\\DESARROLLO DE SOFTWARE\\\\SIGMAV2-APP-\\\\SIGMAV2-APP\\\\src\" -Recurse | Where-Object { $_.Name -match \"router|route\" })",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(xargs grep -l \"user-management\\\\|userManagement\\\\|Gestión de Usuarios\")"
+    ]
+  }
+}

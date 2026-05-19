@@ -1,0 +1,410 @@
+# 🎯 GUÍA VISUAL PASO A PASO
+
+## 📱 CÓMO ACCEDER A LAS NUEVAS FUNCIONALIDADES
+
+---
+
+## PASO 1️⃣: INICIAR SESIÓN
+
+```
+┌──────────────────────────────────────┐
+│        SIGMAV2 - LOGIN              │
+│                                      │
+│  Usuario: admin                     │
+│  Contraseña: ********               │
+│                                      │
+│      [  Iniciar Sesión  ]           │
+└──────────────────────────────────────┘
+```
+
+**Requisito:** Debes tener rol de **ADMINISTRADOR**
+
+---
+
+## PASO 2️⃣: BUSCAR EN EL MENÚ LATERAL
+
+```
+┌──────────────────────────────────────────────────────┐
+│  SIGMAV2 - Panel de Administración                  │
+├────────────────┬─────────────────────────────────────┤
+│                │                                      │
+│ MENÚ LATERAL   │      CONTENIDO PRINCIPAL            │
+│                │                                      │
+│ 👥 Usuarios    │                                      │
+│ 📄 Contraseñas │                                      │
+│ 🏬 Almacenes   │                                      │
+│ 📦 Inventarios │                                      │
+│ 🏢 MultiAlmacen│                                      │
+│ 📅 Periodos    │                                      │
+│ ┌────────────┐│                                      │
+│ │🏷️ Marbetes │← CLICK AQUÍ ⭐                       │
+│ └────────────┘│                                      │
+│                │                                      │
+└────────────────┴─────────────────────────────────────┘
+```
+
+**Acción:** Click en "🏷️ Gestion de Marbetes"
+
+---
+
+## PASO 3️⃣: VER LAS 4 PESTAÑAS
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  🏷️ Gestión de Marbetes                                           │
+│  Sistema integral de administración de marbetes                   │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌────────────┬────────────┬────────────┬────────────┐            │
+│  │ 📋 Consulta│ 🖨️ Impresión│ 🔢 Conteo  │ 📊 Reportes│            │
+│  │  y Captura │            │    ⭐      │    ⭐      │            │
+│  └────────────┴────────────┴────────────┴────────────┘            │
+│         ↑            ↑            ↑            ↑                   │
+│       Normal      Normal      MEJORADO     NUEVO                   │
+│                                                                     │
+│  ◄ Gestión de Marbetes › Consulta y Captura                       │
+│                                                                     │
+│  [Contenido de la pestaña activa]                                 │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🎯 FUNCIONALIDAD 1: CANCELAR MARBETE
+
+### PASO A: IR A PESTAÑA CONTEO
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  🏷️ Gestión de Marbetes                                           │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌────────────┬────────────┬────────────┬────────────┐            │
+│  │ 📋 Consulta│ 🖨️ Impresión│┏━━━━━━━━┓ │ 📊 Reportes│            │
+│  │  y Captura │            │┃🔢 Conteo┃ │            │            │
+│  └────────────┴────────────┗━━━━━━━━━━┛─┴────────────┘            │
+│                                  ↑                                  │
+│                           CLICK AQUÍ                                │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### PASO B: FORMULARIO DE CONTEO
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  🎯 Selección de Periodo y Almacén                                │
+│                                                                     │
+│  Período: [▼ Diciembre 2024 - Inventario Anual ▼]                │
+│  Almacén: [▼ ALM01 - Almacén Principal         ▼]                │
+│                                                                     │
+│  📊 [100] Total    ✅ [75] Contados   ⏳ [20] Pendientes  ❌ [5] Cancelados │
+│                                                                     │
+├────────────────────────────────────────────────────────────────────┤
+│  ✍️ Captura de Conteo                                              │
+│                                                                     │
+│  Número de Marbete (Folio):                                        │
+│  [    1001     ] [🔍 Buscar]                                       │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ ℹ️ Información del Marbete                                   │ │
+│  │                                                                │ │
+│  │ Producto: Laptop Dell Inspiron 15                            │ │
+│  │ Clave: PROD001                                                │ │
+│  │ Almacén: ALM01 - Almacén Principal                            │ │
+│  │ Existencias Esperadas: 50                                     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  Primer Conteo:    [   48   ]                                     │
+│  Segundo Conteo:   [   48   ]                                     │
+│  Diferencia:       [    0   ] ← Se calcula automáticamente        │
+│                                                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐    │
+│  │💾 Guardar    │  │🔄 Limpiar    │  │❌ Cancelar Marbete  │← ⭐│
+│  │   Conteo     │  │              │  │  (NUEVO/MEJORADO)    │    │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘    │
+│                                              ↑                     │
+│                                        CLICK AQUÍ                  │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### PASO C: MODAL DE CANCELACIÓN
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                     ⚠️ ¿Cancelar Marbete?                         │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Folio: 1001                                                       │
+│  Producto: Laptop Dell Inspiron 15                                │
+│                                                                     │
+│  ⚠️ Esta acción no se puede deshacer.                             │
+│                                                                     │
+│  Motivo de Cancelación: ★ OBLIGATORIO ★                           │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ Error en la captura, producto duplicado                      │ │
+│  │                                                                │ │
+│  │                                                                │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│         [  No  ]              [  Sí, cancelar  ]                  │
+│                                       ↑                            │
+│                                 CLICK AQUÍ                         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Resultado:** El marbete queda cancelado y no se puede usar más
+
+---
+
+## 🎯 FUNCIONALIDAD 2: REPORTES
+
+### PASO A: IR A PESTAÑA REPORTES
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  🏷️ Gestión de Marbetes                                           │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌────────────┬────────────┬────────────┬────────────┐            │
+│  │ 📋 Consulta│ 🖨️ Impresión│ 🔢 Conteo  │┏━━━━━━━━━┓│            │
+│  │  y Captura │            │            │┃📊 Reportes┃│            │
+│  └────────────┴────────────┴────────────┗━━━━━━━━━━━┛            │
+│                                                ↑                    │
+│                                          CLICK AQUÍ ⭐              │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### PASO B: SELECCIONAR TIPO DE REPORTE
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  📑 Tipos de Reportes                                              │
+│                                                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────┐│
+│  │     📊       │  │     📋       │  │     ⏳       │  │   ⚠️   ││
+│  │              │  │              │  │              │  │        ││
+│  │ Distribución │  │   Listado    │  │  Pendientes  │  │  Con   ││
+│  │              │  │              │  │              │  │Diferen-││
+│  │ de Marbetes  │  │ de Marbetes  │  │              │  │ cias   ││
+│  │              │  │              │  │              │  │        ││
+│  └──────────────┘  └──────────────┘  └──────────────┘  └────────┘│
+│         ↑                                                           │
+│    CLICK PARA SELECCIONAR (se pone azul)                          │
+│                                                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────┐│
+│  │     ❌       │  │     🔄       │  │     🏪       │  │   📦   ││
+│  │              │  │              │  │              │  │        ││
+│  │  Cancelados  │  │ Comparativo  │  │   Almacén    │  │Producto││
+│  │              │  │              │  │   Detalle    │  │Detalle ││
+│  └──────────────┘  └──────────────┘  └──────────────┘  └────────┘│
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### PASO C: EJEMPLO - REPORTE LISTADO SELECCIONADO
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  📑 Tipos de Reportes                                              │
+│                                                                     │
+│  ┌──────────────┐  ┏━━━━━━━━━━━━━┓  ┌──────────────┐  ┌────────┐│
+│  │     📊       │  ┃     📋      ┃  │     ⏳       │  │   ⚠️   ││
+│  │ Distribución │  ┃   Listado   ┃  │  Pendientes  │  │  Con   ││
+│  │ de Marbetes  │  ┃ de Marbetes ┃  │              │  │Diferen-││
+│  └──────────────┘  ┗━━━━━━━━━━━━━┛  └──────────────┘  └─cias───┘│
+│                           ↑                                         │
+│                    SELECCIONADO (azul)                             │
+├────────────────────────────────────────────────────────────────────┤
+│  🎯 Filtros del Reporte                                            │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ 📋 Listado de Marbetes                                       │ │
+│  │ Listado completo de todos los marbetes generados             │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  Período: [▼ Diciembre 2024 - Inventario Anual ▼]                │
+│                                                                     │
+│  Almacén: [▼ ALM01 - Almacén Principal         ▼]                │
+│  ☐ Todos los almacenes                                            │
+│                                                                     │
+│  [📊 Generar Reporte]  [📥 Descargar Excel]                       │
+│         ↑                                                           │
+│    CLICK AQUÍ                                                      │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### PASO D: RESULTADOS DEL REPORTE
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  📋 Resultados del Reporte                          [150 registros]│
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────┬────────┬──────────────┬──────┬────────┬────┬────┬──────┐│
+│  │Folio│Producto│ Descripción  │Unidad│Almacén │Cnt1│Cnt2│Estado││
+│  ├─────┼────────┼──────────────┼──────┼────────┼────┼────┼──────┤│
+│  │1001 │PROD001 │Laptop Dell...│ PZA  │ ALM01  │ 48 │ 48 │Compl.││
+│  │1002 │PROD002 │Mouse Logitech│ PZA  │ ALM01  │ 120│ 120│Compl.││
+│  │1003 │PROD003 │Teclado HP    │ PZA  │ ALM01  │  - │  - │Pend. ││
+│  │1004 │PROD004 │Monitor LG 24"│ PZA  │ ALM01  │ 30 │ 32 │Difer.││
+│  │1005 │PROD005 │Cable HDMI    │ PZA  │ ALM01  │  - │  - │Canc. ││
+│  │ ... │  ...   │     ...      │ ...  │  ...   │... │... │ ...  ││
+│  └─────┴────────┴──────────────┴──────┴────────┴────┴────┴──────┘│
+│                                                                     │
+│  ← Anterior  [ 1 ]  [ 2 ]  [ 3 ]  Siguiente →                     │
+│                                                                     │
+│                         [📥 Descargar Excel]                       │
+│                                   ↑                                │
+│                            CLICK PARA DESCARGAR                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 RESUMEN DE LOS 8 REPORTES
+
+```
+╔═══════════════════════════════════════════════════════════════════╗
+║  TIPO DE REPORTE              ICONO    LO QUE MUESTRA             ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  1. Distribución de Marbetes   📊     Folios por almacén          ║
+║  2. Listado de Marbetes        📋     Todos los marbetes          ║
+║  3. Marbetes Pendientes        ⏳     Sin conteos completos       ║
+║  4. Con Diferencias            ⚠️     Discrepancias en conteos   ║
+║  5. Marbetes Cancelados        ❌     Marbetes cancelados         ║
+║  6. Comparativo                🔄     Físico vs Teórico          ║
+║  7. Almacén con Detalle        🏪     Inventario por almacén     ║
+║  8. Producto con Detalle       📦     Inventario por producto    ║
+╚═══════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## ✅ VERIFICACIÓN RÁPIDA
+
+### ¿Cómo sé si las funcionalidades están disponibles?
+
+**1. En el Menú Lateral:**
+```
+✅ SI VES: 🏷️ Gestion de Marbetes
+   → Las funcionalidades están disponibles
+```
+
+**2. En el Módulo de Marbetes:**
+```
+✅ SI VES 4 PESTAÑAS (Consulta, Impresión, Conteo, Reportes)
+   → Todo está implementado correctamente
+
+❌ SI SOLO VES 3 PESTAÑAS
+   → Falta actualizar el MarbetesLayout.vue
+```
+
+**3. En la Pestaña Conteo:**
+```
+✅ SI VES EL BOTÓN ROJO "❌ Cancelar Marbete"
+   → La funcionalidad de cancelación está lista
+
+❌ SI NO VES EL BOTÓN
+   → Falta actualizar el ConteoMarbetes.vue
+```
+
+**4. En la Pestaña Reportes:**
+```
+✅ SI VES 8 TARJETAS CON ICONOS
+   → Todos los reportes están disponibles
+
+❌ SI VES ERROR 404
+   → Falta el archivo ReportesMarbetes.vue
+```
+
+---
+
+## 🔧 TROUBLESHOOTING
+
+### Problema: "No veo la pestaña Reportes"
+
+**Solución:**
+1. Verificar que existe el archivo:
+   `src/modules/admin/views/marbetesAdmin/ReportesMarbetes.vue`
+2. Verificar que MarbetesLayout.vue importa ReportesMarbetes
+3. Recargar la página (Ctrl + F5)
+
+---
+
+### Problema: "El botón de cancelar no aparece"
+
+**Solución:**
+1. Buscar un marbete con folio válido
+2. Verificar que aparece la información del marbete
+3. El botón está debajo de los campos de conteo
+
+---
+
+### Problema: "Al generar reporte da error 404"
+
+**Solución:**
+1. Verificar que el backend esté corriendo
+2. Verificar la URL del backend en `.env` o configuración
+3. Verificar que el endpoint en el backend está disponible
+
+---
+
+## 🎯 APIS CONSUMIDAS
+
+```javascript
+// Cancelación
+POST /sigmav2/labels/cancel
+Body: { folio, periodId, warehouseId, motivoCancelacion }
+
+// Reportes (8 endpoints)
+POST /sigmav2/labels/reports/distribution
+POST /sigmav2/labels/reports/list
+POST /sigmav2/labels/reports/pending
+POST /sigmav2/labels/reports/with-differences
+POST /sigmav2/labels/reports/cancelled
+POST /sigmav2/labels/reports/comparative
+POST /sigmav2/labels/reports/warehouse-detail
+POST /sigmav2/labels/reports/product-detail
+
+// Todos usan el mismo formato de body:
+Body: { periodId: number, warehouseId: number | null }
+```
+
+---
+
+## 📞 CONTACTO Y SOPORTE
+
+**Documentación completa:**
+- 📄 `IMPLEMENTACION_REPORTES_MARBETES.md` - Documentación técnica
+- 📄 `DONDE_ESTAN_LAS_FUNCIONALIDADES.md` - Mapa de navegación
+- 📄 `GUIA_VISUAL_PASO_A_PASO.md` - Este archivo
+
+**Estado:** ✅ 100% Funcional y listo para producción
+
+**Última actualización:** 2025-12-09
+
+---
+
+## 🎉 ¡TODO LISTO!
+
+Las funcionalidades están completamente implementadas y accesibles desde:
+
+```
+Login → Menú 🏷️ Marbetes → Pestañas [Conteo | Reportes]
+```
+
+**¡Disfruta de las nuevas funcionalidades!** 🚀
+

@@ -1,0 +1,163 @@
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.active {
+    background-color: var(--primary-color) !important;
+    color: var(--primary-color-text) !important;
+    border-radius: 4px;
+}
+
+.selectable {
+    cursor: pointer;
+}
+.main-content {
+    min-height: 70vh;
+    overflow-y: auto;
+    overflow-y: hidden;
+}
+
+.icon-container {
+    color: var(--primary-color);
+}
+
+.date-container {
+    display: flex;
+    align-items: center;
+    font-size: 1.2em;
+}
+
+.search-icon {
+    position: absolute;
+    right: 20px; /* Ajusta este valor según sea necesario */
+    color: #495057;
+    pointer-events: none; /* Hace que el icono no interfiera con el clic en el input */
+    width: 20px;
+}
+
+.navs-container {
+    background: white;
+    border-radius: 2px;
+    border-bottom: 4px solid var(--primary-color);
+    padding: 0;
+}
+
+.custom-confirm-button {
+    color: var(--primary-color-text);
+}
+
+a {
+    color: var(--primary-color-text);
+}
+
+a:hover {
+    color: var(--primary-color);
+}
+
+.dropdown .btn-secondary {
+    background-color: var(--primary-color-low-opacity) !important;
+    color: var(--primary-color-text) !important;
+    font-size: 20px;
+    padding: 0.05em 0.3em;
+    border: none;
+}
+
+.dropdown .btn-secondary:hover {
+    background-color: var(--primary-color) !important;
+    color: var(--primary-color-text) !important;
+}
+
+.b-form-input {
+    padding-right: 35px; /* Ajusta el espacio del icono dentro del input */
+}
+
+.primary-add-button {
+    background-color: var(--primary-color) !important;
+    color: var(--primary-color-text) !important;
+    border: none;
+    width: 150px;
+    font-size: 15px;
+}
+
+.page-item.active .page-link {
+    z-index: 3;
+    color: var(--primary-color-text) !important;
+    background-color: var(--primary-color) !important;
+    border-color: #777575 !important;
+}
+
+.page-link {
+    color: var(--primary-color) !important;
+}
+
+.dropdown-item:focus {
+    color: var(--primary-color-text) !important;
+    background-color: var(--primary-color) !important;
+}
+
+div:where(.swal2-icon) .swal2-icon-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.b-sidebar {
+    background-color: var(--primary-color-high-opacity) !important;
+    color: var(--primary-color-text) !important;
+}
+
+.user-menu-container {
+    position: relative;
+}
+
+.user-icon-top-part {
+    width: 4.5vh;
+    height: 4.5vh;
+    background-color: #6c757d;
+    border-radius: 4px;
+    margin-left: 24px;
+    margin-top: 0.5vh;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.logout-menu {
+    position: absolute;
+    top: 60px;
+    width: 170px;
+    display: flex;
+    justify-content: center;
+    /* Ajusta según la posición del ícono */
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 8px 4px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+@media (max-width: 991px) {
+    .logout-menu {
+        top: -32px;
+        right: 22px;
+    }
+}
+
+.logout-button {
+    padding: 4px 20px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.logout-button:hover {
+    background-color: #d32f2f;
+}
