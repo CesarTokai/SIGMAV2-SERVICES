@@ -1,0 +1,19 @@
+package tokai.com.mx.SIGMAV2.modules.warehouse.adapter.web.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+public class WarehouseCreateDTO {
+    @NotBlank(message = "La clave del almacén es requerida")
+    @Size(min = 1, max = 20, message = "La clave del almacén debe tener entre 1 y 20 caracteres")
+    private String warehouseKey;
+
+    @NotBlank(message = "El nombre del almacén es requerido")
+    @Size(min = 3, max = 100, message = "El nombre del almacén debe tener entre 3 y 100 caracteres")
+    private String nameWarehouse;
+
+    @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")
+    private String observations;
+}

@@ -1,0 +1,55 @@
+PASOS PARA PROBAR EL BLOQUEO DE USUARIO:
+
+1. Haz 3 intentos de LOGIN FALLIDOS (contraseña incorrecta):
+
+   POST http://localhost:8080/api/sigmav2/auth/login
+   Content-Type: application/json
+
+   {
+     "email": "obotello@tokai.com.mx",
+     "password": "CONTRASEÑA_INCORRECTA_1"
+   }
+
+   Respuesta esperada: 401 "User or password incorrect"
+
+   ---
+
+   Repite 2 veces más con diferentes contraseñas incorrectas
+
+2. DESPUÉS DE 3 INTENTOS FALLIDOS, consulta la API de seguridad:
+
+   POST http://localhost:8080/api/sigmav2/users/admin/security/by-email
+   Authorization: Bearer <ADMIN_TOKEN>
+   Content-Type: application/json
+
+   {
+     "email": "obotello@tokai.com.mx"
+   }
+
+3. RESPUESTA ESPERADA (con valores NO null):
+
+   {
+     "success": true,
+     "data": {
+       "userId": 2,
+       "email": "obotello@tokai.com.mx",
+       "isVerified": true,
+       "failedAttempts": 0,
+       "lastFailedAttempt": "2026-02-16T15:30:00",
+       "lastBlocked": "2026-02-16T15:30:00",
+       "status": false,
+       "pendingPasswordChangeRequests": 0
+     }
+   }
+
+NOTAS:
+- failedAttempts = 0 porque se resetea después de bloquear
+- status = false porque el usuario está bloqueado
+- lastFailedAttempt y lastBlocked tendrán fechas reales
+
+SI AÚN VES NULL:
+- Verifica que la columna last_blocked_at existe en la tabla users
+- Ejecuta el SQL: add-last-blocked-at-column.sql
+- Reinicia el servidor
+- Repite los pasos de prueba
+

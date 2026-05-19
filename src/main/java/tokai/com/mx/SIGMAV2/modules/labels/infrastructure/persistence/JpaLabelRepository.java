@@ -1,0 +1,112 @@
+package tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
+
+import java.util.Collection;
+import java.util.List;
+
+@Repository
+public interface JpaLabelRepository extends JpaRepository<Label, Long> {
+
+    boolean existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(Long productId, Long warehouseId, Long periodId, Label.State estado);
+
+    Page<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId, Pageable pageable);
+
+    Page<Label> findByLabelRequestIdAndFolioBetween(Long labelRequestId, Long startFolio, Long endFolio, Pageable pageable);
+
+    long countByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
+
+    List<Label> findByFolioBetween(Long startFolio, Long endFolio);
+
+    List<Label> findByProductIdAndPeriodIdAndWarehouseId(Long productId, Long periodId, Long warehouseId);
+
+    java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
+
+    /**
+     * Buscar marbete por folio y periodo (sin restricción de almacén).
+     */
+    java.util.Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
+
+    /**
+     * Buscar marbete únicamente por folio (útil para escaneo QR sin conocer período).
+     */
+    @Query("SELECT l FROM Label l WHERE l.folio = :folio ORDER BY l.periodId DESC")
+    java.util.Optional<Label> findByFolioOnly(@Param("folio") Long folio);
+
+
+    List<Label> findByFolioInAndPeriodIdAndWarehouseId(Collection<Long> folios, Long periodId, Long warehouseId);
+
+    List<Label> findByPeriodId(Long periodId);
+
+    List<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId);
+
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId IN :warehouseIds ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findByPeriodIdAndWarehouseIdIn(@Param("periodId") Long periodId,
+                                                @Param("warehouseIds") Collection<Long> warehouseIds);
+
+    List<Label> findByPeriodIdAndEstado(Long periodId, Label.State estado);
+
+    List<Label> findByPeriodIdAndWarehouseIdAndEstado(Long periodId, Long warehouseId, Label.State estado);
+
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.estado IN ('IMPRESO', 'GENERADO') " +
+           "ORDER BY l.warehouseId, l.folio")
+    List<Label> findPrintedLabelsByPeriod(@Param("periodId") Long periodId);
+
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId " +
+           "AND l.estado IN ('IMPRESO', 'GENERADO') ORDER BY l.folio")
+    List<Label> findPrintedLabelsByPeriodAndWarehouse(@Param("periodId") Long periodId,
+                                                       @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes en estado IMPRESO de un periodo y almacén — filtrado en BD.
+     * Reemplaza el patrón: findAll().stream().filter(estado == IMPRESO) en memoria.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId " +
+           "AND l.estado = 'IMPRESO' ORDER BY l.folio ASC")
+    List<Label> findImpresosForCountList(@Param("periodId") Long periodId,
+                                         @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes en estado IMPRESO de un período (todos los almacenes).
+     * Usado por AUXILIAR_DE_CONTEO que tiene acceso a todos los almacenes.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId " +
+           "AND l.estado = 'IMPRESO' ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findImpresosForCountByPeriod(@Param("periodId") Long periodId);
+
+    /**
+     * Marbetes no cancelados de un periodo y almacén — filtrado en BD.
+     * Reemplaza: findAll().stream().filter(estado != CANCELADO) en memoria.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId " +
+           "AND l.estado <> 'CANCELADO' ORDER BY l.folio ASC")
+    List<Label> findNonCancelledByPeriodAndWarehouse(@Param("periodId") Long periodId,
+                                                      @Param("warehouseId") Long warehouseId);
+
+    /**
+     * Marbetes no cancelados de un periodo completo (todos los almacenes).
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.estado <> 'CANCELADO' ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findNonCancelledByPeriod(@Param("periodId") Long periodId);
+
+    /**
+     * TODOS los marbetes generados (sin filtro de estado) para reporte de distribución.
+     * Muestra la distribución de folios POR USUARIO Y ALMACÉN.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findAllLabelsByPeriodForDistribution(@Param("periodId") Long periodId);
+
+    /**
+     * TODOS los marbetes de un almacén específico (sin filtro de estado) para reporte de distribución.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId = :warehouseId ORDER BY l.folio ASC")
+    List<Label> findAllLabelsByPeriodAndWarehouseForDistribution(@Param("periodId") Long periodId,
+                                                                  @Param("warehouseId") Long warehouseId);
+}
+

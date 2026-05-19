@@ -1,0 +1,464 @@
+package tokai.com.mx.SIGMAV2.modules.labels.infrastructure.adapter;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.Label;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelFolioSequence;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelGenerationBatch;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelPrint;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelRequest;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCountEvent;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.domain.port.output.LabelRequestRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelRequestRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelFolioSequenceRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelGenerationBatchRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelPrintRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCountEventRepository;
+import tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence.JpaLabelCancelledRepository;
+import tokai.com.mx.SIGMAV2.modules.periods.adapter.persistence.JpaPeriodRepository;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRepository {
+
+    private final JpaLabelRepository jpaLabelRepository;
+    private final JpaLabelRequestRepository jpaLabelRequestRepository;
+    private final JpaLabelFolioSequenceRepository jpaLabelFolioSequenceRepository;
+    private final JpaLabelGenerationBatchRepository jpaLabelGenerationBatchRepository;
+    private final JpaLabelPrintRepository jpaLabelPrintRepository;
+    private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
+    private final JpaPeriodRepository jpaPeriodRepository;
+    private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
+
+    @Override
+    public Label save(Label label) {
+        return jpaLabelRepository.save(label);
+    }
+
+    public List<Label> saveAll(List<Label> labels) {
+        return jpaLabelRepository.saveAll(labels);
+    }
+
+    @Override
+    public Optional<Label> findByFolio(Long folio) {
+        return jpaLabelRepository.findById(folio);
+    }
+
+    @Override
+    public List<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId, int offset, int limit) {
+        if (limit <= 0) return List.of();
+        int page = offset / limit;
+        var pageReq = PageRequest.of(page, limit);
+        return jpaLabelRepository.findByPeriodIdAndWarehouseId(periodId, warehouseId, pageReq).getContent();
+    }
+
+    @Override
+    public long countByPeriodIdAndWarehouseId(Long periodId, Long warehouseId) {
+        return jpaLabelRepository.countByPeriodIdAndWarehouseId(periodId, warehouseId);
+    }
+
+    @Override
+    public List<Label> findGeneratedByRequestIdRange(Long requestId, Long startFolio, Long endFolio) {
+        var pageReq = PageRequest.of(0, (int)(endFolio - startFolio + 1));
+        return jpaLabelRepository.findByLabelRequestIdAndFolioBetween(requestId, startFolio, endFolio, pageReq).getContent();
+    }
+
+    // LabelRequestRepository methods
+    @Override
+    public LabelRequest save(LabelRequest request) {
+        return jpaLabelRequestRepository.save(request);
+    }
+
+    @Override
+    public Optional<LabelRequest> findByProductWarehousePeriod(Long productId, Long warehouseId, Long periodId) {
+        return jpaLabelRequestRepository.findByProductIdAndWarehouseIdAndPeriodId(productId, warehouseId, periodId);
+    }
+
+    @Override
+    public void delete(LabelRequest request) {
+        jpaLabelRequestRepository.delete(request);
+    }
+
+    @Override
+    public boolean existsGeneratedUnprintedForProductWarehousePeriod(Long productId, Long warehouseId, Long periodId) {
+        return jpaLabelRepository.existsByProductIdAndWarehouseIdAndPeriodIdAndEstado(productId, warehouseId, periodId, Label.State.GENERADO);
+    }
+
+    // Operaciones de secuencia y generación (helpers usados por el servicio)
+    @Transactional
+    public synchronized long[] allocateFolioRange(Long periodId, int quantity) {
+        // Bloqueo PESSIMISTIC_WRITE se aplica en el repositorio JPA via findById con @Lock
+        Optional<LabelFolioSequence> opt = jpaLabelFolioSequenceRepository.findById(periodId);
+        LabelFolioSequence seq;
+        if (opt.isPresent()) {
+            seq = opt.get();
+        } else {
+            seq = new LabelFolioSequence();
+            seq.setPeriodId(periodId);
+            seq.setUltimoFolio(0L);
+        }
+        long primer = seq.getUltimoFolio() + 1;
+        long ultimo = seq.getUltimoFolio() + quantity;
+        seq.setUltimoFolio(ultimo);
+        jpaLabelFolioSequenceRepository.save(seq);
+        return new long[]{primer, ultimo};
+    }
+
+    @Transactional
+    public LabelGenerationBatch saveGenerationBatch(LabelGenerationBatch batch) {
+        return jpaLabelGenerationBatchRepository.save(batch);
+    }
+
+    @Transactional
+    public void saveLabelsBatch(Long requestId, Long periodId, Long warehouseId, Long productId, long primer, long ultimo, Long createdBy) {
+        log.info("=== saveLabelsBatch INICIO ===");
+        log.info("Parámetros: requestId={}, periodId={}, warehouseId={}, productId={}, primer={}, ultimo={}, createdBy={}",
+            requestId, periodId, warehouseId, productId, primer, ultimo, createdBy);
+
+        List<Label> labels = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        for (long f = primer; f <= ultimo; f++) {
+            Label l = new Label();
+            l.setFolio(f);
+            l.setLabelRequestId(requestId);
+            l.setPeriodId(periodId);
+            l.setWarehouseId(warehouseId);
+            l.setProductId(productId);
+            l.setEstado(Label.State.GENERADO);
+            l.setCreatedBy(createdBy);
+            l.setCreatedAt(now);
+            labels.add(l);
+        }
+        log.info("Creados {} objetos Label en memoria, procediendo a guardar en BD...", labels.size());
+        jpaLabelRepository.saveAll(labels);
+        log.info("Guardados {} marbetes en la base de datos exitosamente", labels.size());
+
+        // Verificar que se guardaron
+        long count = jpaLabelRepository.countByPeriodIdAndWarehouseId(periodId, warehouseId);
+        log.info("Verificación: Total de marbetes en BD para periodId={}, warehouseId={}: {}", periodId, warehouseId, count);
+        log.info("=== saveLabelsBatch FIN ===");
+    }
+
+    @Transactional
+    public void saveLabelsBatchAsCancelled(Long requestId, Long periodId, Long warehouseId, Long productId, long primer, long ultimo, Long createdBy, Integer existencias) {
+        log.info("=== saveLabelsBatchAsCancelled INICIO ===");
+        log.info("Parámetros: requestId={}, periodId={}, warehouseId={}, productId={}, primer={}, ultimo={}, createdBy={}, existencias={}",
+            requestId, periodId, warehouseId, productId, primer, ultimo, createdBy, existencias);
+
+        List<tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled> cancelledLabels = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (long f = primer; f <= ultimo; f++) {
+            tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled lc = new tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled();
+            lc.setFolio(f);
+            lc.setLabelRequestId(requestId);
+            lc.setPeriodId(periodId);
+            lc.setWarehouseId(warehouseId);
+            lc.setProductId(productId);
+            lc.setExistenciasAlCancelar(existencias != null ? existencias : 0);
+            lc.setExistenciasActuales(existencias != null ? existencias : 0);
+            lc.setMotivoCancelacion("Sin existencias al momento de generación");
+            lc.setCanceladoAt(now);
+            lc.setCanceladoBy(createdBy);
+            lc.setReactivado(false);
+            cancelledLabels.add(lc);
+        }
+
+        log.info("Creados {} objetos LabelCancelled en memoria, procediendo a guardar en BD...", cancelledLabels.size());
+        jpaLabelCancelledRepository.saveAll(cancelledLabels);
+        log.info("Guardados {} marbetes cancelados en la base de datos exitosamente", cancelledLabels.size());
+
+        // Verificar que se guardaron
+        long count = jpaLabelCancelledRepository.countByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, false);
+        log.info("Verificación: Total de marbetes cancelados en BD para periodId={}, warehouseId={}: {}", periodId, warehouseId, count);
+        log.info("=== saveLabelsBatchAsCancelled FIN ===");
+    }
+
+    // Nueva operación: impresión de rango de marbetes
+    @Transactional
+    public synchronized LabelPrint printLabelsRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio, Long userId, boolean isReprint) {
+        log.info("Iniciando printLabelsRange: periodo={}, almacén={}, folios {}-{}, reimpresión={}",
+            periodId, warehouseId, startFolio, endFolio, isReprint);
+
+        // Los folios son una secuencia GLOBAL compartida entre almacenes.
+        // Un mismo almacén puede tener bloques no consecutivos, por eso solo filtramos
+        // por warehouse/periodo.
+        // CAMBIO: Se permite reimprimir cualquier marbete (no solo GENERADO)
+        // Los marbetes cancelados sí se excluyen por validación abajo
+
+        List<Label> filteredLabels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio)
+            .stream()
+            .filter(l -> l.getPeriodId().equals(periodId) && l.getWarehouseId().equals(warehouseId))
+            .filter(l -> l.getEstado() != Label.State.CANCELADO)  // Excluir solo cancelados
+            .collect(Collectors.toList());
+
+        if (filteredLabels.isEmpty()) {
+            throw new IllegalStateException(
+                String.format("No se encontraron marbetes disponibles para imprimir en periodo=%d, almacén=%d, rango %d-%d (excluidos cancelados)",
+                    periodId, warehouseId, startFolio, endFolio));
+        }
+
+        // Validar que no estén cancelados y pertenezcan al periodo/almacén correcto
+        List<String> errores = validateLabelsForPrinting(filteredLabels, periodId, warehouseId);
+        if (!errores.isEmpty()) {
+            throw new IllegalStateException(
+                String.format("No es posible imprimir los marbetes. Errores: %s", String.join("; ", errores)));
+        }
+
+        // Actualizar fecha de impresión a AHORA (sin cambiar estado, siempre será IMPRESO)
+        LocalDateTime now = LocalDateTime.now();
+        String operacion = isReprint ? "reimpresión" : "impresión";
+        log.debug("Actualizando {} marbetes ({}) - fecha de impresión", filteredLabels.size(), operacion);
+        for (Label l : filteredLabels) {
+            l.setEstado(Label.State.IMPRESO);
+            l.setImpresoAt(now);  // Actualizar timestamp de última impresión
+        }
+        jpaLabelRepository.saveAll(filteredLabels);
+        log.info("Marbetes actualizados exitosamente para {} - {} marbetes procesados", operacion, filteredLabels.size());
+
+        // Registro de auditoría con el rango y cantidad real de marbetes impresos
+        long actualMin = filteredLabels.stream().mapToLong(Label::getFolio).min().orElse(startFolio);
+        long actualMax = filteredLabels.stream().mapToLong(Label::getFolio).max().orElse(endFolio);
+
+        LabelPrint lp = new LabelPrint();
+        lp.setPeriodId(periodId);
+        lp.setWarehouseId(warehouseId);
+        lp.setFolioInicial(actualMin);
+        lp.setFolioFinal(actualMax);
+        lp.setCantidadImpresa(filteredLabels.size());
+        lp.setPrintedBy(userId);
+        lp.setPrintedAt(now);
+
+        return jpaLabelPrintRepository.save(lp);
+    }
+
+    /**
+     * Obtiene los marbetes de un rango específico de folios para un periodo y almacén
+     */
+    public List<Label> findByFolioRange(Long periodId, Long warehouseId, Long startFolio, Long endFolio) {
+        List<Label> allLabels = jpaLabelRepository.findByFolioBetween(startFolio, endFolio);
+
+        // Filtrar solo los que pertenecen al periodo y almacén especificados
+        return allLabels.stream()
+            .filter(l -> l.getPeriodId().equals(periodId) && l.getWarehouseId().equals(warehouseId))
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
+        LabelCountEvent ev = new LabelCountEvent();
+        ev.setFolio(folio);
+        ev.setUserId(userId);
+        ev.setCountNumber(countNumber);
+        ev.setCountedValue(countedValue);
+        ev.setRoleAtTime(roleAtTime);
+        ev.setIsFinal(isFinal != null ? isFinal : false);
+        ev.setCreatedAt(LocalDateTime.now());
+        return jpaLabelCountEventRepository.save(ev);
+    }
+
+    // Helpers para conteos
+    public boolean hasCountNumber(Long folio, Integer countNumber) {
+        return jpaLabelCountEventRepository.existsByFolioAndCountNumber(folio, countNumber);
+    }
+
+    public long countEventsForFolio(Long folio) {
+        return jpaLabelCountEventRepository.countByFolio(folio);
+    }
+
+    public java.util.Optional<LabelCountEvent> findLatestCountEvent(Long folio) {
+        return jpaLabelCountEventRepository.findTopByFolioOrderByCreatedAtDesc(folio);
+    }
+
+    public java.util.List<LabelCountEvent> findAllCountEvents(Long folio) {
+        return jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+    }
+
+    // Método para obtener el último periodo creado (ordenado por fecha descendente)
+    public Optional<Long> findLastCreatedPeriodId() {
+        return jpaPeriodRepository.findLatestPeriod()
+                .map(periodEntity -> periodEntity.getId());
+    }
+
+    public List<LabelPrint> findLabelPrintsByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
+        // Buscar todos los marbetes generados para este producto, periodo y almacén
+        List<Label> labels = jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
+        List<LabelPrint> prints = new ArrayList<>();
+        for (Label label : labels) {
+            prints.addAll(jpaLabelPrintRepository.findByPeriodIdAndWarehouseIdAndFolioInicialLessThanEqualAndFolioFinalGreaterThanEqual(
+                periodId, warehouseId, label.getFolio(), label.getFolio()
+            ));
+        }
+        return prints;
+    }
+
+    // Métodos para marbetes cancelados
+    public List<LabelCancelled> findCancelledByPeriodAndWarehouse(Long periodId, Long warehouseId, Boolean reactivado) {
+        return jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, reactivado);
+    }
+
+    public Optional<LabelCancelled> findCancelledByFolio(Long folio) {
+        return jpaLabelCancelledRepository.findByFolio(folio);
+    }
+
+    public Optional<LabelCancelled> findCancelledByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelCancelledRepository.findByFolioAndPeriodId(folio, periodId);
+    }
+
+    @Transactional
+    public LabelCancelled saveCancelled(LabelCancelled cancelled) {
+        return jpaLabelCancelledRepository.save(cancelled);
+    }
+
+    // Método para obtener marbetes de un producto específico
+    public List<Label> findByProductPeriodWarehouse(Long productId, Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByProductIdAndPeriodIdAndWarehouseId(productId, periodId, warehouseId);
+    }
+
+    /**
+     * Busca un marbete específico por folio y periodo (sin restricción de almacén).
+     */
+    public Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelRepository.findByFolioAndPeriodId(folio, periodId);
+    }
+
+    /**
+     * Busca un marbete específico por folio, periodo y almacén
+     */
+    public Optional<Label> findByFolioAndPeriodAndWarehouse(Long folio, Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId);
+    }
+
+    /**
+     * Busca múltiples marbetes por lista de folios (búsqueda batch)
+     * CORRECCIÓN ERROR #2: Evita N+1 queries usando IN clause
+     */
+    public List<Label> findByFoliosInAndPeriodAndWarehouse(Collection<Long> folios, Long periodId, Long warehouseId) {
+        if (folios == null || folios.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return jpaLabelRepository.findByFolioInAndPeriodIdAndWarehouseId(folios, periodId, warehouseId);
+    }
+
+    /**
+     * Encuentra todos los marbetes pendientes de impresión (estado GENERADO)
+     * para un periodo y almacén específicos
+     */
+    public List<Label> findPendingLabelsByPeriodAndWarehouse(Long periodId, Long warehouseId) {
+        return jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.GENERADO);
+    }
+
+    /**
+     * Verifica si ya existen marbetes en estado IMPRESO para un periodo y almacén.
+     * Se usa para bloquear la generación de nuevos marbetes una vez iniciada la impresión.
+     */
+    public boolean existsImpresosForPeriodAndWarehouse(Long periodId, Long warehouseId) {
+        return !jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.IMPRESO).isEmpty();
+    }
+
+    /**
+     * Encuentra todos los marbetes pendientes de impresión para un producto específico
+     */
+    public List<Label> findPendingLabelsByPeriodWarehouseAndProduct(Long periodId, Long warehouseId, Long productId) {
+        List<Label> allPending = jpaLabelRepository.findByPeriodIdAndWarehouseIdAndEstado(
+            periodId, warehouseId, Label.State.GENERADO);
+
+        return allPending.stream()
+            .filter(l -> l.getProductId().equals(productId))
+            .collect(Collectors.toList());
+    }
+
+     /**
+     * 🔄 REFUERZO: Encuentra marbetes ya impresos para REIMPRESIÓN EXTRAORDINARIA
+     *
+     * @param periodId ID del período
+     * @param warehouseId ID del almacén
+     * @param folios Lista de folios específicos a reimprimir
+     * @return Lista de marbetes en estado IMPRESO
+     * @throws IllegalArgumentException si folios es null o vacío
+     * @throws IllegalStateException si algún folio no está impreso
+     */
+    public List<Label> findImpresosForReimpresion(Long periodId, Long warehouseId, Collection<Long> folios) {
+        log.info("🔄 Buscando marbetes para reimpresión extraordinaria: período={}, almacén={}, folios={}",
+            periodId, warehouseId, folios != null ? folios.size() : 0);
+
+        if (folios == null || folios.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Reimpresión extraordinaria requiere folios específicos");
+        }
+
+        // Buscar todos los folios en el conjunto
+        List<Label> labels = jpaLabelRepository.findByFolioInAndPeriodIdAndWarehouseId(
+            folios, periodId, warehouseId);
+
+        if (labels.isEmpty()) {
+            throw new IllegalStateException(
+                String.format("No se encontraron marbetes para reimprimir en período %d, almacén %d",
+                    periodId, warehouseId));
+        }
+
+        // Filtrar solo los que están IMPRESOS
+        List<Label> impresos = labels.stream()
+            .filter(l -> l.getEstado() == Label.State.IMPRESO)
+            .collect(Collectors.toList());
+
+        // Validar que TODOS están IMPRESOS
+        if (impresos.size() != labels.size()) {
+            List<Long> noImpresos = labels.stream()
+                .filter(l -> l.getEstado() != Label.State.IMPRESO)
+                .map(Label::getFolio)
+                .collect(Collectors.toList());
+
+            throw new IllegalStateException(
+                String.format("Los siguientes folios no están impresos y no pueden reimprimirse: %s. " +
+                    "Estado requerido: IMPRESO. Para impresión normal, use la operación de impresión estándar.",
+                    noImpresos));
+        }
+
+        log.info("✅ Encontrados {} marbetes impresos para reimpresión extraordinaria", impresos.size());
+        return impresos;
+    }
+
+    /**
+     * Valida una lista de marbetes antes de imprimirlos
+     * @param labels Lista de marbetes a validar
+     * @param periodId ID del periodo esperado
+     * @param warehouseId ID del almacén esperado
+     * @return Lista de mensajes de error. Vacía si no hay errores.
+     */
+    private List<String> validateLabelsForPrinting(List<Label> labels, Long periodId, Long warehouseId) {
+        List<String> errores = new ArrayList<>();
+
+        for (Label l : labels) {
+            // Ya filtramos por periodo y almacén arriba, pero validamos por seguridad
+            if (!l.getPeriodId().equals(periodId) || !l.getWarehouseId().equals(warehouseId)) {
+                errores.add(String.format("Folio %d no pertenece al periodo/almacén seleccionado", l.getFolio()));
+            }
+
+            if (l.getEstado() == Label.State.CANCELADO) {
+                errores.add(String.format("Folio %d está cancelado", l.getFolio()));
+            }
+        }
+
+        return errores;
+    }
+}
+
+
