@@ -100,8 +100,8 @@ const loadAlmacenes = async () => {
     });
 
     if (almacenes.value.length > 0 && !selectedAlmacen.value) {
-      selectedAlmacen.value = almacenes.value[0];
-      selectedAlmacenId.value = selectedAlmacen.value.id;
+      selectedAlmacen.value = almacenes.value[0] ?? null;
+      selectedAlmacenId.value = selectedAlmacen.value?.id ?? null;
     }
   } catch (error) {
     console.error('Error al cargar almacenes:', error);

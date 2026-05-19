@@ -1,5 +1,5 @@
 <template>
-  <b-button :variant="variant" @click="navigate">{{ displayText }}</b-button>
+  <b-button :variant="(variant as any)" @click="navigate">{{ displayText }}</b-button>
 </template>
 
 <!-- Usage:

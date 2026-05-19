@@ -1351,7 +1351,7 @@ defineExpose({
              <div class="info-column">
                <div class="info-field">
                  <label>Conteo 1:</label>
-                 <span>{{ marbeteSeleccionado.conteo1 !== null ? formatNumber(marbeteSeleccionado.conteo1) : '-' }}</span>
+                  <span>{{ marbeteSeleccionado.conteo1 !== null && marbeteSeleccionado.conteo1 !== undefined ? formatNumber(marbeteSeleccionado.conteo1) : '-' }}</span>
                </div>
                <div class="info-field">
                  <label>Usuario C1:</label>
@@ -1363,7 +1363,7 @@ defineExpose({
                </div>
                <div class="info-field">
                  <label>Conteo 2:</label>
-                 <span>{{ marbeteSeleccionado.conteo2 !== null ? formatNumber(marbeteSeleccionado.conteo2) : '-' }}</span>
+                  <span>{{ marbeteSeleccionado.conteo2 !== null && marbeteSeleccionado.conteo2 !== undefined ? formatNumber(marbeteSeleccionado.conteo2) : '-' }}</span>
                </div>
                <div class="info-field">
                  <label>Usuario C2:</label>
@@ -1380,8 +1380,8 @@ defineExpose({
                <div class="info-field">
                  <label>Diferencia (C2-C1):</label>
                  <div class="diferencia-display" :class="getDiferenciaClass(marbeteSeleccionado.diferencia)">
-                   <span v-if="marbeteSeleccionado.diferencia !== null">
-                     {{ marbeteSeleccionado.diferencia > 0 ? '+' : '' }}{{ marbeteSeleccionado.diferencia }}
+                    <span v-if="marbeteSeleccionado.diferencia !== null && marbeteSeleccionado.diferencia !== undefined">
+                      {{ (marbeteSeleccionado.diferencia ?? 0) > 0 ? '+' : '' }}{{ marbeteSeleccionado.diferencia }}
                    </span>
                    <span v-else>-</span>
                  </div>

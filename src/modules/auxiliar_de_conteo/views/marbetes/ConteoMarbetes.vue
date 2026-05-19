@@ -5,6 +5,13 @@ import {ToastError, ToastSuccess, LoadAlert} from '@/utils/SweetAlert';
 import Swal from 'sweetalert2';
 import { usePeriodoStore } from '@/store/periodoStore';
 
+const extractErrorMessage = (error: any): string => {
+  return error?.response?.data?.message
+    || error?.response?.data?.error
+    || error?.message
+    || 'Error inesperado';
+};
+
 interface Periodo {
   id: number;
   date: string;

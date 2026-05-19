@@ -23,25 +23,25 @@
 </template>
 
 <script lang="ts">
-export default Vue.extend({
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+  name: 'Modal',
   props: {
-    title: {
-      type: String,
-      required: true
-    },
-    message: {
-      type: String,
-      required: true
-    },
-    isVisible: {
-      type: Boolean,
-      default: false
-    },
-    textButton: {
-      type: String,
-      default: 'Aceptar'
-    }
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    isVisible: { type: Boolean, default: false },
+    textButton: { type: String, default: 'Aceptar' }
   },
+  emits: ['close', 'accept'],
+  methods: {
+    closeModal() {
+      this.$emit('close');
+    },
+    aceptModal() {
+      this.$emit('accept');
+    }
+  }
 });
 </script>
 
