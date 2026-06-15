@@ -28,6 +28,11 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
 
     java.util.Optional<Label> findByFolioAndPeriodIdAndWarehouseId(Long folio, Long periodId, Long warehouseId);
 
+    /**
+     * Búsqueda por folio + período sin filtrar por almacén.
+     * Usar cuando el almacén no se conoce de antemano.
+     */
+    java.util.Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
 
     List<Label> findByFolioInAndPeriodIdAndWarehouseId(Collection<Long> folios, Long periodId, Long warehouseId);
 

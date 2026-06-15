@@ -47,17 +47,17 @@ public class LabelCountService {
         String roleUpper = userRole.toUpperCase();
         Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
 
-        if (persistence.hasCountNumber(dto.getFolio(), 1)) {
+        if (persistence.hasCountNumber(dto.getFolio(), label.getPeriodId(), 1)) {
             throw new DuplicateCountException(
                     String.format("El conteo C1 ya fue registrado para el folio %d.", dto.getFolio()));
         }
-        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
+        if (persistence.hasCountNumber(dto.getFolio(), label.getPeriodId(), 2)) {
             throw new CountSequenceException(
                     String.format("No se puede registrar C1 porque ya existe un conteo C2 para el folio %d.", dto.getFolio()));
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 1, dto.getCountedValue(), roleEnum, false);
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 1, dto.getCountedValue(), roleEnum, false);
         
         // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -74,17 +74,17 @@ public class LabelCountService {
         String roleUpper = userRole.toUpperCase();
         Label label = findAndValidateLabelForCount(dto.getFolio(), dto.getPeriodId(), dto.getWarehouseId(), userId, roleUpper);
 
-        if (!persistence.hasCountNumber(dto.getFolio(), 1)) {
+        if (!persistence.hasCountNumber(dto.getFolio(), label.getPeriodId(), 1)) {
             throw new CountSequenceException(
                     String.format("No se puede registrar C2 porque no existe C1 previo para el folio %d.", dto.getFolio()));
         }
-        if (persistence.hasCountNumber(dto.getFolio(), 2)) {
+        if (persistence.hasCountNumber(dto.getFolio(), label.getPeriodId(), 2)) {
             throw new DuplicateCountException(
                     String.format("El conteo C2 ya fue registrado para el folio %d.", dto.getFolio()));
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), userId, 2, dto.getCountedValue(), roleEnum, true);
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 2, dto.getCountedValue(), roleEnum, true);
         
         // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -100,9 +100,9 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), dto.getPeriodId(), userId, roleUpper);
 
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(dto.getFolio(), label.getPeriodId());
         LabelCountEvent eventC1 = events.stream()
                 .filter(e -> e.getCountNumber() == 1)
                 .findFirst()
@@ -116,18 +116,11 @@ public class LabelCountService {
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
         
-        // Registrar actualización en historial con periodId y warehouseId correctos
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         countHistoryService.recordCountUpdate(
-            userId,
-            email,
-            dto.getFolio(),
-            1,
-            dto.getCountedValue().intValue(),
-            valorAnterior.intValue(),
-            userRole,
-            label.getWarehouseId(),
-            label.getPeriodId()
+            userId, email, dto.getFolio(), 1,
+            dto.getCountedValue().intValue(), valorAnterior.intValue(),
+            userRole, label.getWarehouseId(), label.getPeriodId()
         );
         
         log.info("Conteo C1 actualizado: folio={}, anterior={}, nuevo={}, by={}",
@@ -142,9 +135,9 @@ public class LabelCountService {
                 "ADMINISTRADOR", "ALMACENISTA", "AUXILIAR", "AUXILIAR_DE_CONTEO");
 
         String roleUpper = userRole.toUpperCase();
-        Label label = findLabelForUpdate(dto.getFolio(), userId, roleUpper);
+        Label label = findLabelForUpdate(dto.getFolio(), dto.getPeriodId(), userId, roleUpper);
 
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(dto.getFolio(), label.getPeriodId());
         LabelCountEvent eventC2 = events.stream()
                 .filter(e -> e.getCountNumber() == 2)
                 .findFirst()
@@ -158,20 +151,13 @@ public class LabelCountService {
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
         
-        // Registrar actualización en historial con periodId y warehouseId correctos
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         countHistoryService.recordCountUpdate(
-            userId,
-            email,
-            dto.getFolio(),
-            2,
-            dto.getCountedValue().intValue(),
-            oldValue.intValue(),
-            userRole,
-            label.getWarehouseId(),
-            label.getPeriodId()
+            userId, email, dto.getFolio(), 2,
+            dto.getCountedValue().intValue(), oldValue.intValue(),
+            userRole, label.getWarehouseId(), label.getPeriodId()
         );
-        
+
         log.info("Conteo C2 actualizado: folio={}, anterior={}, nuevo={}, by={}",
                 dto.getFolio(), oldValue, dto.getCountedValue(), userId);
         return updated;
@@ -193,7 +179,10 @@ public class LabelCountService {
 
     private Label findAndValidateLabelForCount(Long folio, Long periodId, Long warehouseId,
                                                Long userId, String roleUpper) {
-        Optional<Label> optLabel = persistence.findByFolio(folio);
+        // Búsqueda correcta: folio + período para evitar ambigüedad entre períodos
+        Optional<Label> optLabel = (periodId != null)
+                ? persistence.findByFolioAndPeriodId(folio, periodId)
+                : persistence.findByFolio(folio); // fallback legacy
         if (optLabel.isEmpty()) {
             throw new LabelNotFoundException(String.format("El folio %d no existe en el sistema", folio));
         }
@@ -228,8 +217,10 @@ public class LabelCountService {
         return label;
     }
 
-    private Label findLabelForUpdate(Long folio, Long userId, String roleUpper) {
-        Optional<Label> optLabel = persistence.findByFolio(folio);
+    private Label findLabelForUpdate(Long folio, Long periodId, Long userId, String roleUpper) {
+        Optional<Label> optLabel = (periodId != null)
+                ? persistence.findByFolioAndPeriodId(folio, periodId)
+                : persistence.findByFolio(folio); // fallback legacy
         if (optLabel.isEmpty()) {
             throw new LabelNotFoundException("El folio " + folio + " no existe");
         }

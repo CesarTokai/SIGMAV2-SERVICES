@@ -93,7 +93,7 @@ public interface LabelService {
      * @param userRole Rol del usuario
      * @return byte[] con el PDF del marbete
      */
-    byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole);
+    byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 🔄 POST /labels/{folio}/reprint-simple
@@ -104,7 +104,7 @@ public interface LabelService {
      * @param userRole Rol del usuario
      * @return byte[] con el PDF reimprimido
      */
-    byte[] reprintSimple(Long folio, Long userId, String userRole);
+    byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 📋 GET /labels/{folio}/full-info
@@ -117,7 +117,7 @@ public interface LabelService {
      * @param userRole Rol del usuario
      * @return DTO con toda la información del marbete
      */
-    LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole);
+    LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole);
 
     /**
      * 📊 GET /labels/full-list

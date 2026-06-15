@@ -9,7 +9,17 @@ public interface LabelRepository {
 
     Label save(Label label);
 
+    /**
+     * @deprecated Usar {@link #findByFolioAndPeriodId(Long, Long)} para evitar ambigüedad
+     * cuando el mismo folio existe en múltiples períodos.
+     */
+    @Deprecated
     Optional<Label> findByFolio(Long folio);
+
+    /**
+     * Búsqueda correcta: folio + período para identificación única.
+     */
+    Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId);
 
     List<Label> findByPeriodIdAndWarehouseId(Long periodId, Long warehouseId, int offset, int limit);
 

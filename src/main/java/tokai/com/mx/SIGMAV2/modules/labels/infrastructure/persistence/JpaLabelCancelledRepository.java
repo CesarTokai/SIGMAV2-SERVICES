@@ -10,7 +10,11 @@ import java.util.Optional;
 @Repository
 public interface JpaLabelCancelledRepository extends JpaRepository<LabelCancelled, Long> {
 
+    /** @deprecated Usar {@link #findByFolioAndPeriodId} */
+    @Deprecated
     Optional<LabelCancelled> findByFolio(Long folio);
+
+    Optional<LabelCancelled> findByFolioAndPeriodId(Long folio, Long periodId);
 
     List<LabelCancelled> findByPeriodIdAndWarehouseIdAndReactivado(Long periodId, Long warehouseId, Boolean reactivado);
 
