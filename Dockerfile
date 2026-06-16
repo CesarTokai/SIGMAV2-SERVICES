@@ -3,6 +3,7 @@ FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
+# Force rebuild: timestamp 18:00:15
 RUN mvn clean package -DskipTests
 
 # Runtime stage

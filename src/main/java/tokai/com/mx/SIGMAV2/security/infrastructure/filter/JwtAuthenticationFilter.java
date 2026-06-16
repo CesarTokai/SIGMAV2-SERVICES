@@ -54,6 +54,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             || path.startsWith("/swagger-resources")
             || path.startsWith("/webjars")
             || path.equals("/swagger-ui.html")
+            // Health check:
+            || path.equals("/api/health")
+            || path.equals("/api/sigmav2/auth/health")
             // Endpoints públicos de usuario:
             || path.equals("/api/sigmav2/users/register")
             || path.equals("/api/sigmav2/users/verify")
@@ -72,11 +75,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws IOException {
 
         try {
+            // Permitir endpoints públicos sin autenticación
+            String path = request.getServletPath();
+            String uri = request.getRequestURI();
+
+            // DEBUG: Mostrar path en la excepción para verificar qué está llegando
+            if (path.startsWith("/api/sigmav2/auth/") ||
+                path.startsWith("/api/sigmav2/users/") ||
+                path.startsWith("/api/auth/") ||
+                path.startsWith("/api/users/") ||
+                uri.contains("/auth/login") ||
+                uri.contains("/auth/health")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             // Obtener token del header
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-            
+
             if (authHeader == null || authHeader.trim().isEmpty()) {
-                sendErrorResponse(response, new TokenMissingException());
+                sendErrorResponse(response, new TokenMissingException(
+                    "Token de autenticación requerido",
+                    "Path: " + path + " | URI: " + uri));
                 return;
             }
 

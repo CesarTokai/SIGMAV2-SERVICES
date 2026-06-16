@@ -57,13 +57,19 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/api/health",
+                                "/api/sigmav2/auth/health",
                                 "/api/sigmav2/users/register",
                                 "/api/sigmav2/users/verify",
                                 "/api/sigmav2/users/exists",
                                 "/api/sigmav2/auth/createRequest",
                                 "/api/sigmav2/auth/verifyUser",
                                 "/api/sigmav2/auth/login",
-                                "/api/auth/logout")
+                                "/api/auth/logout",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
