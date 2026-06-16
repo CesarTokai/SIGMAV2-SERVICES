@@ -582,11 +582,9 @@ public class LabelServiceImpl implements LabelService {
         if (dto.getFolio() == null) {
             throw new InvalidLabelStateException("El campo 'folio' es obligatorio");
         }
-        Label label = (dto.getPeriodId() != null)
-                ? jpaLabelRepository.findByFolioAndPeriodId(dto.getFolio(), dto.getPeriodId())
-                    .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado en el período indicado"))
-                : jpaLabelRepository.findById(dto.getFolio())
-                    .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(dto.getFolio(), dto.getPeriodId())
+                .orElseThrow(() -> new LabelNotFoundException(
+                    "Marbete con folio " + dto.getFolio() + " no encontrado en el período " + dto.getPeriodId()));
 
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
         if (label.getEstado() == Label.State.CANCELADO) throw new LabelAlreadyCancelledException(dto.getFolio());
