@@ -665,7 +665,7 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public LabelForCountDTO getLabelForCount(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
-        Label label = jpaLabelRepository.findById(folio)
+        Label label = jpaLabelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId)
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
         
         // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
@@ -848,7 +848,7 @@ public class LabelServiceImpl implements LabelService {
     public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
         log.info("📄 Consultando PDF del marbete folio={}, usuario={}", folio, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
+        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
 
         // Validar que esté impreso
@@ -876,7 +876,7 @@ public class LabelServiceImpl implements LabelService {
     public byte[] reprintSimple(Long folio, Long userId, String userRole) {
         log.info("🔄 Reimpresión SIMPLE: folio={}, usuario={}", folio, userId);
 
-        Label label = jpaLabelRepository.findById(folio)
+        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
 
         // Validar que esté impreso
@@ -923,7 +923,7 @@ public class LabelServiceImpl implements LabelService {
     public LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole) {
         log.info("📋 Obteniendo información COMPLETA del marbete folio={}", folio);
 
-        Label label = jpaLabelRepository.findById(folio)
+        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
 
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
@@ -1766,7 +1766,7 @@ public class LabelServiceImpl implements LabelService {
         for (int i = 0; i < folios.size(); i++) {
             Long folio = folios.get(i);
             try {
-                Label label = jpaLabelRepository.findById(folio)
+                Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                         .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
 
                 // Validar período
@@ -1902,7 +1902,7 @@ public class LabelServiceImpl implements LabelService {
         // Obtener los labels y validar que existen
         java.util.List<Label> labels = new ArrayList<>();
         for (Long folio : request.getFolios()) {
-            Label label = jpaLabelRepository.findById(folio)
+            Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                     .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
 
             if (!label.getPeriodId().equals(request.getPeriodId()) || 
@@ -1950,7 +1950,7 @@ public class LabelServiceImpl implements LabelService {
         java.util.Map<Long, Integer> warehouseCountMap = new java.util.HashMap<>();
 
         for (Long folio : request.getFolios()) {
-            Label label = jpaLabelRepository.findById(folio)
+            Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
                     .orElseThrow(() -> new LabelNotFoundException("Folio no encontrado: " + folio));
 
             // Validar que pertenecen al mismo periodo
