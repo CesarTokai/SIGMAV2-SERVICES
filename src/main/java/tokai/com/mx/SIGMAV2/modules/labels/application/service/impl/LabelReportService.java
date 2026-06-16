@@ -630,8 +630,10 @@ public class LabelReportService {
     private Map<Long, List<LabelCountEvent>> batchLoadCounts(List<Label> labels) {
         if (labels.isEmpty()) return new HashMap<>();
         List<Long> folios = labels.stream().map(Label::getFolio).toList();
+        // Usar el periodId del primer label (todos los labels del reporte son del mismo período)
+        Long periodId = labels.get(0).getPeriodId();
         return jpaLabelCountEventRepository
-                .findByFolioInOrderByFolioAscCountNumberAsc(folios)
+                .findByFolioInAndPeriodIdOrderByFolioAscCountNumberAsc(folios, periodId)
                 .stream()
                 .collect(Collectors.groupingBy(LabelCountEvent::getFolio));
     }

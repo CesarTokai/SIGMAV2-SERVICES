@@ -13,25 +13,53 @@ import java.util.Optional;
 @Repository
 public interface JpaLabelCountEventRepository extends JpaRepository<LabelCountEvent, Long> {
 
+    // ── Métodos legacy (folio solo) — usar con cautela en períodos únicos ──
+    /** @deprecated Usar {@link #existsByFolioAndCountNumberAndPeriodId} */
+    @Deprecated
     boolean existsByFolioAndCountNumber(Long folio, Integer countNumber);
 
+    /** @deprecated Usar {@link #countByFolioAndPeriodId} */
+    @Deprecated
     long countByFolio(Long folio);
 
+    /** @deprecated Usar {@link #findTopByFolioAndPeriodIdOrderByCreatedAtDesc} */
+    @Deprecated
     Optional<LabelCountEvent> findTopByFolioOrderByCreatedAtDesc(Long folio);
 
+    /** @deprecated Usar {@link #findByFolioAndPeriodIdOrderByCreatedAtAsc} */
+    @Deprecated
     List<LabelCountEvent> findByFolioOrderByCreatedAtAsc(Long folio);
+
+    // ── Métodos correctos (folio + período) ──
+    boolean existsByFolioAndCountNumberAndPeriodId(Long folio, Integer countNumber, Long periodId);
+
+    long countByFolioAndPeriodId(Long folio, Long periodId);
+
+    Optional<LabelCountEvent> findTopByFolioAndPeriodIdOrderByCreatedAtDesc(Long folio, Long periodId);
+
+    List<LabelCountEvent> findByFolioAndPeriodIdOrderByCreatedAtAsc(Long folio, Long periodId);
 
     /**
      * Carga todos los conteos de una lista de folios en UNA SOLA query.
-     * Elimina el patrón N+1 en todos los reportes.
      * Uso: agrupar resultado por folio con Collectors.groupingBy(LabelCountEvent::getFolio)
      */
     @Query("SELECT e FROM LabelCountEvent e WHERE e.folio IN :folios ORDER BY e.folio ASC, e.countNumber ASC")
     List<LabelCountEvent> findByFolioInOrderByFolioAscCountNumberAsc(@Param("folios") Collection<Long> folios);
 
     /**
-     * Elimina todos los conteos de un folio (solo para cancelación).
-     * Mantener para compatibilidad — preferir archivarlos en LabelCancelled.
+     * Carga conteos de una lista de folios filtrados por período.
      */
+    @Query("SELECT e FROM LabelCountEvent e WHERE e.folio IN :folios AND e.periodId = :periodId ORDER BY e.folio ASC, e.countNumber ASC")
+    List<LabelCountEvent> findByFolioInAndPeriodIdOrderByFolioAscCountNumberAsc(@Param("folios") Collection<Long> folios, @Param("periodId") Long periodId);
+
+    /**
+     * Elimina todos los conteos de un folio en un período específico (para cancelación).
+     */
+    void deleteByFolioAndPeriodId(Long folio, Long periodId);
+
+    /**
+     * @deprecated Usar {@link #deleteByFolioAndPeriodId}
+     */
+    @Deprecated
     void deleteByFolio(Long folio);
 }

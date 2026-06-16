@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "label_count_events", uniqueConstraints = {@UniqueConstraint(columnNames = {"folio","count_number"})})
+@Table(name = "label_count_events", uniqueConstraints = {@UniqueConstraint(columnNames = {"folio","count_number","id_period"}, name = "uk_count_event_folio_count_period")})
 public class LabelCountEvent {
 
     @Id
@@ -17,6 +17,9 @@ public class LabelCountEvent {
 
     @Column(nullable = false)
     private Long folio;
+
+    @Column(name = "id_period")
+    private Long periodId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;

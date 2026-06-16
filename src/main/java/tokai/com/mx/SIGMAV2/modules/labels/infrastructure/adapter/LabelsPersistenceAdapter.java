@@ -55,8 +55,15 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     @Override
+    @Deprecated
     public Optional<Label> findByFolio(Long folio) {
+        // Fallback legacy — puede retornar registro incorrecto si hay folios duplicados entre períodos
         return jpaLabelRepository.findById(folio);
+    }
+
+    @Override
+    public Optional<Label> findByFolioAndPeriodId(Long folio, Long periodId) {
+        return jpaLabelRepository.findByFolioAndPeriodId(folio, periodId);
     }
 
     @Override
@@ -260,9 +267,10 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     @Transactional
-    public LabelCountEvent saveCountEvent(Long folio, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
+    public LabelCountEvent saveCountEvent(Long folio, Long periodId, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
         LabelCountEvent ev = new LabelCountEvent();
         ev.setFolio(folio);
+        ev.setPeriodId(periodId);
         ev.setUserId(userId);
         ev.setCountNumber(countNumber);
         ev.setCountedValue(countedValue);
@@ -273,20 +281,20 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
     }
 
     // Helpers para conteos
-    public boolean hasCountNumber(Long folio, Integer countNumber) {
-        return jpaLabelCountEventRepository.existsByFolioAndCountNumber(folio, countNumber);
+    public boolean hasCountNumber(Long folio, Long periodId, Integer countNumber) {
+        return jpaLabelCountEventRepository.existsByFolioAndCountNumberAndPeriodId(folio, countNumber, periodId);
     }
 
-    public long countEventsForFolio(Long folio) {
-        return jpaLabelCountEventRepository.countByFolio(folio);
+    public long countEventsForFolio(Long folio, Long periodId) {
+        return jpaLabelCountEventRepository.countByFolioAndPeriodId(folio, periodId);
     }
 
-    public java.util.Optional<LabelCountEvent> findLatestCountEvent(Long folio) {
-        return jpaLabelCountEventRepository.findTopByFolioOrderByCreatedAtDesc(folio);
+    public java.util.Optional<LabelCountEvent> findLatestCountEvent(Long folio, Long periodId) {
+        return jpaLabelCountEventRepository.findTopByFolioAndPeriodIdOrderByCreatedAtDesc(folio, periodId);
     }
 
-    public java.util.List<LabelCountEvent> findAllCountEvents(Long folio) {
-        return jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+    public java.util.List<LabelCountEvent> findAllCountEvents(Long folio, Long periodId) {
+        return jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(folio, periodId);
     }
 
     // Método para obtener el último periodo creado (ordenado por fecha descendente)
@@ -312,8 +320,8 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         return jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(periodId, warehouseId, reactivado);
     }
 
-    public Optional<LabelCancelled> findCancelledByFolio(Long folio) {
-        return jpaLabelCancelledRepository.findByFolio(folio);
+    public Optional<LabelCancelled> findCancelledByFolio(Long folio, Long periodId) {
+        return jpaLabelCancelledRepository.findByFolioAndPeriodId(folio, periodId);
     }
 
     @Transactional
