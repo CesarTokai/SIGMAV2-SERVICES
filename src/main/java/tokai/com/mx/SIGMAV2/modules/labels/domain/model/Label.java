@@ -8,16 +8,18 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "labels")
+@IdClass(LabelId.class)
 public class Label {
 
     @Id
     private Long folio;
 
-    @Column(name = "id_label_request")
-    private Long labelRequestId;
-
+    @Id
     @Column(name = "id_period", nullable = false)
     private Long periodId;
+
+    @Column(name = "id_label_request")
+    private Long labelRequestId;
 
     @Column(name = "id_warehouse", nullable = false)
     private Long warehouseId;

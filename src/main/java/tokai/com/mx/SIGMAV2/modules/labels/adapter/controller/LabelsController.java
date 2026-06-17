@@ -308,8 +308,26 @@ public class LabelsController {
             @Valid @RequestBody LabelCountListRequestDTO dto) {
         Long userId = getUserIdFromToken();
         List<LabelForCountDTO> labelsForCount = labelService.getLabelsForCountList(dto.getPeriodId(), dto.getWarehouseId(), userId, getUserRoleFromToken());
+
+        // 🎯 Si se especificaron folios, filtrar solo esos
+        List<LabelForCountDTO> filtered = labelsForCount;
+        if (dto.getFolios() != null && !dto.getFolios().trim().isEmpty()) {
+            String[] folioArray = dto.getFolios().split(",");
+            java.util.Set<Long> folioSet = new java.util.HashSet<>();
+            for (String f : folioArray) {
+                try {
+                    folioSet.add(Long.parseLong(f.trim()));
+                } catch (NumberFormatException e) {
+                    // Ignorar folios inválidos
+                }
+            }
+            filtered = labelsForCount.stream()
+                    .filter(l -> folioSet.contains(l.getFolio()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         List<Map<String, Object>> result = new ArrayList<>();
-        for (LabelForCountDTO label : labelsForCount) {
+        for (LabelForCountDTO label : filtered) {
             result.add(Map.of(
                     "folio", label.getFolio(),
                     "producto", label.getClaveProducto() + " - " + label.getDescripcionProducto(),

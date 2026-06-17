@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+// Deshabilitar validación estricta de fuentes en JasperReports
+import net.sf.jasperreports.engine.util.JRFontNotFoundException;
+
 /**
  * Servicio que genera PDFs de los reportes de marbetes usando JasperReports.
  *
@@ -41,6 +44,13 @@ public class JasperReportPdfService {
 
     // ── Ruta del directorio de reportes en el classpath ──────────────────
     private static final String REPORTS_CLASSPATH = "reports/";
+
+    // ── Configuración JasperReports para permitir fallback de fuentes ──────
+    static {
+        // Deshabilitar validación estricta de fuentes y permitir fallback
+        System.setProperty("net.sf.jasperreports.awt.ignore.missing.font", "true");
+        System.setProperty("java.awt.headless", "true");
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // PDF POR TIPO DE REPORTE
