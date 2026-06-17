@@ -88,71 +88,80 @@
                 </reportElement>
             </line>
             <rectangle>
-                <reportElement x="230" y="0" width="150" height="224" uuid="2676d135-cfca-4637-acc8-6e34be75ee48"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="230" y="0" width="150" height="224" uuid="2676d135-cfca-4637-acc8-6e34be75ee48">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <graphicElement>
                     <pen lineWidth="1.0" lineColor="#000000"/>
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="231" y="2" width="52" height="11" uuid="7dd4fa9a-078e-48b6-a8f7-15402566ce88"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="231" y="2" width="52" height="11" uuid="7dd4fa9a-078e-48b6-a8f7-15402566ce88">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="8.5" isBold="false"/>
                 </textElement>
                 <text><![CDATA[N.Marbete:]]></text>
             </staticText>
             <textField>
-                <reportElement x="273" y="2" width="70" height="11" uuid="ff3dbc5e-65c9-465f-84f7-c53329367312"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="273" y="2" width="70" height="11" uuid="ff3dbc5e-65c9-465f-84f7-c53329367312">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="8.5"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{nomMarbete2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="230" y="15" width="150" height="21" uuid="14d2cec7-d29e-4dfd-8cd2-43157838e135"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="230" y="15" width="150" height="21" uuid="14d2cec7-d29e-4dfd-8cd2-43157838e135">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{clave2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="230" y="36" width="150" height="34" uuid="95317801-8e71-4617-b804-b3cedbf30225"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="230" y="36" width="150" height="34" uuid="95317801-8e71-4617-b804-b3cedbf30225">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descr2}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement x="230" y="205" width="53" height="18" uuid="f4c0a66c-977f-4b84-8b6e-1b8d0cabbd06"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="230" y="205" width="53" height="18" uuid="f4c0a66c-977f-4b84-8b6e-1b8d0cabbd06">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="12.5"/>
                 </textElement>
                 <text><![CDATA[Almacen:]]></text>
             </staticText>
             <textField>
-                <reportElement x="283" y="205" width="90" height="18" uuid="11e6f2f6-b0ca-4874-8ee1-e8eb76901afe"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="283" y="205" width="90" height="18" uuid="11e6f2f6-b0ca-4874-8ee1-e8eb76901afe">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{almacen2}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="344" y="2" width="37" height="11" uuid="9135ea8b-d0ed-47c4-9aa5-4d9a2b6b0c22"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="344" y="2" width="37" height="11" uuid="9135ea8b-d0ed-47c4-9aa5-4d9a2b6b0c22">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{fecha2}]]></textFieldExpression>
             </textField>
             <image>
-                <reportElement x="252" y="80" width="106" height="100" uuid="f07a520f-0190-4cc1-99cd-0ff3b9745b8c"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                <reportElement x="252" y="80" width="106" height="100" uuid="f07a520f-0190-4cc1-99cd-0ff3b9745b8c">
+                    <printWhenExpression><![CDATA[$F{nomMarbete2} != null]]></printWhenExpression>
+                </reportElement>
                 <imageExpression><![CDATA[$F{qrImage2}]]></imageExpression>
             </image>
             <line>
@@ -168,63 +177,71 @@
                 </reportElement>
             </line>
             <rectangle>
-                <reportElement x="410" y="0" width="150" height="224" uuid="f484abe2-ca7c-4e11-97ef-a7897652479e"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="410" y="0" width="150" height="224" uuid="f484abe2-ca7c-4e11-97ef-a7897652479e">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <graphicElement>
                     <pen lineWidth="1.0" lineColor="#000000"/>
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="411" y="2" width="52" height="11" uuid="063f996b-bdb3-4f97-acdf-c3c219e4e82f"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="411" y="2" width="52" height="11" uuid="063f996b-bdb3-4f97-acdf-c3c219e4e82f">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="8.5" isBold="false"/>
                 </textElement>
                 <text><![CDATA[N.Marbete:]]></text>
             </staticText>
             <textField>
-                <reportElement x="453" y="2" width="70" height="11" uuid="d2a216ab-adb2-4b7b-a343-3ac831ce7cf7"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="453" y="2" width="70" height="11" uuid="d2a216ab-adb2-4b7b-a343-3ac831ce7cf7">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="8.5"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{nomMarbete3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="410" y="15" width="150" height="21" uuid="fa5cdd7a-bacc-45b3-b4a3-41a5267632b4"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="410" y="15" width="150" height="21" uuid="fa5cdd7a-bacc-45b3-b4a3-41a5267632b4">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{clave3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="410" y="36" width="150" height="34" uuid="af39a715-305b-4c9c-8493-29e714dcd7b6"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="410" y="36" width="150" height="34" uuid="af39a715-305b-4c9c-8493-29e714dcd7b6">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement textAlignment="Center">
                     <font size="8.5" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{descr3}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement x="410" y="205" width="53" height="18" uuid="a642eb2f-e2bc-469f-9e48-7dc49fe310bf"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="410" y="205" width="53" height="18" uuid="a642eb2f-e2bc-469f-9e48-7dc49fe310bf">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="12.5"/>
                 </textElement>
                 <text><![CDATA[Almacen:]]></text>
             </staticText>
             <textField>
-                <reportElement x="463" y="205" width="90" height="18" uuid="dd6b0020-163c-47be-a978-2b8b402ef2ee"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="463" y="205" width="90" height="18" uuid="dd6b0020-163c-47be-a978-2b8b402ef2ee">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{almacen3}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="524" y="2" width="37" height="11" uuid="7247fcc1-c8eb-4aed-934e-e75eae3ff5ea"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="524" y="2" width="37" height="11" uuid="7247fcc1-c8eb-4aed-934e-e75eae3ff5ea">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <textElement>
                     <font size="7"/>
                 </textElement>
@@ -247,8 +264,9 @@
                 <imageExpression><![CDATA[$F{qrImage1}]]></imageExpression>
             </image>
             <image>
-                <reportElement x="435" y="80" width="106" height="100" uuid="cd78ce9d-fac3-49a2-9ab9-4b4c4387b01d"/>
-                <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                <reportElement x="435" y="80" width="106" height="100" uuid="cd78ce9d-fac3-49a2-9ab9-4b4c4387b01d">
+                    <printWhenExpression><![CDATA[$F{nomMarbete3} != null]]></printWhenExpression>
+                </reportElement>
                 <imageExpression><![CDATA[$F{qrImage3}]]></imageExpression>
             </image>
         </band>
