@@ -590,7 +590,11 @@ public class LabelsController {
         
             try {
             // Parsear request
-            List<Long> folios = (List<Long>) request.get("folios");
+            @SuppressWarnings("unchecked")
+            List<Object> foliosRaw = (List<Object>) request.get("folios");
+            List<Long> folios = foliosRaw.stream()
+                    .map(f -> ((Number) f).longValue())
+                    .collect(java.util.stream.Collectors.toList());
             Long periodId = ((Number) request.get("periodId")).longValue();
             Long warehouseId = ((Number) request.get("warehouseId")).longValue();
             

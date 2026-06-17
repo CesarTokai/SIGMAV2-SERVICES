@@ -9,7 +9,8 @@ public class UpdateCancelledStockDTO {
     @NotNull(message = "El folio es requerido")
     private Long folio;
 
-    /** Período del marbete — opcional, mejora el lookup en sistemas multi-período */
+    /** Período del marbete — requerido para lookup correcto cuando el folio existe en múltiples períodos */
+    @NotNull(message = "El periodId es obligatorio")
     private Long periodId;
 
     @NotNull(message = "Las existencias son requeridas")

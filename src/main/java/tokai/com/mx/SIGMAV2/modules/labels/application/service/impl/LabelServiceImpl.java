@@ -57,6 +57,7 @@ public class LabelServiceImpl implements LabelService {
     private final JpaLabelRepository jpaLabelRepository;
     private final JpaLabelCancelledRepository jpaLabelCancelledRepository;
     private final JpaLabelCountEventRepository jpaLabelCountEventRepository;
+    private final JpaLabelPrintRepository jpaLabelPrintRepository;
     private final JpaPeriodRepository jpaPeriodRepository;
 
     @Value("${app.labels.inventory-file.directory:C:\\\\Sistemas\\\\SIGMA\\\\Documentos}")
@@ -338,7 +339,7 @@ public class LabelServiceImpl implements LabelService {
         // CORRECCIÓN: Solo contar marbetes GENERADOS (los que están listos para imprimir)
         // No contar IMPRESOS ni CANCELADOS
         Map<Long, Long> generatedByProduct = labels.stream()
-                .filter(l -> l.getEstado() != null && l.getEstado().name().equals("GENERADO"))
+                .filter(l -> l.getEstado() == Label.State.GENERADO)
                 .collect(Collectors.groupingBy(Label::getProductId, Collectors.counting()));
 
         List<InventoryStockEntity> allStock = inventoryStockRepository
@@ -446,7 +447,9 @@ public class LabelServiceImpl implements LabelService {
     public LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole) {
         var builder = LabelStatusResponseDTO.builder().folio(folio);
         try {
-            var optLabel = persistence.findByFolio(folio);
+            var optLabel = periodId != null
+                    ? persistence.findByFolioAndPeriodId(folio, periodId)
+                    : persistence.findByFolio(folio);
             if (optLabel.isEmpty()) {
                 return builder.estado("NO_EXISTE").impreso(false).mensaje("El folio no existe").build();
             }
@@ -525,7 +528,7 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public LabelCancelledDTO updateCancelledStock(UpdateCancelledStockDTO dto, Long userId, String userRole) {
-        LabelCancelled cancelled = persistence.findCancelledByFolio(dto.getFolio())
+        LabelCancelled cancelled = persistence.findCancelledByFolio(dto.getFolio(), dto.getPeriodId())
                 .orElseThrow(() -> new LabelNotFoundException("Marbete cancelado no encontrado: folio " + dto.getFolio()));
 
         warehouseAccessService.validateWarehouseAccess(userId, cancelled.getWarehouseId(), userRole);
@@ -578,8 +581,8 @@ public class LabelServiceImpl implements LabelService {
         if (dto.getFolio() == null) {
             throw new InvalidLabelStateException("El campo 'folio' es obligatorio");
         }
-        Label label = jpaLabelRepository.findById(dto.getFolio())
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(dto.getFolio(), dto.getPeriodId())
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + dto.getFolio() + " no encontrado en el periodo " + dto.getPeriodId()));
 
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
         if (label.getEstado() == Label.State.CANCELADO) throw new LabelAlreadyCancelledException(dto.getFolio());
@@ -591,7 +594,7 @@ public class LabelServiceImpl implements LabelService {
             }
         }
 
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(dto.getFolio());
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(dto.getFolio(), dto.getPeriodId());
         java.math.BigDecimal c1 = null, c2 = null;
         for (LabelCountEvent evt : events) {
             if (evt.getCountNumber() == 1) c1 = evt.getCountedValue();
@@ -669,7 +672,7 @@ public class LabelServiceImpl implements LabelService {
                 .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
         
         // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
-        if (!userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO")) {
+        if (userRole == null || !userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO")) {
             warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
         }
 
@@ -678,7 +681,7 @@ public class LabelServiceImpl implements LabelService {
         WarehouseEntity warehouse = warehouseRepository.findById(label.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
 
-        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+        List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(folio, label.getPeriodId());
         java.math.BigDecimal c1 = null, c2 = null;
         for (LabelCountEvent e : events) {
             if (e.getCountNumber() == 1) c1 = e.getCountedValue();
@@ -845,11 +848,11 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] getPrintedLabelPdf(Long folio, Long userId, String userRole) {
-        log.info("📄 Consultando PDF del marbete folio={}, usuario={}", folio, userId);
+    public byte[] getPrintedLabelPdf(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("📄 Consultando PDF del marbete folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en el periodo " + periodId));
 
         // Validar que esté impreso
         if (label.getEstado() != Label.State.IMPRESO) {
@@ -873,11 +876,11 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public byte[] reprintSimple(Long folio, Long userId, String userRole) {
-        log.info("🔄 Reimpresión SIMPLE: folio={}, usuario={}", folio, userId);
+    public byte[] reprintSimple(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("🔄 Reimpresión SIMPLE: folio={}, periodo={}, usuario={}", folio, periodId, userId);
 
-        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en el periodo " + periodId));
 
         // Validar que esté impreso
         if (label.getEstado() != Label.State.IMPRESO) {
@@ -905,11 +908,9 @@ public class LabelServiceImpl implements LabelService {
         labelPrint.setCantidadImpresa(1);
         labelPrint.setPrintedBy(userId);
         labelPrint.setPrintedAt(LocalDateTime.now());
-        jpaLabelRepository.saveAll(List.of()); // No cambiamos el estado del label
 
-        // Guardar en BD (si existe jpaLabelPrintRepository)
         try {
-            persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), label.getPeriodId(), label.getWarehouseId());
+            jpaLabelPrintRepository.save(labelPrint);
             log.info("✅ Reimpresión registrada para folio {}: {} bytes", folio, pdfBytes.length);
         } catch (Exception e) {
             log.warn("No se pudo registrar la reimpresión en BD: {}", e.getMessage());
@@ -920,11 +921,11 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long userId, String userRole) {
-        log.info("📋 Obteniendo información COMPLETA del marbete folio={}", folio);
+    public LabelFullDetailDTO getLabelFullDetail(Long folio, Long periodId, Long userId, String userRole) {
+        log.info("📋 Obteniendo información COMPLETA del marbete folio={}, periodo={}", folio, periodId);
 
-        Label label = jpaLabelRepository.findAllByFolio(folio).stream().findFirst()
-                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado"));
+        Label label = jpaLabelRepository.findByFolioAndPeriodId(folio, periodId)
+                .orElseThrow(() -> new LabelNotFoundException("Marbete con folio " + folio + " no encontrado en el periodo " + periodId));
 
         warehouseAccessService.validateWarehouseAccess(userId, label.getWarehouseId(), userRole);
 
@@ -1017,7 +1018,7 @@ public class LabelServiceImpl implements LabelService {
         // ═══════════════════════════════════════════════════════════════
         // INFORMACIÓN DE CONTEOS
         // ═══════════════════════════════════════════════════════════════
-        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(folio, periodId);
         List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
 
         java.math.BigDecimal c1 = null;
@@ -1196,7 +1197,7 @@ public class LabelServiceImpl implements LabelService {
         // ═══════════════════════════════════════════════════════════════
         // INFORMACIÓN DE CANCELACIÓN
         // ═══════════════════════════════════════════════════════════════
-        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(folio);
+        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(folio, periodId);
         if (cancelledOpt.isPresent()) {
             LabelCancelled cancelled = cancelledOpt.get();
             builder.cancelado(true)
@@ -1442,7 +1443,7 @@ public class LabelServiceImpl implements LabelService {
         }
 
         // Información de conteos - COMPLETO
-        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(label.getFolio());
+        List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(label.getFolio(), label.getPeriodId());
         List<LabelFullDetailDTO.CountEventHistoryDTO> countHistory = new ArrayList<>();
         
         java.math.BigDecimal c1 = null, c2 = null;
@@ -1621,7 +1622,7 @@ public class LabelServiceImpl implements LabelService {
         }
 
         // Información de cancelación
-        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(label.getFolio());
+        Optional<LabelCancelled> cancelledOpt = persistence.findCancelledByFolio(label.getFolio(), label.getPeriodId());
         if (cancelledOpt.isPresent()) {
             LabelCancelled cancelled = cancelledOpt.get();
             builder.cancelado(true)
@@ -1680,7 +1681,7 @@ public class LabelServiceImpl implements LabelService {
 
     private boolean shouldIncludeLabel(LabelFullDetailDTO label, LabelListFilterDTO filter) {
         // Filtro por estado
-        if (filter.getEstado() != null && !label.getEstado().equals(filter.getEstado())) {
+        if (filter.getEstado() != null && (label.getEstado() == null || !label.getEstado().equals(filter.getEstado()))) {
             return false;
         }
 
@@ -1839,7 +1840,7 @@ public class LabelServiceImpl implements LabelService {
                 }
 
                 // Conteos
-                List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioOrderByCreatedAtAsc(folio);
+                List<LabelCountEvent> countEvents = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(folio, periodId);
                 java.math.BigDecimal c1 = null, c2 = null;
 
                 for (LabelCountEvent event : countEvents) {

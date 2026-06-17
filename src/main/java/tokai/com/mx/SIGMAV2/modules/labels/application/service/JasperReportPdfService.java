@@ -138,7 +138,7 @@ public class JasperReportPdfService {
 
         // Fecha actual formateada
         String fecha = LocalDate.now()
-                .format(DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", new Locale("es", "MX")));
+                .format(DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", Locale.of("es", "MX")));
         params.put("fecha", fecha);
 
         // Ruta del directorio de reportes para que el .jrxml encuentre los logos
