@@ -716,18 +716,10 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional(readOnly = true)
     public List<LabelForCountDTO> getLabelsForCountList(Long periodId, Long warehouseId, Long userId, String userRole) {
-        // AUXILIAR_DE_CONTEO tiene acceso sin restricción a cualquier almacén
-        String roleUpper = userRole != null ? userRole.toUpperCase() : "";
-        
-        if (!roleUpper.equals("AUXILIAR_DE_CONTEO")) {
-            // Para otros roles, warehouseId es requerido y se valida
-            if (warehouseId == null) {
-                throw new IllegalArgumentException("El almacén es obligatorio para este rol");
-            }
+        // Si warehouseId es especificado, validar acceso al almacén
+        // Si no se especifica, retorna marbetes de TODOS los almacenes del período
+        if (warehouseId != null) {
             warehouseAccessService.validateWarehouseAccess(userId, warehouseId, userRole);
-        } else {
-            // Para AUXILIAR_DE_CONTEO, si no se proporciona warehouseId, se retornan todos los almacenes
-            // (Este caso se maneja después)
         }
 
         List<Label> labels;

@@ -9,8 +9,9 @@ import lombok.NoArgsConstructor;
 /**
  * DTO para solicitar la lista de marbetes disponibles para conteo o reimpresión.
  *
- * NOTA: warehouseId es OPCIONAL para AUXILIAR_DE_CONTEO que tiene acceso a todos los almacenes.
- * Para otros roles (ALMACENISTA, AUXILIAR), warehouseId es requerido.
+ * NOTA: warehouseId es OPCIONAL para todos los roles.
+ * Si se proporciona, retorna marbetes de ese almacén específico.
+ * Si es null, retorna marbetes de TODOS los almacenes del período.
  */
 @Data
 @Builder
@@ -22,8 +23,8 @@ public class LabelCountListRequestDTO {
     private Long periodId;
 
     /**
-     * Almacén (opcional para AUXILIAR_DE_CONTEO)
-     * Si no se proporciona y el usuario es AUXILIAR_DE_CONTEO, se retornan marbetes de todos los almacenes
+     * Almacén (opcional para todos los roles)
+     * Si no se proporciona, se retornan marbetes de todos los almacenes del período
      */
     private Long warehouseId;
 
