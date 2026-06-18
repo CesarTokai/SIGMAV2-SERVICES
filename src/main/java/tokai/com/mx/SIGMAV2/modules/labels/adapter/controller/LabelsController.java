@@ -1395,5 +1395,30 @@ public class LabelsController {
             ));
         }
     }
+
+    @GetMapping("/by-period")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<LabelForCountDTO>> getLabelsByPeriod(
+            @RequestParam Long periodId,
+            @RequestParam(required = false) Long warehouseId) {
+        Long userId = getUserIdFromToken();
+        String userRole = getUserRoleFromToken();
+
+        try {
+            log.info("📋 GET /by-period: periodId={}, warehouseId={}, usuario={}", periodId, warehouseId, userId);
+
+            List<LabelForCountDTO> labels = labelService.getLabelsForCountList(periodId, warehouseId, userId, userRole);
+
+            log.info("✅ {} marbetes encontrados", labels.size());
+            return ResponseEntity.ok(labels);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Validación fallida: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("❌ Error al obtener marbetes: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
 }
 
