@@ -268,6 +268,10 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
 
     @Transactional
     public LabelCountEvent saveCountEvent(Long folio, Long periodId, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal) {
+        return saveCountEvent(folio, periodId, userId, countNumber, countedValue, roleAtTime, isFinal, null);
+    }
+
+    public LabelCountEvent saveCountEvent(Long folio, Long periodId, Long userId, Integer countNumber, java.math.BigDecimal countedValue, LabelCountEvent.Role roleAtTime, Boolean isFinal, String observaciones) {
         LabelCountEvent ev = new LabelCountEvent();
         ev.setFolio(folio);
         ev.setPeriodId(periodId);
@@ -277,6 +281,7 @@ public class LabelsPersistenceAdapter implements LabelRepository, LabelRequestRe
         ev.setRoleAtTime(roleAtTime);
         ev.setIsFinal(isFinal != null ? isFinal : false);
         ev.setCreatedAt(LocalDateTime.now());
+        ev.setObservaciones(observaciones);
         return jpaLabelCountEventRepository.save(ev);
     }
 

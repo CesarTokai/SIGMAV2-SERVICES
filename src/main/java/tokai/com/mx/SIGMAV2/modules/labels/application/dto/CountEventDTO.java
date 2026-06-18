@@ -1,6 +1,7 @@
 package tokai.com.mx.SIGMAV2.modules.labels.application.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -28,5 +29,8 @@ public class CountEventDTO {
      * Si se proporciona, se valida que el marbete pertenezca a este almacén
      */
     private Long warehouseId;
+
+    @Size(max = 500, message = "Las observaciones no pueden exceder 500 caracteres")
+    private String observaciones;
 }
 

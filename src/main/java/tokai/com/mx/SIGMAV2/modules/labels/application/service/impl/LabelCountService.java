@@ -57,12 +57,12 @@ public class LabelCountService {
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 1, dto.getCountedValue(), roleEnum, false);
-        
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 1, dto.getCountedValue(), roleEnum, false, dto.getObservaciones());
+
         // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 1, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
-        
+
         return result;
     }
 
@@ -84,12 +84,12 @@ public class LabelCountService {
         }
 
         LabelCountEvent.Role roleEnum = parseRole(roleUpper, LabelCountEvent.Role.AUXILIAR_DE_CONTEO);
-        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 2, dto.getCountedValue(), roleEnum, true);
-        
+        LabelCountEvent result = persistence.saveCountEvent(dto.getFolio(), label.getPeriodId(), userId, 2, dto.getCountedValue(), roleEnum, true, dto.getObservaciones());
+
         // Registrar en historial con periodId y warehouseId del marbete
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         countHistoryService.recordCountRegistration(userId, email, dto.getFolio(), 2, dto.getCountedValue().intValue(), userRole, label.getWarehouseId(), label.getPeriodId());
-        
+
         return result;
     }
 

@@ -55,5 +55,9 @@ public class LabelCountEvent {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    /** Observaciones/comentarios del conteo registrado por el usuario. */
+    @Column(name = "observaciones", length = 500)
+    private String observaciones;
+
     public enum Role {ADMINISTRADOR, ALMACENISTA, AUXILIAR, AUXILIAR_DE_CONTEO}
 }

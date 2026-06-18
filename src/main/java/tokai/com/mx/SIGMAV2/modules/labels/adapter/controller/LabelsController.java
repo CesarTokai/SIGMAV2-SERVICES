@@ -271,6 +271,13 @@ public class LabelsController {
         return ResponseEntity.ok(labelService.getComparativeReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
     }
 
+    @PostMapping("/reports/with-comments")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
+    public ResponseEntity<List<CommentedLabelsReportDTO>> getCommentedLabelsReport(
+            @Valid @RequestBody ReportFilterDTO filter) {
+        return ResponseEntity.ok(labelService.getCommentedLabelsReport(filter, getUserIdFromToken(), getUserRoleFromToken()));
+    }
+
     @PostMapping("/reports/warehouse-detail")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
     public ResponseEntity<List<WarehouseDetailReportDTO>> getWarehouseDetailReport(

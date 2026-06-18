@@ -822,6 +822,9 @@ public class LabelServiceImpl implements LabelService {
     @Override public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
         return labelReportService.getComparativeReport(filter, userId, userRole);
     }
+    @Override public List<CommentedLabelsReportDTO> getCommentedLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        return labelReportService.getCommentedLabelsReport(filter, userId, userRole);
+    }
     @Override public List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole) {
         return labelReportService.getWarehouseDetailReport(filter, userId, userRole);
     }

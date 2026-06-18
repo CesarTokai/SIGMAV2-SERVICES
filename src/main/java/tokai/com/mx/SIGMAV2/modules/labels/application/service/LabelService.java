@@ -78,6 +78,8 @@ public interface LabelService {
 
     List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole);
 
+    List<CommentedLabelsReportDTO> getCommentedLabelsReport(ReportFilterDTO filter, Long userId, String userRole);
+
     List<WarehouseDetailReportDTO> getWarehouseDetailReport(ReportFilterDTO filter, Long userId, String userRole);
 
     List<ProductDetailReportDTO> getProductDetailReport(ReportFilterDTO filter, Long userId, String userRole);

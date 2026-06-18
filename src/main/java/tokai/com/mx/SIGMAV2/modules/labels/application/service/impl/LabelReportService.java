@@ -397,6 +397,54 @@ public class LabelReportService {
         return result;
     }
 
+    @Transactional(readOnly = true)
+    public List<CommentedLabelsReportDTO> getCommentedLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
+        log.info("Reporte marbetes con comentarios: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
+
+        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
+            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+        }
+
+        List<Label> labels = filter.getWarehouseId() != null
+                ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
+                : jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+
+        Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
+        Map<Long, ProductEntity> prodMap = batchLoadProducts(labels);
+        Map<Long, WarehouseEntity> whMap = batchLoadWarehouses(labels);
+
+        return labels.stream().map(label -> {
+            ProductEntity p = prodMap.get(label.getProductId());
+            WarehouseEntity w = whMap.get(label.getWarehouseId());
+            BigDecimal c1 = null, c2 = null;
+            String comentarioC1 = null, comentarioC2 = null;
+
+            for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
+                if (e.getCountNumber() == 1) {
+                    c1 = e.getCountedValue();
+                    comentarioC1 = e.getObservaciones();
+                }
+                if (e.getCountNumber() == 2) {
+                    c2 = e.getCountedValue();
+                    comentarioC2 = e.getObservaciones();
+                }
+            }
+
+            BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1).abs() : null;
+            String statusConteo = (c1 != null && c2 != null) ? "COMPLETO" : (c1 != null) ? "INCOMPLETO" : "PENDIENTE";
+
+            return new CommentedLabelsReportDTO(
+                    label.getFolio(),
+                    p != null ? p.getCveArt() : "",
+                    p != null ? p.getDescr() : "",
+                    p != null ? p.getUniMed() : "",
+                    w != null ? w.getWarehouseKey() : "",
+                    w != null ? w.getNameWarehouse() : "",
+                    c1, comentarioC1, c2, comentarioC2, diferencia,
+                    label.getEstado().name(), statusConteo);
+        }).sorted(java.util.Comparator.comparing(CommentedLabelsReportDTO::getNumeroMarbete)).toList();
+    }
+
     /**
      * Reporte almacén-detalle.
      * Incluye TODOS los marbetes: generados, impresos y cancelados.
