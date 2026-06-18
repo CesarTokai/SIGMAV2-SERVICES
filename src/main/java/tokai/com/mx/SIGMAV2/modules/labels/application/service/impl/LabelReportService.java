@@ -146,16 +146,16 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte pendientes: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
+
         // AUXILIAR_DE_CONTEO no tiene restricción de almacén
         if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
             warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
         }
 
-        // Traer TODOS los marbetes (cancelados y no cancelados)
+        // Traer solo marbetes NO CANCELADOS
         List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
+                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -169,20 +169,17 @@ public class LabelReportService {
                 if (e.getCountNumber() == 2) c2 = e.getCountedValue();
             }
 
-            // Incluir:
-            // 1. Todos los marbetes CANCELADOS
-            // 2. Marbetes NO CANCELADOS que falten conteos (C1 o C2)
-            boolean estaCancelado = label.getEstado() == Label.State.CANCELADO;
+            // Incluir solo marbetes ACTIVOS que falten conteos (C1 o C2)
             boolean faltanConteos = c1 == null || c2 == null;
 
-            if (estaCancelado || faltanConteos) {
+            if (faltanConteos) {
                 ProductEntity   p = prodMap.get(label.getProductId());
                 WarehouseEntity w = whMap.get(label.getWarehouseId());
                 result.add(new PendingLabelsReportDTO(
                         label.getFolio(),
                         p != null ? p.getCveArt()  : "", p != null ? p.getDescr()  : "", p != null ? p.getUniMed() : "",
                         w != null ? w.getWarehouseKey() : "", w != null ? w.getNameWarehouse() : "",
-                        c1, c2, label.getEstado().name(), estaCancelado));
+                        c1, c2, label.getEstado().name(), false));
             }
         }
         result.sort(Comparator.comparing(PendingLabelsReportDTO::getNumeroMarbete));
@@ -316,15 +313,28 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<ComparativeReportDTO> getComparativeReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte comparativo: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
 
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+        // Se traen marbetes no cancelados con filtro de acceso a almacenes
+        List<Label> labels;
+        if (filter.getWarehouseId() != null) {
+            // Almacén específico — validar acceso
+            if (!isAuxiliarDeConteo(userRole)) {
+                warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
+            }
+            labels = jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId());
+        } else {
+            // Sin almacén — aplicar filtro de almacenes accesibles
+            List<Long> accessibleWarehouses = warehouseAccessService.getAccessibleWarehouses(userId, userRole);
+            if (accessibleWarehouses == null) {
+                // Acceso total (ADMINISTRADOR, AUXILIAR_DE_CONTEO)
+                labels = jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+            } else {
+                // Acceso limitado — usar almacenes accesibles
+                labels = accessibleWarehouses.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findNonCancelledByPeriodAndWarehouseIdIn(filter.getPeriodId(), accessibleWarehouses);
+            }
+        }
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
