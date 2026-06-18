@@ -591,13 +591,15 @@ public class LabelsController {
     /**
      * 🎯 POST /labels/print-specific-with-qr
      * Imprime marbetes específicos CON QR
-     * 
-     * Request: { 
+     *
+     * Request: {
      *   "folios": [42, 43, 44],
      *   "periodId": 1,
-     *   "warehouseId": 5 
+     *   "warehouseId": 5 (opcional)
      * }
      * Response: PDF solo con esos marbetes + QR
+     *
+     * Si warehouseId no se proporciona, busca los marbetes en TODOS los almacenes
      */
     @PostMapping("/print-specific-with-qr")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA')")
@@ -614,7 +616,7 @@ public class LabelsController {
                     .map(f -> ((Number) f).longValue())
                     .collect(java.util.stream.Collectors.toList());
             Long periodId = ((Number) request.get("periodId")).longValue();
-            Long warehouseId = ((Number) request.get("warehouseId")).longValue();
+            Long warehouseId = request.get("warehouseId") != null ? ((Number) request.get("warehouseId")).longValue() : null;
             
             log.info("🎯 /print-specific-with-qr: {} marbetes - usuario={}", folios.size(), userId);
             

@@ -184,14 +184,18 @@ public class MarbeteQRIntegrationService {
      */
     public List<MarbeteReportDTO> generarMarbetesEspecificosConQR(List<Long> folios, Long periodId, Long warehouseId) {
         log.info("Generando {} marbetes específicos con QR (agrupados de 3 en 3)", folios.size());
-        
+
         List<Label> marbetesObtenidos = new ArrayList<>();
-        
+
         for (Long folio : folios) {
             try {
-                Label label = labelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId)
-                    .orElse(null);
-                    
+                Label label;
+                if (warehouseId != null) {
+                    label = labelRepository.findByFolioAndPeriodIdAndWarehouseId(folio, periodId, warehouseId).orElse(null);
+                } else {
+                    label = labelRepository.findByFolioAndPeriodId(folio, periodId).orElse(null);
+                }
+
                 if (label != null) {
                     // Sólo incluir si no está en estado GENERADO (no imprimir)
                     if (label.getEstado() != Label.State.GENERADO) {
