@@ -189,27 +189,28 @@ Mostrar marbetes donde C1 y C2 tienen valores diferentes, requiriendo resolució
 
 ### ✅ Reglas de Negocio
 
-1. **Exclusión de cancelados**
-   - **NO** se incluyen marbetes `CANCELADO`
-
-2. **Criterios de inclusión** (TODOS deben cumplirse)
+1. **Marbetes activos (no cancelados)**
    - ✅ `C1 != null` (Existe el primer conteo)
    - ✅ `C2 != null` (Existe el segundo conteo)
-   - ✅ `C1 > 0` (El primer conteo es mayor a cero)
-   - ✅ `C2 > 0` (El segundo conteo es mayor a cero)
    - ✅ `C1 != C2` (Los conteos son diferentes)
+   - `0` es un conteo válido y real (producto contado en cero), distinto de `null` (no contado). Un conteo en cero **sí** puede generar diferencia.
 
-3. **Casos incluidos/excluidos**
+2. **Casos incluidos/excluidos**
    | C1 | C2 | ¿Se incluye? | Razón |
    |----|----|--------------|-------|
    | 10 | 5 | ✅ SÍ | Diferencia válida |
    | 100 | 95 | ✅ SÍ | Diferencia válida |
-   | 0 | 0 | ❌ NO | Ambos en cero |
-   | 0 | 10 | ❌ NO | C1 no válido |
-   | 10 | 0 | ❌ NO | C2 no válido |
+   | 10 | 0 | ✅ SÍ | Diferencia válida (producto ya no está) |
+   | 0 | 10 | ✅ SÍ | Diferencia válida |
+   | 0 | 0 | ❌ NO | Sin diferencia (ambos coinciden en cero) |
    | 5 | 5 | ❌ NO | Sin diferencia |
    | null | 10 | ❌ NO | Falta C1 |
    | 10 | null | ❌ NO | Falta C2 |
+
+3. **Marbetes cancelados con diferencia**
+   - Se incluye una segunda sección con marbetes `CANCELADO` (tabla `label_cancelled`, `reactivado = false`) cuyos conteos previos a la cancelación (`conteo1AlCancelar`, `conteo2AlCancelar`) eran distintos entre sí.
+   - Útil para auditoría: detectar si se canceló un marbete que ya tenía una discrepancia sin resolver.
+   - Aparecen con `estado = "CANCELADO"` en el resultado.
 
 4. **Cálculo de diferencia**
    - Se calcula como: `|C1 - C2|` (valor absoluto)
@@ -237,10 +238,10 @@ Mostrar marbetes donde C1 y C2 tienen valores diferentes, requiriendo resolució
 - **Auditores**: Verificar calidad del inventario
 - **Administradores**: Analizar exactitud de los conteos
 
-### 🔧 Corrección Implementada
-**Fecha**: 2026-01-22  
-**Problema previo**: Se incluían marbetes con C1=0 y C2=0  
-**Solución**: Agregada validación `C1 > 0` y `C2 > 0`
+### 🔧 Correcciones Implementadas
+**2026-01-22**: Se agregó (y luego se removió) la validación `C1 > 0` y `C2 > 0`. Causaba que diferencias reales como C1=10, C2=0 (producto ya no está físicamente) quedaran ocultas del reporte — justo el caso de mayor interés para auditoría.
+
+**Vigente**: Solo se excluyen los casos `null` (conteo faltante) o `C1 == C2` (sin diferencia real). Un conteo en cero es válido y se compara igual que cualquier otro valor.
 
 ---
 

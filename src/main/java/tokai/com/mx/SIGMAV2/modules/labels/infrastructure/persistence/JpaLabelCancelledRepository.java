@@ -1,9 +1,12 @@
 package tokai.com.mx.SIGMAV2.modules.labels.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tokai.com.mx.SIGMAV2.modules.labels.domain.model.LabelCancelled;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +29,16 @@ public interface JpaLabelCancelledRepository extends JpaRepository<LabelCancelle
     List<LabelCancelled> findByPeriodIdAndReactivado(Long periodId, Boolean reactivado);
 
     List<LabelCancelled> findByPeriodId(Long periodId);
+
+    /**
+     * Marbetes cancelados de un período en múltiples almacenes — usado para
+     * restringir reportes a los almacenes accesibles al usuario.
+     */
+    @Query("SELECT lc FROM LabelCancelled lc WHERE lc.periodId = :periodId AND lc.warehouseId IN :warehouseIds " +
+           "AND lc.reactivado = :reactivado ORDER BY lc.warehouseId, lc.folio ASC")
+    List<LabelCancelled> findByPeriodIdAndWarehouseIdInAndReactivado(@Param("periodId") Long periodId,
+                                                                      @Param("warehouseIds") Collection<Long> warehouseIds,
+                                                                      @Param("reactivado") Boolean reactivado);
 }
 
 

@@ -64,14 +64,12 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<DistributionReportDTO> getDistributionReport(ReportFilterDTO filter, Long userId, String userRole) {
 
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findAllLabelsByPeriodAndWarehouseForDistribution(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findAllLabelsByPeriodForDistribution(filter.getPeriodId());
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
+        List<Label> labels = scope == null
+                ? jpaLabelRepository.findAllLabelsByPeriodForDistribution(filter.getPeriodId())
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findAllLabelsByPeriodAndWarehouseIdIn(filter.getPeriodId(), scope);
 
         // Cargar usuarios referenciados en batch
         Set<Long> userIds = labels.stream().map(Label::getCreatedBy).collect(Collectors.toSet());
@@ -103,14 +101,12 @@ public class LabelReportService {
 
     @Transactional(readOnly = true)
     public List<LabelListReportDTO> getLabelListReport(ReportFilterDTO filter, Long userId, String userRole) {
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
+        List<Label> labels = scope == null
+                ? jpaLabelRepository.findByPeriodId(filter.getPeriodId())
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findByPeriodIdAndWarehouseIdIn(filter.getPeriodId(), scope);
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -147,15 +143,13 @@ public class LabelReportService {
     public List<PendingLabelsReportDTO> getPendingLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte pendientes: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
 
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        // Traer solo marbetes NO CANCELADOS
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+        // Traer solo marbetes NO CANCELADOS, restringidos a los almacenes accesibles
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
+        List<Label> labels = scope == null
+                ? jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId())
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findNonCancelledByPeriodAndWarehouseIdIn(filter.getPeriodId(), scope);
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -194,16 +188,15 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<DifferencesReportDTO> getDifferencesReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte diferencias: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
+
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
 
         // ── 1. Marbetes activos (no cancelados) con diferencia ──────────
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findNonCancelledByPeriodAndWarehouse(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId());
+        List<Label> labels = scope == null
+                ? jpaLabelRepository.findNonCancelledByPeriod(filter.getPeriodId())
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findNonCancelledByPeriodAndWarehouseIdIn(filter.getPeriodId(), scope);
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity>         prodMap   = batchLoadProducts(labels);
@@ -230,10 +223,11 @@ public class LabelReportService {
         }
 
         // ── 2. Marbetes CANCELADOS que tenían diferencia entre C1 y C2 ──
-        List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null
-                ? jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(
-                        filter.getPeriodId(), filter.getWarehouseId(), false)
-                : jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false);
+        List<LabelCancelled> cancelledLabels = scope == null
+                ? jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false)
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdInAndReactivado(filter.getPeriodId(), scope, false);
 
         if (!cancelledLabels.isEmpty()) {
             Set<Long> cancelledProdIds = cancelledLabels.stream()
@@ -269,15 +263,13 @@ public class LabelReportService {
     @Transactional(readOnly = true)
     public List<CancelledLabelsReportDTO> getCancelledLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte cancelados: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
-        
-        // AUXILIAR_DE_CONTEO no tiene restricción de almacén
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
 
-        List<LabelCancelled> cancelledLabels = filter.getWarehouseId() != null
-                ? jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdAndReactivado(filter.getPeriodId(), filter.getWarehouseId(), false)
-                : jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false);
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
+        List<LabelCancelled> cancelledLabels = scope == null
+                ? jpaLabelCancelledRepository.findByPeriodIdAndReactivado(filter.getPeriodId(), false)
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelCancelledRepository.findByPeriodIdAndWarehouseIdInAndReactivado(filter.getPeriodId(), scope, false);
 
         // Cargar productos y almacenes en batch
         Set<Long> prodIds = cancelledLabels.stream().map(LabelCancelled::getProductId).collect(Collectors.toSet());
@@ -401,32 +393,39 @@ public class LabelReportService {
     public List<CommentedLabelsReportDTO> getCommentedLabelsReport(ReportFilterDTO filter, Long userId, String userRole) {
         log.info("Reporte marbetes con comentarios: periodo={}, almacén={}", filter.getPeriodId(), filter.getWarehouseId());
 
-        if (filter.getWarehouseId() != null && !isAuxiliarDeConteo(userRole)) {
-            warehouseAccessService.validateWarehouseAccess(userId, filter.getWarehouseId(), userRole);
-        }
-
-        List<Label> labels = filter.getWarehouseId() != null
-                ? jpaLabelRepository.findByPeriodIdAndWarehouseId(filter.getPeriodId(), filter.getWarehouseId())
-                : jpaLabelRepository.findByPeriodId(filter.getPeriodId());
+        List<Long> scope = resolveWarehouseScope(filter.getWarehouseId(), userId, userRole);
+        List<Label> labels = scope == null
+                ? jpaLabelRepository.findByPeriodId(filter.getPeriodId())
+                : scope.isEmpty()
+                        ? List.of()
+                        : jpaLabelRepository.findByPeriodIdAndWarehouseIdIn(filter.getPeriodId(), scope);
 
         Map<Long, List<LabelCountEvent>> countMap = batchLoadCounts(labels);
         Map<Long, ProductEntity> prodMap = batchLoadProducts(labels);
         Map<Long, WarehouseEntity> whMap = batchLoadWarehouses(labels);
+
+        Set<Long> countUserIds = countMap.values().stream()
+                .flatMap(List::stream).map(LabelCountEvent::getUserId).collect(Collectors.toSet());
+        Map<Long, String> userEmailMap = userRepository.findAllById(countUserIds).stream()
+                .collect(Collectors.toMap(u -> u.getId(), u -> u.getEmail()));
 
         return labels.stream().map(label -> {
             ProductEntity p = prodMap.get(label.getProductId());
             WarehouseEntity w = whMap.get(label.getWarehouseId());
             BigDecimal c1 = null, c2 = null;
             String comentarioC1 = null, comentarioC2 = null;
+            String usuarioC1 = null, usuarioC2 = null;
 
             for (LabelCountEvent e : countMap.getOrDefault(label.getFolio(), List.of())) {
                 if (e.getCountNumber() == 1) {
                     c1 = e.getCountedValue();
                     comentarioC1 = e.getObservaciones();
+                    usuarioC1 = userEmailMap.get(e.getUserId());
                 }
                 if (e.getCountNumber() == 2) {
                     c2 = e.getCountedValue();
                     comentarioC2 = e.getObservaciones();
+                    usuarioC2 = userEmailMap.get(e.getUserId());
                 }
             }
 
@@ -440,7 +439,7 @@ public class LabelReportService {
                     p != null ? p.getUniMed() : "",
                     w != null ? w.getWarehouseKey() : "",
                     w != null ? w.getNameWarehouse() : "",
-                    c1, comentarioC1, c2, comentarioC2, diferencia,
+                    c1, comentarioC1, usuarioC1, c2, comentarioC2, usuarioC2, diferencia,
                     label.getEstado().name(), statusConteo);
         }).sorted(java.util.Comparator.comparing(CommentedLabelsReportDTO::getNumeroMarbete)).toList();
     }
@@ -724,6 +723,21 @@ public class LabelReportService {
     /** Verifica si el rol es AUXILIAR_DE_CONTEO (sin restricción de almacén). */
     private boolean isAuxiliarDeConteo(String userRole) {
         return userRole != null && userRole.toUpperCase().equals("AUXILIAR_DE_CONTEO");
+    }
+
+    /**
+     * Resuelve el alcance de almacenes para un reporte.
+     * - Si se especificó warehouseId: valida acceso y retorna lista de un elemento.
+     * - Si no: retorna los almacenes accesibles al usuario (null = acceso total).
+     */
+    private List<Long> resolveWarehouseScope(Long filterWarehouseId, Long userId, String userRole) {
+        if (filterWarehouseId != null) {
+            if (!isAuxiliarDeConteo(userRole)) {
+                warehouseAccessService.validateWarehouseAccess(userId, filterWarehouseId, userRole);
+            }
+            return List.of(filterWarehouseId);
+        }
+        return warehouseAccessService.getAccessibleWarehouses(userId, userRole);
     }
 
     // ── clase interna de soporte para generateInventoryFile ─────────────

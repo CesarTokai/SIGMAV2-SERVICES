@@ -683,10 +683,24 @@ public class LabelServiceImpl implements LabelService {
 
         List<LabelCountEvent> events = jpaLabelCountEventRepository.findByFolioAndPeriodIdOrderByCreatedAtAsc(folio, label.getPeriodId());
         java.math.BigDecimal c1 = null, c2 = null;
+        String comentarioC1 = null, comentarioC2 = null;
+        Long usuarioC1Id = null, usuarioC2Id = null;
         for (LabelCountEvent e : events) {
-            if (e.getCountNumber() == 1) c1 = e.getCountedValue();
-            if (e.getCountNumber() == 2) c2 = e.getCountedValue();
+            if (e.getCountNumber() == 1) {
+                c1 = e.getCountedValue();
+                comentarioC1 = e.getObservaciones();
+                usuarioC1Id = e.getUserId();
+            }
+            if (e.getCountNumber() == 2) {
+                c2 = e.getCountedValue();
+                comentarioC2 = e.getObservaciones();
+                usuarioC2Id = e.getUserId();
+            }
         }
+        String usuarioC1Nombre = usuarioC1Id != null
+                ? userRepository.findById(usuarioC1Id).map(u -> u.getEmail()).orElse(null) : null;
+        String usuarioC2Nombre = usuarioC2Id != null
+                ? userRepository.findById(usuarioC2Id).map(u -> u.getEmail()).orElse(null) : null;
         java.math.BigDecimal diferencia = (c1 != null && c2 != null) ? c2.subtract(c1) : null;
 
         java.math.BigDecimal existQty = null;
@@ -710,6 +724,8 @@ public class LabelServiceImpl implements LabelService {
                 .estado(label.getEstado() != null ? label.getEstado().name() : "SIN_ESTADO")
                 .impreso(!persistence.findLabelPrintsByProductPeriodWarehouse(label.getProductId(), periodId, label.getWarehouseId()).isEmpty())
                 .mensaje(mensaje).existQty(existQty).existQtyUnidad(product.getUniMed())
+                .conteo1Comentario(comentarioC1).conteo1UsuarioNombre(usuarioC1Nombre)
+                .conteo2Comentario(comentarioC2).conteo2UsuarioNombre(usuarioC2Nombre)
                 .build();
     }
 

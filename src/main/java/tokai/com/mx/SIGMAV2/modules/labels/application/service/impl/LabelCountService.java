@@ -113,6 +113,7 @@ public class LabelCountService {
         eventC1.setCountedValue(dto.getCountedValue());
         eventC1.setUpdatedAt(LocalDateTime.now());
         eventC1.setUpdatedBy(userId);
+        if (dto.getObservaciones() != null) eventC1.setObservaciones(dto.getObservaciones());
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC1);
         
@@ -148,6 +149,7 @@ public class LabelCountService {
         eventC2.setCountedValue(dto.getCountedValue());
         eventC2.setUpdatedAt(LocalDateTime.now());
         eventC2.setUpdatedBy(userId);
+        if (dto.getObservaciones() != null) eventC2.setObservaciones(dto.getObservaciones());
 
         LabelCountEvent updated = jpaLabelCountEventRepository.save(eventC2);
         

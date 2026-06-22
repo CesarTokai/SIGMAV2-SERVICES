@@ -21,8 +21,10 @@ public class CommentedLabelsReportDTO {
     private String nombreAlmacen;
     private BigDecimal conteo1;
     private String comentarioC1;
+    private String conteo1UsuarioNombre;
     private BigDecimal conteo2;
     private String comentarioC2;
+    private String conteo2UsuarioNombre;
     private BigDecimal diferencia;
     private String estado;
     private String statusConteo; // COMPLETO / INCOMPLETO / PENDIENTE

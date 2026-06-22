@@ -114,5 +114,13 @@ public interface JpaLabelRepository extends JpaRepository<Label, Long> {
            "AND l.estado <> 'CANCELADO' ORDER BY l.warehouseId, l.folio ASC")
     List<Label> findNonCancelledByPeriodAndWarehouseIdIn(@Param("periodId") Long periodId,
                                                          @Param("warehouseIds") Collection<Long> warehouseIds);
+
+    /**
+     * TODOS los marbetes (sin filtro de estado) de un período en múltiples almacenes.
+     * Usado por el reporte de distribución cuando el usuario tiene acceso a almacenes específicos.
+     */
+    @Query("SELECT l FROM Label l WHERE l.periodId = :periodId AND l.warehouseId IN :warehouseIds ORDER BY l.warehouseId, l.folio ASC")
+    List<Label> findAllLabelsByPeriodAndWarehouseIdIn(@Param("periodId") Long periodId,
+                                                        @Param("warehouseIds") Collection<Long> warehouseIds);
 }
 
