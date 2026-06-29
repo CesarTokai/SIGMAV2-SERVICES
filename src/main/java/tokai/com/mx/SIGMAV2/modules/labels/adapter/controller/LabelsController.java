@@ -121,7 +121,7 @@ public class LabelsController {
 
     @PostMapping("/summary")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR','AUXILIAR','ALMACENISTA','AUXILIAR_DE_CONTEO')")
-    public ResponseEntity<List<LabelSummaryResponseDTO>> getLabelSummary(@RequestBody LabelSummaryRequestDTO dto) {
+    public ResponseEntity<LabelSummaryPageResponseDTO> getLabelSummary(@RequestBody LabelSummaryRequestDTO dto) {
         Long userId = getUserIdFromToken();
         return ResponseEntity.ok(labelService.getLabelSummary(dto, userId, getUserRoleFromToken()));
     }

@@ -312,7 +312,7 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole) {
+    public LabelSummaryPageResponseDTO getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole) {
 
         final Long periodId = dto.getPeriodId() != null ? dto.getPeriodId()
                 : persistence.findLastCreatedPeriodId()
@@ -423,10 +423,25 @@ public class LabelServiceImpl implements LabelService {
 
         // Paginación
         int total = filtered.size();
-        int start = dto.getPage() * dto.getSize();
-        if (start >= total && total > 0) return new ArrayList<>();
-        int end = Math.min(start + dto.getSize(), total);
-        return start < total ? filtered.subList(start, end) : new ArrayList<>();
+        int pageSize = dto.getSize() > 0 ? dto.getSize() : 1;
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+        int start = dto.getPage() * pageSize;
+
+        List<LabelSummaryResponseDTO> pageContent;
+        if (start >= total) {
+            pageContent = new ArrayList<>();
+        } else {
+            int end = Math.min(start + pageSize, total);
+            pageContent = filtered.subList(start, end);
+        }
+
+        return LabelSummaryPageResponseDTO.builder()
+                .content(pageContent)
+                .totalElements(total)
+                .totalPages(Math.max(totalPages, 1))
+                .currentPage(dto.getPage())
+                .pageSize(pageSize)
+                .build();
     }
 
     private Comparator<LabelSummaryResponseDTO> getSummaryComparator(String sortBy) {

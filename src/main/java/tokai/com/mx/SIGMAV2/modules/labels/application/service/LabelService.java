@@ -42,7 +42,7 @@ public interface LabelService {
 
     LabelCountEvent updateCountC2(tokai.com.mx.SIGMAV2.modules.labels.application.dto.UpdateCountDTO dto, Long userId, String userRole);
 
-    List<LabelSummaryResponseDTO> getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
+    LabelSummaryPageResponseDTO getLabelSummary(LabelSummaryRequestDTO dto, Long userId, String userRole);
 
     tokai.com.mx.SIGMAV2.modules.labels.application.dto.LabelStatusResponseDTO getLabelStatus(Long folio, Long periodId, Long warehouseId, Long userId, String userRole);
 
